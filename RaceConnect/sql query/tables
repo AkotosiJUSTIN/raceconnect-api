@@ -95,7 +95,7 @@ CREATE TABLE Admin_Analytics (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-LIKES
+--LIKES
 
 CREATE TABLE Post_Likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -124,7 +124,7 @@ CREATE TABLE Marketplace_Item_Likes (
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE
 );
 
-COMMENTS
+--COMMENTS
 
 CREATE TABLE Post_Comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -147,7 +147,7 @@ CREATE TABLE Reel_Comments (
     FOREIGN KEY (reel_id) REFERENCES Reels(id) ON DELETE CASCADE
 );
 
-RESPOST
+--REPOST
 CREATE TABLE Post_Reposts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
