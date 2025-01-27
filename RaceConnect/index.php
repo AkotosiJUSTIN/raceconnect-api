@@ -7,9 +7,6 @@ require_once 'C:/xampp/htdocs/RaceConnect/controllers/MarketplaceItemController.
 require_once 'C:/xampp/htdocs/RaceConnect/controllers/NotificationController.php';
 require_once 'C:/xampp/htdocs/RaceConnect/controllers/AdminController.php';
 require_once 'C:/xampp/htdocs/RaceConnect/controllers/AdminAnalyticsController.php';
-require_once 'C:/xampp/htdocs/RaceConnect/controllers/LikeController.php';
-require_once 'C:/xampp/htdocs/RaceConnect/controllers/CommentController.php';
-require_once 'C:/xampp/htdocs/RaceConnect/controllers/RepostController.php';
 
 $path = explode('/', trim($_SERVER['PATH_INFO'], '/'));
 $resource = $path[0] ?? null;
