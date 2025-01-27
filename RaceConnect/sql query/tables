@@ -8,7 +8,7 @@ CREATE TABLE Users (
     birthdate DATE NOT NULL,
     number VARCHAR(15) NOT NULL,
     address TEXT NOT NULL,
-    age INT GENERATED ALWAYS AS (YEAR(CURDATE()) - YEAR(birthdate)) STORED,
+    age INT,
     profile_picture VARCHAR(255),
     bio TEXT,
     favorite_categories JSON,
