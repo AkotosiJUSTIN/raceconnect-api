@@ -1,4 +1,6 @@
 <?php
+
+//CHANGE THE PATHS TO YOUR OWN PATHS
 require_once 'C:/xampp/htdocs/RaceConnect/config/database.php';
 require_once 'C:/xampp/htdocs/RaceConnect/controllers/UserController.php';
 require_once 'C:/xampp/htdocs/RaceConnect/controllers/PostController.php';
@@ -10,17 +12,18 @@ require_once 'C:/xampp/htdocs/RaceConnect/controllers/AdminAnalyticsController.p
 
 $path = explode('/', trim($_SERVER['PATH_INFO'], '/'));
 $resource = $path[0] ?? null;
-$id = $path[1] ?? null;
 $method = $_SERVER['REQUEST_METHOD'];
+$id = $path[1] ?? null;
 
 if (!$conn) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+    echo json_encode(['message' => 'Database connection failed']);
     exit;
 }
 
 if ($resource === 'users') {
     $controller = new UserController($conn);
 
+    // Handle login and logout
     if (isset($_GET['action'])) {
         if ($_GET['action'] === 'login') {
             $controller->processRequest('POST');
@@ -28,7 +31,8 @@ if ($resource === 'users') {
             $controller->processRequest('POST');
         }
     } else {
-        $controller->processRequest($method, $user_id);
+        // Pass the ID (if available) to the controller's method
+        $controller->processRequest($method, $id);
     }
 } elseif ($resource === 'posts') {
     $controller = new PostController($conn);
@@ -48,7 +52,7 @@ if ($resource === 'users') {
 } elseif ($resource === 'admin_analytics') {
     $controller = new AdminAnalyticsController($conn);
     $controller->processRequest($method, $id);
-}  else {
-    echo json_encode(['success' => false, 'message' => 'Resource or user_id is missing']);
+} else {
+    echo json_encode(['message' => 'Resource or user_id is missing']);
 }
 ?>

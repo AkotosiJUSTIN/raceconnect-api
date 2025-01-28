@@ -14,18 +14,18 @@ class AdminController {
             case 'GET':
                 if ($id) {
                     $admin = $this->admin->getAdminById($id);
-                    echo json_encode($admin ? ['success' => true, 'data' => $admin] : ['success' => false, 'message' => 'Admin not found']);
+                    echo json_encode($admin ? ['data' => $admin] : ['message' => 'Admin not found']);
                 } else {
-                    echo json_encode(['success' => true, 'data' => $this->admin->getAllAdmins()]);
+                    echo json_encode(['data' => $this->admin->getAllAdmins()]);
                 }
                 break;
 
             case 'POST':
                 $data = json_decode(file_get_contents("php://input"), true);
                 if ($this->admin->createAdmin($data)) {
-                    echo json_encode(['success' => true, 'message' => 'Admin created successfully']);
+                    echo json_encode(['message' => 'Admin created successfully']);
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Failed to create admin']);
+                    echo json_encode(['message' => 'Failed to create admin']);
                 }
                 break;
 
@@ -33,29 +33,29 @@ class AdminController {
                 if ($id) {
                     $data = json_decode(file_get_contents("php://input"), true);
                     if ($this->admin->updateAdminRole($id, $data['role'])) {
-                        echo json_encode(['success' => true, 'message' => 'Admin role updated successfully']);
+                        echo json_encode(['message' => 'Admin role updated successfully']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to update admin role']);
+                        echo json_encode(['message' => 'Failed to update admin role']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Admin ID is required']);
+                    echo json_encode(['message' => 'Admin ID is required']);
                 }
                 break;
 
             case 'DELETE':
                 if ($id) {
                     if ($this->admin->deleteAdmin($id)) {
-                        echo json_encode(['success' => true, 'message' => 'Admin deleted successfully']);
+                        echo json_encode(['message' => 'Admin deleted successfully']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to delete admin']);
+                        echo json_encode(['message' => 'Failed to delete admin']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Admin ID is required']);
+                    echo json_encode(['message' => 'Admin ID is required']);
                 }
                 break;
 
             default:
-                echo json_encode(['success' => false, 'message' => 'Unsupported HTTP method']);
+                echo json_encode(['message' => 'Unsupported HTTP method']);
         }
     }
 }

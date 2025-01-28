@@ -14,18 +14,18 @@ class MarketplaceItemController {
             case 'GET':
                 if ($id) {
                     $item = $this->item->getItemById($id);
-                    echo json_encode($item ? ['success' => true, 'data' => $item] : ['success' => false, 'message' => 'Item not found']);
+                    echo json_encode($item ? ['data' => $item] : ['message' => 'Item not found']);
                 } else {
-                    echo json_encode(['success' => true, 'data' => $this->item->getAllItems()]);
+                    echo json_encode(['data' => $this->item->getAllItems()]);
                 }
                 break;
 
             case 'POST':
                 $data = json_decode(file_get_contents("php://input"), true);
                 if ($this->item->createItem($data)) {
-                    echo json_encode(['success' => true, 'message' => 'Item created successfully']);
+                    echo json_encode(['message' => 'Item created successfully']);
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Failed to create item']);
+                    echo json_encode(['message' => 'Failed to create item']);
                 }
                 break;
 
@@ -33,29 +33,29 @@ class MarketplaceItemController {
                 if ($id) {
                     $data = json_decode(file_get_contents("php://input"), true);
                     if ($this->item->updateItem($id, $data)) {
-                        echo json_encode(['success' => true, 'message' => 'Item updated successfully']);
+                        echo json_encode(['message' => 'Item updated successfully']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to update item']);
+                        echo json_encode(['message' => 'Failed to update item']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Item ID is required']);
+                    echo json_encode(['message' => 'Item ID is required']);
                 }
                 break;
 
             case 'DELETE':
                 if ($id) {
                     if ($this->item->deleteItem($id)) {
-                        echo json_encode(['success' => true, 'message' => 'Item deleted successfully']);
+                        echo json_encode(['message' => 'Item deleted successfully']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to delete item']);
+                        echo json_encode(['message' => 'Failed to delete item']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Item ID is required']);
+                    echo json_encode(['message' => 'Item ID is required']);
                 }
                 break;
 
             default:
-                echo json_encode(['success' => false, 'message' => 'Unsupported HTTP method']);
+                echo json_encode(['message' => 'Unsupported HTTP method']);
         }
     }
 }

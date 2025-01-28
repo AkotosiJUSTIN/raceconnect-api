@@ -14,18 +14,18 @@ class AdminAnalyticsController {
             case 'GET':
                 if ($id) {
                     $analytics = $this->analytics->getAnalyticsByDate($id); // Using date as id
-                    echo json_encode($analytics ? ['success' => true, 'data' => $analytics] : ['success' => false, 'message' => 'Analytics not found']);
+                    echo json_encode($analytics ? ['data' => $analytics] : ['message' => 'Analytics not found']);
                 } else {
-                    echo json_encode(['success' => true, 'data' => $this->analytics->getAllAnalytics()]);
+                    echo json_encode(['data' => $this->analytics->getAllAnalytics()]);
                 }
                 break;
 
             case 'POST':
                 $data = json_decode(file_get_contents("php://input"), true);
                 if ($this->analytics->createAnalytics($data)) {
-                    echo json_encode(['success' => true, 'message' => 'Analytics created successfully']);
+                    echo json_encode(['message' => 'Analytics created successfully']);
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Failed to create analytics']);
+                    echo json_encode(['message' => 'Failed to create analytics']);
                 }
                 break;
 
@@ -33,29 +33,29 @@ class AdminAnalyticsController {
                 if ($id) {
                     $data = json_decode(file_get_contents("php://input"), true);
                     if ($this->analytics->updateAnalytics($id, $data)) {
-                        echo json_encode(['success' => true, 'message' => 'Analytics updated successfully']);
+                        echo json_encode(['message' => 'Analytics updated successfully']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to update analytics']);
+                        echo json_encode(['message' => 'Failed to update analytics']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Analytics ID is required']);
+                    echo json_encode(['message' => 'Analytics ID is required']);
                 }
                 break;
 
             case 'DELETE':
                 if ($id) {
                     if ($this->analytics->deleteAnalytics($id)) {
-                        echo json_encode(['success' => true, 'message' => 'Analytics deleted successfully']);
+                        echo json_encode(['message' => 'Analytics deleted successfully']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to delete analytics']);
+                        echo json_encode(['message' => 'Failed to delete analytics']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Analytics ID is required']);
+                    echo json_encode(['message' => 'Analytics ID is required']);
                 }
                 break;
 
             default:
-                echo json_encode(['success' => false, 'message' => 'Unsupported HTTP method']);
+                echo json_encode(['message' => 'Unsupported HTTP method']);
         }
     }
 }

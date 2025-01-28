@@ -1,4 +1,4 @@
---DATABASE SCHEMA(TO BE CHANGED):
+DATABASE SCHEMA(TO BE CHANGED):
 -- Users Table
 CREATE TABLE Users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -166,17 +166,6 @@ CREATE TABLE Reel_Reposts (
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (reel_id) REFERENCES Reels(id) ON DELETE CASCADE
 );
-
---tokens table
-CREATE TABLE user_tokens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    token VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NULL, -- Allow NULL without default value
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
-);
-
 
 
 

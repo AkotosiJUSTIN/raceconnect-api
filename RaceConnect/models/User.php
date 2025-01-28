@@ -79,7 +79,7 @@ class User {
         $stmt = $this->pdo->prepare("SELECT * FROM user_tokens WHERE token = :token");
         $stmt->bindParam(':token', $token);
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch(PDO::FETCH_ASSOC); // Return token data if valid, else null
     }
     
     public function revokeToken($token) {

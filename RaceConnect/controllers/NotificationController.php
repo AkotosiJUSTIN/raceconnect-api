@@ -14,13 +14,13 @@ class NotificationController {
             case 'GET':
                 if ($id) {
                     $notification = $this->notification->getNotificationById($id);
-                    echo json_encode($notification ? ['success' => true, 'data' => $notification] : ['success' => false, 'message' => 'Notification not found']);
+                    echo json_encode($notification ? ['data' => $notification] : ['message' => 'Notification not found']);
                 } else {
                     $userId = $_GET['user_id'] ?? null;
                     if ($userId) {
-                        echo json_encode(['success' => true, 'data' => $this->notification->getAllNotifications($userId)]);
+                        echo json_encode(['data' => $this->notification->getAllNotifications($userId)]);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'User ID is required']);
+                        echo json_encode(['message' => 'User ID is required']);
                     }
                 }
                 break;
@@ -28,38 +28,38 @@ class NotificationController {
             case 'POST':
                 $data = json_decode(file_get_contents("php://input"), true);
                 if ($this->notification->createNotification($data)) {
-                    echo json_encode(['success' => true, 'message' => 'Notification created successfully']);
+                    echo json_encode(['message' => 'Notification created successfully']);
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Failed to create notification']);
+                    echo json_encode(['message' => 'Failed to create notification']);
                 }
                 break;
 
             case 'PUT':
                 if ($id) {
                     if ($this->notification->markAsRead($id)) {
-                        echo json_encode(['success' => true, 'message' => 'Notification marked as read']);
+                        echo json_encode(['message' => 'Notification marked as read']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to mark notification as read']);
+                        echo json_encode(['message' => 'Failed to mark notification as read']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Notification ID is required']);
+                    echo json_encode(['message' => 'Notification ID is required']);
                 }
                 break;
 
             case 'DELETE':
                 if ($id) {
                     if ($this->notification->deleteNotification($id)) {
-                        echo json_encode(['success' => true, 'message' => 'Notification deleted successfully']);
+                        echo json_encode(['message' => 'Notification deleted successfully']);
                     } else {
-                        echo json_encode(['success' => false, 'message' => 'Failed to delete notification']);
+                        echo json_encode(['message' => 'Failed to delete notification']);
                     }
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Notification ID is required']);
+                    echo json_encode(['message' => 'Notification ID is required']);
                 }
                 break;
 
             default:
-                echo json_encode(['success' => false, 'message' => 'Unsupported HTTP method']);
+                echo json_encode(['message' => 'Unsupported HTTP method']);
         }
     }
 }
