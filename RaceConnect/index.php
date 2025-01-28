@@ -10,6 +10,7 @@ require_once 'C:/xampp/htdocs/RaceConnect/controllers/AdminAnalyticsController.p
 
 $path = explode('/', trim($_SERVER['PATH_INFO'], '/'));
 $resource = $path[0] ?? null;
+$id = $path[1] ?? null;
 $method = $_SERVER['REQUEST_METHOD'];
 
 if (!$conn) {
