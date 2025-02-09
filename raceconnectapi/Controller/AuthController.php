@@ -19,34 +19,43 @@ class AuthController {
 
     public function login($data) {
         try {
-            if (!isset($data['username'], $data['password'])) {
+            if (empty($data['username']) || empty($data['password'])) {
+                http_response_code(400);
                 echo json_encode(['message' => 'Username and password are required']);
                 return;
             }
 
             $user = $this->user->loginUser($data['username'], $data['password']);
-            if ($user) {
-                // Generate a token
-                $token = base64_encode(random_bytes(32));
 
-                // Save the token in the database
-                if ($this->authMiddleware->storeToken($user['id'], $token)) {
-                    echo json_encode([
-                        'message' => 'Login successful',
-                        'user' => [
-                            'id' => $user['id'],
-                            'username' => $user['username'],
-                            'email' => $user['email']
-                        ],
-                        'token' => $token
-                    ]);
-                } else {
-                    echo json_encode(['message' => 'Failed to store token']);
-                }
-            } else {
+            if (!$user) {
+                http_response_code(401);
                 echo json_encode(['message' => 'Invalid username or password']);
+                return;
             }
+
+            // Generate a secure token
+            $token = bin2hex(random_bytes(32));
+
+            // Save the token in the database
+            if (!$this->authMiddleware->storeToken($user['id'], $token)) {
+                http_response_code(500);
+                echo json_encode(['message' => 'Failed to store token']);
+                return;
+            }
+
+            http_response_code(200);
+            echo json_encode([
+                'message' => 'Login successful',
+                'user' => [
+                    'id' => $user['id'],
+                    'username' => $user['username'],
+                    'email' => $user['email']
+                ],
+                'token' => $token
+            ]);
+
         } catch (Exception $e) {
+            http_response_code(500);
             echo json_encode(['message' => 'An error occurred during login', 'error' => $e->getMessage()]);
         }
     }
@@ -54,30 +63,41 @@ class AuthController {
     public function logout() {
         try {
             $headers = apache_request_headers();
-            $authHeader = $headers['Authorization'] ?? null;
+            $authHeader = $headers['Authorization'] ?? '';
 
-            if ($authHeader) {
-                list($type, $token) = explode(" ", $authHeader, 2);
-
-                if ($type === "Bearer") {
-                    $tokenData = $this->authMiddleware->validateToken($token);
-
-                    if ($tokenData) {
-                        if ($this->authMiddleware->revokeToken($token)) {
-                            echo json_encode(['message' => 'Logout successful']);
-                        } else {
-                            echo json_encode(['message' => 'Failed to revoke token']);
-                        }
-                    } else {
-                        echo json_encode(['message' => 'Invalid token']);
-                    }
-                } else {
-                    echo json_encode(['message' => 'Invalid token type']);
-                }
-            } else {
-                echo json_encode(['message' => 'Authorization header missing']);
+            if (empty($authHeader)) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Authorization header is missing']);
+                return;
             }
+
+            if (!preg_match('/^Bearer\s(\S+)$/', $authHeader, $matches)) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Invalid token format']);
+                return;
+            }
+
+            $token = $matches[1];
+
+            // Validate token
+            if (!$this->authMiddleware->validateToken($token)) {
+                http_response_code(401);
+                echo json_encode(['message' => 'Invalid or expired token']);
+                return;
+            }
+
+            // Revoke token
+            if (!$this->authMiddleware->revokeToken($token)) {
+                http_response_code(500);
+                echo json_encode(['message' => 'Failed to revoke token']);
+                return;
+            }
+
+            http_response_code(200);
+            echo json_encode(['message' => 'Logout successful']);
+
         } catch (Exception $e) {
+            http_response_code(500);
             echo json_encode(['message' => 'An error occurred during logout', 'error' => $e->getMessage()]);
         }
     }

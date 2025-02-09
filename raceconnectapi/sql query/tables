@@ -34,21 +34,6 @@ CREATE TABLE Posts (
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
--- Reels Table (Short Videos)
-CREATE TABLE Reels (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    title VARCHAR(255),
-    video_url VARCHAR(255) NOT NULL,
-    description TEXT,
-    like_count INT DEFAULT 0,
-    comment_count INT DEFAULT 0,
-    repost_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
-);
-
 -- Marketplace Items Table
 CREATE TABLE Marketplace_Items (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -106,15 +91,6 @@ CREATE TABLE Post_Likes (
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE
 );
 
-CREATE TABLE Reel_Likes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    reel_id INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (reel_id) REFERENCES Reels(id) ON DELETE CASCADE
-);
-
 CREATE TABLE Marketplace_Item_Likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -136,17 +112,6 @@ CREATE TABLE Post_Comments (
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE
 );
 
-
-CREATE TABLE Reel_Comments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    reel_id INT NOT NULL,
-    comment TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (reel_id) REFERENCES Reels(id) ON DELETE CASCADE
-);
-
 --REPOST
 CREATE TABLE Post_Reposts (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -156,18 +121,3 @@ CREATE TABLE Post_Reposts (
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE
 );
-
-
-CREATE TABLE Reel_Reposts (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    reel_id INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (reel_id) REFERENCES Reels(id) ON DELETE CASCADE
-);
-
-
-
-
-

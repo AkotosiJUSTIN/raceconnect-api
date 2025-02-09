@@ -17,12 +17,6 @@ try {
         (2, 'Second Post', 'This is the content of the second post', 'image2.jpg', 'image')
     ");
 
-    // Insert sample reels
-    $conn->exec("INSERT INTO Reels (user_id, title, video_url, description) VALUES
-        (1, 'First Reel', 'video1.mp4', 'Description of the first reel'),
-        (2, 'Second Reel', 'video2.mp4', 'Description of the second reel')
-    ");
-
     // Insert sample marketplace items
     $conn->exec("INSERT INTO Marketplace_Items (seller_id, title, description, price, category, image_url) VALUES
         (1, 'Item 1', 'Description of item 1', 10.00, 'Category 1', 'item1.jpg'),
@@ -51,12 +45,6 @@ try {
         (2, 2)
     ");
 
-    // Insert sample reel likes
-    $conn->exec("INSERT INTO Reel_Likes (user_id, reel_id) VALUES
-        (1, 1),
-        (2, 2)
-    ");
-
     // Insert sample marketplace item likes
     $conn->exec("INSERT INTO Marketplace_Item_Likes (user_id, marketplace_item_id) VALUES
         (1, 1),
@@ -69,20 +57,8 @@ try {
         (2, 2, 'Comment on post 2')
     ");
 
-    // Insert sample reel comments
-    $conn->exec("INSERT INTO Reel_Comments (user_id, reel_id, comment) VALUES
-        (1, 1, 'Comment on reel 1'),
-        (2, 2, 'Comment on reel 2')
-    ");
-
     // Insert sample post reposts
     $conn->exec("INSERT INTO Post_Reposts (user_id, post_id) VALUES
-        (1, 1),
-        (2, 2)
-    ");
-
-    // Insert sample reel reposts
-    $conn->exec("INSERT INTO Reel_Reposts (user_id, reel_id) VALUES
         (1, 1),
         (2, 2)
     ");

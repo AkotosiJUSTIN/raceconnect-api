@@ -1,18 +1,15 @@
 <?php
+
 use Controller\UserController;
 use Controller\PostController;
-use Controller\ReelsController;
 use Controller\MarketplaceItemController;
 use Controller\NotificationController;
 use Controller\Admin\AdminController;
 use Controller\Admin\AdminAnalyticsController;
 use Controller\Like\PostLikeController;
-use Controller\Like\ReelsLikeController;
 use Controller\Like\MarketplaceItemLikeController;
 use Controller\Comment\PostCommentController;
-use Controller\Comment\ReelsCommentController;
 use Controller\Repost\PostRepostController;
-use Controller\Repost\ReelsRepostController;
 use Controller\AuthController;
 
 class Api {
@@ -23,91 +20,128 @@ class Api {
     }
 
     public function route($path, $method) {
-        $resource = $path[0] ?? null;
-        $id = $path[1] ?? null;
+        header('Content-Type: application/json');
 
+        // Validate database connection
         if (!$this->conn) {
-            echo json_encode(['message' => 'Database connection failed']);
+            http_response_code(500);
+            echo json_encode(['message' => 'Internal Server Error: Database connection failed']);
             exit;
         }
 
-        switch ($resource) {
-            case 'users':
-                $controller = new UserController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'login':
-                if ($method === 'POST') {
+        $resource = $path[0] ?? null;
+        $id = $path[1] ?? null;
+
+        // Handle invalid routes
+        if (!$resource) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Bad Request: Resource is missing']);
+            exit;
+        }
+
+        try {
+            switch ($resource) {
+                case 'users':
+                    $this->handleRequest(new UserController($this->conn), $method, $id);
+                    break;
+
+                case 'login':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for login']);
+                        exit;
+                    }
                     $controller = new AuthController($this->conn);
-                    $controller->login(json_decode(file_get_contents("php://input"), true));
-                } else {
-                    echo json_encode(['message' => 'Unsupported HTTP method for login']);
-                }
-                break;
-            case 'logout':
-                if ($method === 'POST') {
+                    $data = $this->getJsonInput();
+                    $controller->login($data);
+                    break;
+
+                case 'logout':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for logout']);
+                        exit;
+                    }
                     $controller = new AuthController($this->conn);
                     $controller->logout();
-                } else {
-                    echo json_encode(['message' => 'Unsupported HTTP method for logout']);
-                }
-                break;
-            case 'posts':
-                $controller = new PostController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'reels':
-                $controller = new ReelsController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'marketplace-items':
-                $controller = new MarketplaceItemController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'notifications':
-                $controller = new NotificationController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'admins':
-                $controller = new AdminController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'admin_analytics':
-                $controller = new AdminAnalyticsController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'post-likes':
-                $controller = new PostLikeController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'reel-likes':
-                $controller = new ReelsLikeController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'marketplace-item-likes':
-                $controller = new MarketplaceItemLikeController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'post-comments':
-                $controller = new PostCommentController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'reel-comments':
-                $controller = new ReelsCommentController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'post-reposts':
-                $controller = new PostRepostController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            case 'reel-reposts':
-                $controller = new ReelsRepostController($this->conn);
-                $controller->processRequest($method, $id);
-                break;
-            default:
-                echo json_encode(['message' => 'Resource or user_id is missing']);
-                break;
+                    break;
+
+                case 'posts':
+                    $this->handleRequest(new PostController($this->conn), $method, $id);
+                    break;
+
+                case 'marketplace-items':
+                    $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
+                    break;
+
+                case 'notifications':
+                    $this->handleRequest(new NotificationController($this->conn), $method, $id);
+                    break;
+
+                case 'admins':
+                    $this->handleRequest(new AdminController($this->conn), $method, $id);
+                    break;
+
+                case 'admin_analytics':
+                    $this->handleRequest(new AdminAnalyticsController($this->conn), $method, $id);
+                    break;
+
+                case 'post-likes':
+                    $this->handleRequest(new PostLikeController($this->conn), $method, $id);
+                    break;
+
+                case 'marketplace-item-likes':
+                    $this->handleRequest(new MarketplaceItemLikeController($this->conn), $method, $id);
+                    break;
+
+                case 'post-comments':
+                    $this->handleRequest(new PostCommentController($this->conn), $method, $id);
+                    break;
+
+                case 'post-reposts':
+                    $this->handleRequest(new PostRepostController($this->conn), $method, $id);
+                    break;
+
+                default:
+                    http_response_code(404);
+                    echo json_encode(['message' => 'Not Found: Invalid resource']);
+                    break;
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage()
+            ]);
         }
     }
+
+    /**
+     * Validates and retrieves JSON input data
+     */
+    private function getJsonInput() {
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Bad Request: Invalid JSON format']);
+            exit;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Handles request for controllers with CRUD operations
+     */
+    private function handleRequest($controller, $method, $id) {
+        if (!method_exists($controller, 'processRequest')) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Internal Server Error: Controller method not found']);
+            exit;
+        }
+
+        $controller->processRequest($method, $id);
+    }
 }
-?>
