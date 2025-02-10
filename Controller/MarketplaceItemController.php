@@ -117,6 +117,6 @@ class MarketplaceItemController {
             && !empty($data['description'])
             && !empty($data['seller_id'])
             && is_numeric($data['price']) && $data['price'] > 0
-            && strlen($data['title']) >= 3;
+            && strlen($data['title']) >= 1;
     }
 }
