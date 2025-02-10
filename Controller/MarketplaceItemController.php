@@ -16,13 +16,7 @@ class MarketplaceItemController {
     public function processRequest($method, $id = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true);
-
-            // Handle JSON errors
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Invalid JSON data']);
-                return;
-            }
+            
 
             switch ($method) {
                 case 'GET':
@@ -44,7 +38,7 @@ class MarketplaceItemController {
                 case 'POST':
                     if (!$this->validateItemData($data)) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data. Required: name, price, description, user_id']);
+                        echo json_encode(['message' => 'Invalid input data. Required: title, price, description, seller_id']);
                         return;
                     }
 
@@ -70,9 +64,9 @@ class MarketplaceItemController {
                         return;
                     }
 
-                    if (isset($data['name']) && strlen($data['name']) < 3) {
+                    if (isset($data['title']) && strlen($data['title']) < 3) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Item name must be at least 3 characters long']);
+                        echo json_encode(['message' => 'Item title must be at least 3 characters long']);
                         return;
                     }
 
@@ -118,11 +112,11 @@ class MarketplaceItemController {
     }
 
     private function validateItemData($data) {
-        return isset($data['name'], $data['price'], $data['description'], $data['user_id'])
-            && !empty($data['name']) 
+        return isset($data['title'], $data['price'], $data['description'], $data['seller_id'])
+            && !empty($data['title']) 
             && !empty($data['description'])
-            && !empty($data['user_id'])
+            && !empty($data['seller_id'])
             && is_numeric($data['price']) && $data['price'] > 0
-            && strlen($data['name']) >= 3;
+            && strlen($data['title']) >= 3;
     }
 }
