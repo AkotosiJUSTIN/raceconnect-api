@@ -115,7 +115,7 @@ class PostController {
             && !empty($data['title']) 
             && !empty($data['content'])
             && !empty($data['user_id'])
-            && strlen($data['title']) >= 3
-            && strlen($data['content']) >= 10;
+            && strlen($data['title']) >= 1
+            && strlen($data['content']) >= 1;
     }
 }
