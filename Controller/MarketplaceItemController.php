@@ -44,7 +44,7 @@ class MarketplaceItemController {
                 case 'POST':
                     if (!$this->validateItemData($data)) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data. Required: name, price, description, seller_id']);
+                        echo json_encode(['message' => 'Invalid input data. Required: name, price, description, user_id']);
                         return;
                     }
 
@@ -118,10 +118,10 @@ class MarketplaceItemController {
     }
 
     private function validateItemData($data) {
-        return isset($data['name'], $data['price'], $data['description'], $data['seller_id'])
+        return isset($data['name'], $data['price'], $data['description'], $data['user_id'])
             && !empty($data['name']) 
             && !empty($data['description'])
-            && !empty($data['seller_id'])
+            && !empty($data['user_id'])
             && is_numeric($data['price']) && $data['price'] > 0
             && strlen($data['name']) >= 3;
     }

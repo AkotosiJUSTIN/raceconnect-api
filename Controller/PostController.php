@@ -37,7 +37,7 @@ class PostController {
                 case 'POST':
                     if (!$this->validatePostData($data)) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data. Required: title, content, author_id']);
+                        echo json_encode(['message' => 'Invalid input data. Required: title, content, user_id']);
                         return;
                     }
 
@@ -111,10 +111,10 @@ class PostController {
     }
 
     private function validatePostData($data) {
-        return isset($data['title'], $data['content'], $data['author_id'])
+        return isset($data['title'], $data['content'], $data['user_id'])
             && !empty($data['title']) 
             && !empty($data['content'])
-            && !empty($data['author_id'])
+            && !empty($data['user_id'])
             && strlen($data['title']) >= 3
             && strlen($data['content']) >= 10;
     }
