@@ -1,0 +1,14 @@
+{
+    "name": "myvendor/rceconnect",
+    "description": "raceconnectAPI",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Routes\\": "Api/",
+            "Controller\\": "Controller/",
+            "Model\\": "Model/"
+        }
+    },
+    "minimum-stability": "stable",
+    "require": {}
+}
