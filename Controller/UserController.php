@@ -124,7 +124,7 @@ class UserController {
     }
 
     private function validateUserInput($data, $isNewUser) {
-        $requiredFields = ['username', 'email', 'password', 'birthdate', 'number', 'address'];
+        $requiredFields = ['username', 'email', 'password'];
 
         if ($isNewUser) {
             foreach ($requiredFields as $field) {
