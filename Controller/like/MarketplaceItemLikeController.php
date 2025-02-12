@@ -1,9 +1,12 @@
 <?php
+
 namespace Controller\Like;
+
 use Model\Like\MarketplaceItemLike;
 use InvalidArgumentException;
 use RuntimeException;
 use Exception;
+
 class MarketplaceItemLikeController {
     private $marketplaceItemLike;
 
@@ -16,12 +19,18 @@ class MarketplaceItemLikeController {
             switch ($method) {
                 case 'GET':
                     if ($id) {
-                        $likes = $this->marketplaceItemLike->getLikesByItemId($id);
-                        if ($likes) {
-                            echo json_encode($likes);
+                        // Get like count if requested
+                        if (isset($_GET['count'])) {
+                            $count = $this->marketplaceItemLike->getLikeCount($id);
+                            echo json_encode($count);
                         } else {
-                            http_response_code(404);
-                            echo json_encode(['message' => 'Likes not found for the given item ID']);
+                            $likes = $this->marketplaceItemLike->getLikesByItemId($id);
+                            if ($likes) {
+                                echo json_encode($likes);
+                            } else {
+                                http_response_code(404);
+                                echo json_encode(['message' => 'No likes found for this item']);
+                            }
                         }
                     } else {
                         $likes = $this->marketplaceItemLike->getAllLikes();
@@ -36,11 +45,22 @@ class MarketplaceItemLikeController {
 
                 case 'POST':
                     $data = json_decode(file_get_contents("php://input"), true);
-                    if (empty($data)) {
+                    
+                    // Validate input data
+                    if (empty($data['user_id']) || empty($data['marketplace_item_id']) || empty($data['owner_id'])) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data']);
+                        echo json_encode(['message' => 'Missing required fields: user_id, marketplace_item_id, owner_id']);
                         return;
                     }
+
+                    // Prevent duplicate likes
+                    if ($this->marketplaceItemLike->hasUserLiked($data['user_id'], $data['marketplace_item_id'])) {
+                        http_response_code(409);
+                        echo json_encode(['message' => 'User has already liked this item']);
+                        return;
+                    }
+
+                    // Add like
                     if ($this->marketplaceItemLike->createLike($data)) {
                         http_response_code(201);
                         echo json_encode(['message' => 'Like added successfully']);
@@ -51,16 +71,17 @@ class MarketplaceItemLikeController {
                     break;
 
                 case 'DELETE':
-                    if ($id) {
-                        if ($this->marketplaceItemLike->deleteLike($id)) {
-                            echo json_encode(['message' => 'Like deleted successfully']);
-                        } else {
-                            http_response_code(500);
-                            echo json_encode(['message' => 'Failed to delete like']);
-                        }
-                    } else {
+                    if (!$id) {
                         http_response_code(400);
                         echo json_encode(['message' => 'Like ID is required']);
+                        return;
+                    }
+
+                    if ($this->marketplaceItemLike->deleteLike($id)) {
+                        echo json_encode(['message' => 'Like deleted successfully']);
+                    } else {
+                        http_response_code(500);
+                        echo json_encode(['message' => 'Failed to delete like']);
                     }
                     break;
 

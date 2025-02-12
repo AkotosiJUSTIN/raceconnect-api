@@ -35,30 +35,10 @@ class UserController {
                     break;
 
                 case 'POST':
-                    if (empty($data) || !isset($data['username'], $data['email'], $data['password'])) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Missing required fields: username, email, password']);
-                        return;
-                    }
-
-                    if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Invalid email format']);
-                        return;
-                    }
-
-                    if (strlen($data['password']) < 6) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Password must be at least 6 characters long']);
-                        return;
-                    }
-
-                    if ($this->user->createUser($data)) {
-                        http_response_code(201);
-                        echo json_encode(['message' => 'User created successfully']);
+                    if (isset($_GET['action']) && $_GET['action'] === 'login') {
+                        $this->loginUser($data);
                     } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to create user']);
+                        $this->createUser($data);
                     }
                     break;
 
@@ -68,32 +48,7 @@ class UserController {
                         echo json_encode(['message' => 'User ID is required']);
                         return;
                     }
-
-                    if (empty($data)) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'No data provided for update']);
-                        return;
-                    }
-
-                    if (isset($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Invalid email format']);
-                        return;
-                    }
-
-                    if (isset($data['password']) && strlen($data['password']) < 6) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Password must be at least 6 characters long']);
-                        return;
-                    }
-
-                    if ($this->user->updateUser($id, $data)) {
-                        http_response_code(200);
-                        echo json_encode(['message' => 'User updated successfully']);
-                    } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to update user']);
-                    }
+                    $this->updateUser($id, $data);
                     break;
 
                 case 'DELETE':
@@ -102,14 +57,7 @@ class UserController {
                         echo json_encode(['message' => 'User ID is required']);
                         return;
                     }
-
-                    if ($this->user->deleteUser($id)) {
-                        http_response_code(200);
-                        echo json_encode(['message' => 'User deleted successfully']);
-                    } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to delete user']);
-                    }
+                    $this->deleteUser($id);
                     break;
 
                 default:
@@ -121,5 +69,87 @@ class UserController {
             echo json_encode(['message' => 'An error occurred', 'error' => $e->getMessage()]);
         }
     }
+
+    private function createUser($data) {
+        if (!$this->validateUserInput($data, true)) return;
+
+        if ($this->user->createUser($data)) {
+            http_response_code(201);
+            echo json_encode(['message' => 'User created successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to create user']);
+        }
+    }
+
+    private function updateUser($id, $data) {
+        if (!$this->validateUserInput($data, false)) return;
+
+        if ($this->user->updateUser($id, $data)) {
+            http_response_code(200);
+            echo json_encode(['message' => 'User updated successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to update user']);
+        }
+    }
+
+    private function deleteUser($id) {
+        if ($this->user->deleteUser($id)) {
+            http_response_code(200);
+            echo json_encode(['message' => 'User deleted successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to delete user']);
+        }
+    }
+
+    private function loginUser($data) {
+        if (empty($data['username']) || empty($data['password'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Username and password are required']);
+            return;
+        }
+
+        $user = $this->user->loginUser($data['username'], $data['password']);
+        if ($user) {
+            $token = bin2hex(random_bytes(32));
+            $this->user->storeToken($user['id'], $token);
+            http_response_code(200);
+            echo json_encode(['message' => 'Login successful', 'token' => $token, 'user' => $user]);
+        } else {
+            http_response_code(401);
+            echo json_encode(['message' => 'Invalid credentials']);
+        }
+    }
+
+    private function validateUserInput($data, $isNewUser) {
+        $requiredFields = ['username', 'email', 'password', 'birthdate', 'number', 'address'];
+
+        if ($isNewUser) {
+            foreach ($requiredFields as $field) {
+                if (empty($data[$field])) {
+                    http_response_code(400);
+                    echo json_encode(['message' => "Missing required field: $field"]);
+                    return false;
+                }
+            }
+        }
+
+        if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Invalid email format']);
+            return false;
+        }
+
+        if (!empty($data['password']) && strlen($data['password']) < 6) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Password must be at least 6 characters long']);
+            return false;
+        }
+
+        return true;
+    }
 }
+
 ?>

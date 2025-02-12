@@ -2,6 +2,7 @@
 namespace Controller\Like;
 use Model\Like\PostLike;
 use Exception;
+
 class PostLikeController {
     private $postLike;
 
@@ -14,32 +15,39 @@ class PostLikeController {
             switch ($method) {
                 case 'GET':
                     if ($id) {
-                        $likes = $this->postLike->getLikesByPostId($id);
-                        if ($likes !== false) {
-                            echo json_encode($likes);
+                        // If "count" parameter exists, return like count instead of likes
+                        if (isset($_GET['count'])) {
+                            $count = $this->postLike->getLikeCount($id);
+                            echo json_encode($count);
                         } else {
-                            http_response_code(404);
-                            echo json_encode(['message' => 'Likes not found for the given post ID']);
+                            $likes = $this->postLike->getLikesByPostId($id);
+                            if ($likes) {
+                                echo json_encode($likes);
+                            } else {
+                                http_response_code(404);
+                                echo json_encode(['message' => 'No likes found for the given post ID']);
+                            }
                         }
                     } else {
                         $likes = $this->postLike->getAllLikes();
-                        if ($likes !== false) {
-                            echo json_encode($likes);
-                        } else {
-                            http_response_code(500);
-                            echo json_encode(['message' => 'Failed to retrieve likes']);
-                        }
+                        echo json_encode($likes);
                     }
                     break;
 
                 case 'POST':
                     $data = json_decode(file_get_contents("php://input"), true);
-                    if (empty($data)) {
+                    
+                    if (empty($data['user_id']) || empty($data['post_id']) || empty($data['owner_id'])) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data']);
+                        echo json_encode(['message' => 'Missing required fields (user_id, post_id, owner_id)']);
                         return;
                     }
-                    if ($this->postLike->createLike($data)) {
+
+                    $result = $this->postLike->createLike($data);
+                    if (is_array($result) && isset($result['error'])) {
+                        http_response_code(409);
+                        echo json_encode($result);
+                    } elseif ($result) {
                         http_response_code(201);
                         echo json_encode(['message' => 'Like added successfully']);
                     } else {
@@ -56,9 +64,17 @@ class PostLikeController {
                             http_response_code(500);
                             echo json_encode(['message' => 'Failed to delete like']);
                         }
+                    } elseif (isset($_GET['post_id'])) {
+                        $postId = $_GET['post_id'];
+                        if ($this->postLike->deleteLikesByPostId($postId)) {
+                            echo json_encode(['message' => 'All likes for the post deleted successfully']);
+                        } else {
+                            http_response_code(500);
+                            echo json_encode(['message' => 'Failed to delete likes for the post']);
+                        }
                     } else {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Like ID is required']);
+                        echo json_encode(['message' => 'Like ID or post_id is required']);
                     }
                     break;
 

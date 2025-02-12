@@ -23,7 +23,7 @@ class User {
     }
 
     public function createUser($data) {
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (username, email, password) VALUES (:username, :email, :password)");
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items) VALUES (:username, :email, :password, :birthdate, :number, :address, :age, :profile_picture, :bio, :favorite_categories, :favorite_marketplace_items)");
         return $stmt->execute([
             ':username' => $data['username'],
             ':email' => $data['email'],
@@ -35,17 +35,14 @@ class User {
         $fields = [];
         $params = [':id' => $id];
 
-        if (isset($data['username'])) {
-            $fields[] = "username = :username";
-            $params[':username'] = $data['username'];
-        }
-        if (isset($data['email'])) {
-            $fields[] = "email = :email";
-            $params[':email'] = $data['email'];
-        }
-        if (isset($data['password'])) {
-            $fields[] = "password = :password";
-            $params[':password'] = password_hash($data['password'], PASSWORD_BCRYPT);
+        foreach ($data as $key => $value) {
+            if ($key === 'password') {
+                $value = password_hash($value, PASSWORD_BCRYPT);
+            } elseif (in_array($key, ['favorite_categories', 'favorite_marketplace_items'])) {
+                $value = json_encode($value);
+            }
+            $fields[] = "$key = :$key";
+            $params[":$key"] = $value;
         }
 
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id");
@@ -57,7 +54,6 @@ class User {
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
     }
-
     public function loginUser($username, $password) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE username = :username");
         $stmt->bindParam(':username', $username);

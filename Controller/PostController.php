@@ -37,7 +37,7 @@ class PostController {
                 case 'POST':
                     if (!$this->validatePostData($data)) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data. Required: title, content, user_id']);
+                        echo json_encode(['message' => 'Invalid input data. Required: user_id, content']);
                         return;
                     }
 
@@ -60,18 +60,6 @@ class PostController {
                     if (empty($data)) {
                         http_response_code(400);
                         echo json_encode(['message' => 'No data provided for update']);
-                        return;
-                    }
-
-                    if (isset($data['title']) && strlen($data['title']) < 3) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Title must be at least 3 characters long']);
-                        return;
-                    }
-
-                    if (isset($data['content']) && strlen($data['content']) < 10) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Content must be at least 10 characters long']);
                         return;
                     }
 
@@ -111,11 +99,8 @@ class PostController {
     }
 
     private function validatePostData($data) {
-        return isset($data['title'], $data['content'], $data['user_id'])
-            && !empty($data['title']) 
-            && !empty($data['content'])
+        return isset($data['user_id'], $data['content'])
             && !empty($data['user_id'])
-            && strlen($data['title']) >= 1
-            && strlen($data['content']) >= 1;
+            && !empty($data['content']);
     }
 }

@@ -17,69 +17,17 @@ class NotificationController {
         try {
             switch ($method) {
                 case 'GET':
-                    if ($id) {
-                        $notification = $this->notification->getNotificationById($id);
-                        if ($notification) {
-                            echo json_encode($notification);
-                        } else {
-                            http_response_code(404);
-                            echo json_encode(['error' => 'Notification not found']);
-                        }
-                    } else {
-                        $userId = $_GET['user_id'] ?? null;
-                        if ($userId) {
-                            echo json_encode($this->notification->getAllNotifications($userId));
-                        } else {
-                            http_response_code(400);
-                            echo json_encode(['error' => 'User ID is required']);
-                        }
-                    }
+                    $this->handleGetRequest($id);
                     break;
-
                 case 'POST':
-                    $data = json_decode(file_get_contents("php://input"), true);
-                    if (json_last_error() !== JSON_ERROR_NONE) {
-                        http_response_code(400);
-                        echo json_encode(['error' => 'Invalid JSON data']);
-                        break;
-                    }
-                    if ($this->notification->createNotification($data)) {
-                        http_response_code(201);
-                        echo json_encode(['message' => 'Notification created successfully']);
-                    } else {
-                        http_response_code(500);
-                        echo json_encode(['error' => 'Failed to create notification']);
-                    }
+                    $this->handlePostRequest();
                     break;
-
                 case 'PUT':
-                    if ($id) {
-                        if ($this->notification->markAsRead($id)) {
-                            echo json_encode(['message' => 'Notification marked as read']);
-                        } else {
-                            http_response_code(500);
-                            echo json_encode(['error' => 'Failed to mark notification as read']);
-                        }
-                    } else {
-                        http_response_code(400);
-                        echo json_encode(['error' => 'Notification ID is required']);
-                    }
+                    $this->handlePutRequest($id);
                     break;
-
                 case 'DELETE':
-                    if ($id) {
-                        if ($this->notification->deleteNotification($id)) {
-                            echo json_encode(['message' => 'Notification deleted successfully']);
-                        } else {
-                            http_response_code(500);
-                            echo json_encode(['error' => 'Failed to delete notification']);
-                        }
-                    } else {
-                        http_response_code(400);
-                        echo json_encode(['error' => 'Notification ID is required']);
-                    }
+                    $this->handleDeleteRequest($id);
                     break;
-
                 default:
                     http_response_code(405);
                     echo json_encode(['error' => 'Unsupported HTTP method']);
@@ -87,6 +35,98 @@ class NotificationController {
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'An unexpected error occurred', 'details' => $e->getMessage()]);
+        }
+    }
+
+    private function handleGetRequest($id) {
+        if ($id) {
+            $notification = $this->notification->getNotificationById($id);
+            if ($notification) {
+                echo json_encode($notification);
+            } else {
+                http_response_code(404);
+                echo json_encode(['error' => 'Notification not found']);
+            }
+        } else {
+            $userId = $_GET['user_id'] ?? null;
+            if ($userId) {
+                echo json_encode($this->notification->getAllNotifications($userId));
+            } else {
+                http_response_code(400);
+                echo json_encode(['error' => 'User ID is required']);
+            }
+        }
+    }
+
+    private function handlePostRequest() {
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid JSON data']);
+            return;
+        }
+
+        // Validate required fields
+        if (!isset($data['user_id'], $data['type'], $data['content'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing required fields: user_id, type, content']);
+            return;
+        }
+
+        // Validate type
+        $validTypes = ['like', 'comment', 'repost'];
+        if (!in_array($data['type'], $validTypes)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid notification type. Allowed: like, comment, repost']);
+            return;
+        }
+
+        // Ensure either post_id or marketplace_item_id is provided
+        if (!isset($data['post_id']) && !isset($data['marketplace_item_id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Either post_id or marketplace_item_id must be provided.']);
+            return;
+        }
+
+        // Create notification
+        $result = $this->notification->createNotification($data);
+        if (isset($result['error'])) {
+            http_response_code(500);
+            echo json_encode(['error' => $result['error']]);
+        } else {
+            http_response_code(201);
+            echo json_encode(['message' => 'Notification created successfully']);
+        }
+    }
+
+    private function handlePutRequest($id) {
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Notification ID is required']);
+            return;
+        }
+
+        if ($this->notification->markAsRead($id)) {
+            echo json_encode(['message' => 'Notification marked as read']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to mark notification as read']);
+        }
+    }
+
+    private function handleDeleteRequest($id) {
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Notification ID is required']);
+            return;
+        }
+
+        if ($this->notification->deleteNotification($id)) {
+            echo json_encode(['message' => 'Notification deleted successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to delete notification']);
         }
     }
 }

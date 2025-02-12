@@ -1,6 +1,7 @@
 <?php
 namespace Model;
 use PDO;
+
 class Post {
     private $pdo;
     private $table = "Posts";
@@ -22,13 +23,20 @@ class Post {
     }
 
     public function createPost($data) {
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (user_id, title, content, img_url, type) VALUES (:user_id, :title, :content, :img_url, :type)");
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} 
+            (user_id, title, content, img_url, like_count, comment_count, repost_count, category, type) 
+            VALUES (:user_id, :title, :content, :img_url, :like_count, :comment_count, :repost_count, :category, :type)");
+        
         return $stmt->execute([
             ':user_id' => $data['user_id'],
-            ':title' => $data['title'],
+            ':title' => $data['title'] ?? null,
             ':content' => $data['content'],
-            ':img_url' => $data['img_url'],
-            ':type' => $data['type']
+            ':img_url' => $data['img_url'] ?? null,
+            ':like_count' => $data['like_count'] ?? 0,
+            ':comment_count' => $data['comment_count'] ?? 0,
+            ':repost_count' => $data['repost_count'] ?? 0,
+            ':category' => $data['category'] ?? 'Formula 1',
+            ':type' => $data['type'] ?? 'text'
         ]);
     }
 
@@ -48,9 +56,29 @@ class Post {
             $fields[] = "img_url = :img_url";
             $params[':img_url'] = $data['img_url'];
         }
+        if (isset($data['like_count'])) {
+            $fields[] = "like_count = :like_count";
+            $params[':like_count'] = $data['like_count'];
+        }
+        if (isset($data['comment_count'])) {
+            $fields[] = "comment_count = :comment_count";
+            $params[':comment_count'] = $data['comment_count'];
+        }
+        if (isset($data['repost_count'])) {
+            $fields[] = "repost_count = :repost_count";
+            $params[':repost_count'] = $data['repost_count'];
+        }
+        if (isset($data['category'])) {
+            $fields[] = "category = :category";
+            $params[':category'] = $data['category'];
+        }
         if (isset($data['type'])) {
             $fields[] = "type = :type";
             $params[':type'] = $data['type'];
+        }
+
+        if (empty($fields)) {
+            return false; // No fields to update
         }
 
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id");
