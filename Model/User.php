@@ -23,7 +23,7 @@ class User {
     }
 
     public function createUser($data) {
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items) VALUES (:username, :email, :password, :birthdate, :number, :address, :age, :profile_picture, :bio, :favorite_categories, :favorite_marketplace_items)");
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (username, email, password) VALUES (:username, :email, :password)");
         return $stmt->execute([
             ':username' => $data['username'],
             ':email' => $data['email'],
