@@ -4,6 +4,7 @@ namespace Controller;
 use Model\Post;
 use Exception;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 require_once 'C:/xampp/htdocs/raceconnectapi/Model/Post.php';
 
 class PostController {

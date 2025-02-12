@@ -2,6 +2,8 @@
 namespace Model;
 use PDO;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+
 class Post {
     private $pdo;
     private $table = "Posts";

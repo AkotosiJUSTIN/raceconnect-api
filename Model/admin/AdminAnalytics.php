@@ -2,6 +2,8 @@
 
 namespace Model\Admin;
 use PDO;
+
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 class AdminAnalytics {
     private $pdo;
     private $table = "Admin_Analytics";

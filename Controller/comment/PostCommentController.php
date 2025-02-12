@@ -6,6 +6,7 @@ use InvalidArgumentException;
 use RuntimeException;
 use Exception;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 class PostCommentController {
     private $postComment;
 

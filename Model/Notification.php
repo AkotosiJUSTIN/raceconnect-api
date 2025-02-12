@@ -3,6 +3,8 @@ namespace Model;
 use PDO;
 use Exception;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+
 class Notification {
     private $pdo;
     private $table = "Notifications";

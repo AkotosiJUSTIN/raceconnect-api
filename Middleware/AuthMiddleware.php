@@ -3,6 +3,8 @@
 namespace Middleware;
 use PDO;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+
 class AuthMiddleware {
     private $pdo;
 

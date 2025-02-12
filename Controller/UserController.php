@@ -4,6 +4,7 @@ namespace Controller;
 use Model\User;
 use Exception;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 require_once 'C:/xampp/htdocs/raceconnectapi/Model/User.php';
 
 class UserController {

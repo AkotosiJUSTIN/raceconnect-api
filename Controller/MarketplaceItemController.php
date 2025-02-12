@@ -4,6 +4,7 @@ namespace Controller;
 use Model\MarketplaceItem;
 use Exception;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 require_once 'C:/xampp/htdocs/raceconnectapi/Model/MarketplaceItem.php';
 
 class MarketplaceItemController {

@@ -5,6 +5,8 @@ namespace Model\Comment;
 use PDO;
 use PDOException;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+
 class PostComment {
     private $pdo;
     private $table = "Post_Comments";

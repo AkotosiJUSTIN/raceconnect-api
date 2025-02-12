@@ -2,6 +2,7 @@
 namespace Model\Like;
 use PDO;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 class PostLike {
     private $pdo;
     private $table = "Post_Likes";

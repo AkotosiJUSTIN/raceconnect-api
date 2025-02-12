@@ -12,6 +12,8 @@ use Controller\Comment\PostCommentController;
 use Controller\Repost\PostRepostController;
 use Controller\AuthController;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+
 class Api {
     private $conn;
 
@@ -64,6 +66,39 @@ class Api {
                     }
                     $controller = new AuthController($this->conn);
                     $controller->logout();
+                    break;
+
+                case 'forgot-password':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for forgot password']);
+                        exit;
+                    }
+                    $controller = new AuthController($this->conn);
+                    $data = $this->getJsonInput();
+                    $controller->forgotPassword($data);
+                    break;
+
+                case 'reset-password':
+                    if ($method !== 'PUT') { // Ensure this is PUT
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use PUT for reset password']);
+                        exit;
+                    }
+                    $controller = new AuthController($this->conn);
+                    $data = $this->getJsonInput();
+                    $controller->resetPassword($data);
+                    break;
+
+                case 'change-password':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for change password']);
+                        exit;
+                    }
+                    $controller = new AuthController($this->conn);
+                    $data = $this->getJsonInput();
+                    $controller->changePassword($data);
                     break;
 
                 case 'posts':
@@ -145,3 +180,4 @@ class Api {
         $controller->processRequest($method, $id);
     }
 }
+?>

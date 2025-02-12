@@ -1,5 +1,6 @@
 <?php
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 require_once '../Config/database.php';
 require_once '../Controller/UserController.php';
 require_once '../Controller/PostController.php';

@@ -1,6 +1,8 @@
 <?php
 namespace Model;
 use PDO;
+
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 class MarketplaceItem {
     private $pdo;
     private $table = "Marketplace_Items";

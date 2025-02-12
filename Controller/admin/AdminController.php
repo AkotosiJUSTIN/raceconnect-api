@@ -3,7 +3,7 @@
 namespace Controller\Admin;
 use Model\Admin\Admin;
 
-
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
 class AdminController {
     private $admin;
 

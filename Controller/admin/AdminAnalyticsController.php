@@ -4,6 +4,8 @@ namespace Controller\Admin;
 use Model\Admin\AdminAnalytics;
 use Exception;
 
+require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+
 class AdminAnalyticsController {
     private $analytics;
 
