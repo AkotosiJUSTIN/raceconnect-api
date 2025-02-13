@@ -1,0 +1,185 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+body{
+    background-color: #e5e7eb; /* bg-gray-200 */
+    font-family:  monospace; /* font-mono */
+    margin: 0;
+    padding: 0;
+}
+
+.header {
+  background-color: #b91c1c;
+  color: white;
+  padding: 0 1rem;
+  font-weight: 700;
+  font-size: 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 4rem;
+}
+
+.login-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 90%;
+  max-width: 28rem;
+}
+
+.form-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #dc2626;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.input-label {
+  display: block;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.text-input {
+  width: 100%;
+  padding-left: 2.5rem;
+  padding: 0.75rem 0.75rem 0.75rem 3rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+#password {
+  padding-right: 3rem;
+}
+
+.text-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(208, 6, 6, 0.2);
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1rem 0;
+}
+
+.checkbox-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.custom-checkbox {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: #9ca3af;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+}
+
+.checkbox-input:checked + .custom-checkbox {
+  background-color: #dc2626;
+}
+
+.checkbox-input:checked + .custom-checkbox::after {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.25rem;
+  width: 0.375rem;
+  height: 0.75rem;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.forgot-password {
+  color: #b91c1c;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.error-message {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  color: #e53935;
+  background-color: #ffebee;
+  padding: 0.75rem;
+  border: 1px solid #e53935;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.submit-button {
+  width: 100%;
+  background-color: #b91c1c;
+  color: white;
+  font-weight: 700;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+  background-color: #991b1b;
+}
+
+.signup-text {
+  text-align: center;
+  color: #4b5563;
+  margin-top: 1rem;
+}
+
+.signup-link {
+  color: #b91c1c;
+  font-weight: 600;
+  text-decoration: none;
+}
