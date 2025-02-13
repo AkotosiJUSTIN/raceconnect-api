@@ -1,9 +1,9 @@
 <?php
 // Include the Composer autoload file
-require_once '../raceconnect-api-with-composer/vendor/autoload.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 // Include the database connection script
-include '../raceconnect-api-with-composer/db_connect.php';
+require_once __DIR__ . '/../../db_connect.php';
 
 // Start login session
 session_start();

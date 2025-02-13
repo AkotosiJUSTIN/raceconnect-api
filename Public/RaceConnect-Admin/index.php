@@ -1,6 +1,8 @@
 <?php
 // filepath: /c:/xampp/htdocs/RaceConnect-Admin/index.php
-include '../raceconnect-api-with-composer/db_connect.php';
+// Include the database connection script
+require_once __DIR__ . '/../../db_connect.php';
+
 
 // Start session
 session_start();
