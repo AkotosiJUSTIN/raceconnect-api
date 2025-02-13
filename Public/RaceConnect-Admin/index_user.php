@@ -29,6 +29,7 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
     <link rel="icon" href="./assets/RaceConnectLogo.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/javascript/navBar.js" defer></script>
     <script src="assets/javascript/user-table.js" defer></script>
     <script src="assets/javascript/logout_script.js" defer></script>
