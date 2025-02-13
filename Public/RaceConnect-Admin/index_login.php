@@ -6,10 +6,24 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../db_connect.php';
 
 // Start login session
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+    'httponly' => true,
+    'samesite' => 'Strict'
+]);
 session_start();
 
 // Initialize error message
 $error_message = '';
+
+//Check if admin is already logged in
+if (isset($_SESSION['email']) && !empty($_SESSION['email'])){
+    // Redirect to main index page if already logged in
+    header("Location: index.php");
+    exit();
+}
 
 // Check if form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -38,17 +52,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['email'] = $email;
             $_SESSION['username'] = $username;
 
-            // Set cookie if remember me is checked
+            // Handle "Remember Me" functionality
             if ($remember_me) {
-                setcookie('email', $email, time() + (86400 * 30), "/"); // 30 for 30 days
-                setcookie('username', $username, time() + (86400 * 30), "/");
+                // Set cookies for 30 days if "Remember Me" is checked
+                setcookie('email', $email, time() + (86400 * 30), "/", "", true, true); // 30 days
+                setcookie('username', $username, time() + (86400 * 30), "/", "", true, true);
             } else {
-                // Clear cookies if remember me is not ticked
-                setcookie('email', '', time() - 3600, "/");
-                setcookie('username', '', time() - 3600, "/");
+                // Clear cookies if "Remember Me" is not checked
+                setcookie('email', '', time() - 3600, "/", "", true, true);
+                setcookie('username', '', time() - 3600, "/", "", true, true);
             }
 
-            // Redirect to main index page
+            // Redirect to the dashboard
             header("Location: index.php");
             exit();
         } else {

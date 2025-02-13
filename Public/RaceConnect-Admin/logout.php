@@ -1,13 +1,19 @@
 <?php
 // filepath: /c:/xampp/htdocs/RaceConnect-Admin/logout.php
 
-// Start session
 session_start();
-
-// Destroy the session
+session_unset();
 session_destroy();
 
-// Redirect to login page
+// Clear session cookie manually
+if (isset($_COOKIE['PHPSESSID'])) {
+    setcookie('PHPSESSID', '', time() - 3600, "/");
+}
+
+// Clear login cookies
+setcookie('email', '', time() - 3600, "/");
+setcookie('username', '', time() - 3600, "/");
+
 header("Location: index_login.php");
 exit();
 ?>

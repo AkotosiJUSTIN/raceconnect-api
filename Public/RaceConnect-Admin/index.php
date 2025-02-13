@@ -3,16 +3,21 @@
 // Include the database connection script
 require_once __DIR__ . '/../../db_connect.php';
 
-
 // Start session
 session_start();
 
 // Check if the user is logged in
-if (!isset($_SESSION['email'])) {
-    // Redirect to login page if not logged in
-    header("Location: index_login.php");
-    exit();
+if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
+    if (isset($_COOKIE['email']) && isset($_COOKIE['username'])) {
+        $_SESSION['email'] = $_COOKIE['email'];
+        $_SESSION['username'] = $_COOKIE['username'];
+    } else {
+        // Redirect to login page if not logged in
+        header("Location: index_login.php");
+        exit();
+    }
 }
+
 
 // Get the logged-in user's email and username
 $email = $_SESSION['email'];
