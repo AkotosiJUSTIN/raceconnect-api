@@ -77,6 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $stmt->close();
     $conn->close();
 }
+
+// Check if the user has logged out successfully
+$logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? "You have successfully logged out." : null;
 ?>
 
 <!DOCTYPE html>
@@ -86,59 +89,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RaceConnect Admin Login</title>
     <link rel="stylesheet" href="assets/css/admin-login.css">
-    <link rel="stylesheet" href="assets/css/styles.css">
     <link rel="icon" href="./assets/RaceConnectLogo.png">
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
     <script src="assets/javascript/remember-me.js" defer></script>
 </head>
 <body>
-    <!-- Header -->
-    <div class="header">
-        <div class="logo">
-            <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
+<!-- Split-screen layout -->
+    <div class="login-left">
+        <div class="logo-subtitle-container">
+            <div class="logo">
+                <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
+            </div>
+                <h3 class="login-subtitle">
+                Welcome to RaceConnect! Log in to manage your account and access exclusive features.
+            </h3>
         </div>
-        <div class="header-title">
-            Race Connect
+    </div>
+    <div class="login-right">
+        <div class="login-container">
+            <div class="login-form">
+                <h2 class="form-title">Ready, Set, Connect!</h2>
+                <form id="loginForm" action="index_login.php" method="POST">
+                    <div class="form-group">
+                        <label for="email" class="input-label">Email</label>
+                        <div class="input-wrapper">
+                            <box-icon type='solid' name='envelope' color="#dc2626" class="input-icon"></box-icon>
+                            <input type="email" id="email" name="email" required class="text-input" autofocus>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password" class="input-label">Password</label>
+                        <div class="input-wrapper">
+                            <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
+                            <input type="password" id="password" name="password" required class="text-input">
+                            <button type="button" onclick="togglePassword()" class="password-toggle">
+                                <box-icon id="eye-icon" color="#dc2626" name='show' type='solid'></box-icon>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="remember-me">
+                        <label class="checkbox-wrapper">
+                            <input id="remember-me" name="remember-me" type="checkbox" class="checkbox-input" hidden>
+                            <span class="custom-checkbox"></span>
+                            <span class="ml-2">&nbsp;&nbsp; Remember me</span>
+                        </label>
+                        <a href="#" class="forgot-password">Forgot Password?</a>
+                    </div>
+                    <?php if ($error_message): ?>
+                        <div class="error-message"><?php echo $error_message; ?></div>
+                    <?php endif; ?>
+                    <button type="submit" class="submit-button">Log In</button>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Login Form -->
-    <div class="login-container">
-        <div class="login-form">
-            <h2 class="form-title">Ready, Set, Connect!</h2>
-            <form id="loginForm" action="index_login.php" method="POST">
-                <div class="form-group">
-                    <label for="email" class="input-label">Email</label>
-                    <div class="input-wrapper">
-                        <box-icon type='solid' name='envelope' color="red" class="input-icon"></box-icon>
-                        <input type="email" id="email" name="email" required class="text-input" autofocus>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="password" class="input-label">Password</label>
-                    <div class="input-wrapper">
-                        <box-icon type='solid' name='lock' color="red" class="input-icon"></box-icon>
-                        <input type="password" id="password" name="password" required class="text-input">
-                        <button type="button" onclick="togglePassword()" class="password-toggle">
-                            <box-icon id="eye-icon" color="red" name='show' type='solid'></box-icon>
-                        </button>
-                    </div>
-                </div>
-                <div class="remember-me">
-                    <label class="checkbox-wrapper">
-                        <input id="remember-me" name="remember-me" type="checkbox" class="checkbox-input" hidden>
-                        <span class="custom-checkbox"></span>
-                        <span class="ml-2">&nbsp;&nbsp; Remember me</span>
-                    </label>
-                    <a href="#" class="forgot-password">Forgot Password?</a>
-                </div>
-                <?php if ($error_message): ?>
-                    <div class="error-message"><?php echo $error_message; ?></div>
-                <?php endif; ?>
-                <button type="submit" class="submit-button">Log In</button>
-            </form>
+    <!-- Floating message -->
+    <?php if ($logout_message): ?>
+        <div class="floating-message-container">
+            <div class="floating-message">
+                <?php echo $logout_message; ?>
+            </div>
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
         </div>
-    </div>
+    <?php endif; ?>
 
     <script>
         function togglePassword() {
@@ -152,6 +168,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 eyeIcon.setAttribute('name', 'show');
             }
         }
+
+        // Timer for floating message
+        document.addEventListener('DOMContentLoaded', function () {
+            const floatingMessageContainer = document.querySelector('.floating-message-container');
+            if (floatingMessageContainer) {
+                const progressBar = document.querySelector('.progress');
+
+                let timeLeft = 10; // Total time in seconds
+                const interval = setInterval(() => {
+                    timeLeft--; // Decrease time left by 1 second
+
+                    // Update the width of the progress bar
+                    progressBar.style.width = `${(timeLeft / 10) * 100}%`;
+
+                    // If time is up, remove the floating message
+                    if (timeLeft <= 0) {
+                        clearInterval(interval); // Stop the interval
+                        floatingMessageContainer.remove(); // Remove the message from the DOM
+                    }
+                }, 1000); // Run every second
+            }
+        });
     </script>
 </body>
 </html>

@@ -24,12 +24,12 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RaceConnect Admin Dashboard</title>
     <link rel="stylesheet" href="assets/css/styles.css">
-    <link rel="stylesheet" href="assets/css/user-posts.css">
+    <link rel="stylesheet" href="assets/css/marketplace.css">
     <link rel="icon" href="./assets/RaceConnectLogo.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
     <script src="assets/javascript/navBar.js" defer></script>
-    <script src="assets/javascript/user-posts.js" defer></script>
+    <script src="assets/javascript/marketplace.js" defer></script>
     <script src="assets/javascript/logout_script.js" defer></script>
 </head>
 <body>
@@ -85,8 +85,8 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
                         </a>
                     </li>
                     <li>
-                        <a href="#top" class="nav-item active">
-                            <box-icon name='pin' type='solid' color='white'></box-icon>
+                        <a href="index_posts.php" class="nav-item">
+                            <box-icon name='pin' type='solid' color='rgb(185 28 28)'></box-icon>
                             <span>Posts</span>
                         </a>
                     </li>
@@ -97,8 +97,8 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
                         </a>
                     </li>
                     <li>
-                        <a href="index_marketplace.php" class="nav-item">
-                            <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
+                        <a href="#top" class="nav-item active">
+                            <box-icon name='store' type='solid' color='white'></box-icon>
                             <span>Marketplace</span>
                         </a>
                     </li>
@@ -118,7 +118,7 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
         <!-- Main Content -->
         <div class="main-content" id="mainContent">
             <!-- Posts Section -->
-            <div id="postsContainer">
+            <div id="itemsContainer">
                 <!-- Posts will be dynamically added here -->
             </div>
         </div>

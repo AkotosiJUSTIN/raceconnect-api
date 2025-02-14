@@ -14,6 +14,6 @@ if (isset($_COOKIE['PHPSESSID'])) {
 setcookie('email', '', time() - 3600, "/");
 setcookie('username', '', time() - 3600, "/");
 
-header("Location: index_login.php");
+header("Location: index_login.php?logged_out=true");
 exit();
 ?>

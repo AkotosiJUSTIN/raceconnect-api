@@ -114,13 +114,13 @@ $total_posts = $row['total_posts'];
                 </a>
             </li>
             <li>
-                <a href="index_marketplace.html" class="nav-item">
+                <a href="index_marketplace.php" class="nav-item">
                     <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
                     <span>Marketplace</span>
                 </a>
             </li>
             <li>
-                <a href="index_announcements.html" class="nav-item">
+                <a href="index_announcements.php" class="nav-item">
                     <box-icon type='solid' name='megaphone' color='rgb(185 28 28)'></box-icon>
                     <span>Announcements</span>
                 </a>

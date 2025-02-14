@@ -1,3 +1,4 @@
+/* Global Styles */
 * {
   margin: 0;
   padding: 0;
@@ -5,30 +6,81 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
     Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
-body{
-    background-color: #e5e7eb; /* bg-gray-200 */
-    font-family:  monospace; /* font-mono */
-    margin: 0;
-    padding: 0;
-}
-
-.header {
-  background-color: #b91c1c;
-  color: white;
-  padding: 0 1rem;
-  font-weight: 700;
-  font-size: 3rem;
+body {
+  background-color: #e5e7eb; /* bg-gray-200 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  margin: 0;
+  padding: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
+  height: 100vh;
 }
 
+/* Split-screen layout */
+.login-left {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo-subtitle-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo img {
+  width: 20em;
+  height: auto;
+  max-width: 100%;
+}
+
+.login-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.25rem;
+  text-align: left;
+  line-height: 1.6;
+  margin: 0;
+  flex: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .login-left {
+    height: 100px;
+  }
+  .logo img {
+    width: 6em;
+  }
+
+  .login-subtitle {
+    font-size: 1rem;
+  }
+
+  .login-left {
+    padding: 1rem;
+  }
+}
+
+.login-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Login Form */
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 4rem;
+  margin-top: 2rem;
 }
 
 .login-form {
@@ -36,7 +88,7 @@ body{
   padding: 2rem;
   border-radius: 1rem;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  width: 90%;
+  width: 100%;
   max-width: 28rem;
 }
 
@@ -172,14 +224,106 @@ body{
   background-color: #991b1b;
 }
 
-.signup-text {
-  text-align: center;
-  color: #4b5563;
-  margin-top: 1rem;
+/* Floating Message */
+.floating-message-container {
+  position: fixed;
+  top: 40px;
+  right: 20px;
+  z-index: 1000;
+  animation: floatIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-.signup-link {
-  color: #b91c1c;
-  font-weight: 600;
-  text-decoration: none;
+@keyframes floatIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.floating-message {
+  background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 15px 20px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(184, 182, 182, 0.2);
+  border-radius: 0px 0px 0px 30px;
+  overflow: hidden;
+  position: relative;
+}
+.progress {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(154, 112, 112, 0.8) 0%,
+    rgba(154, 108, 108, 0.4) 100%
+  );
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.2);
+  animation: progressShine 2s infinite;
+}
+@keyframes progressShine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  body {
+    flex-direction: column; /* Stack sections vertically on smaller screens */
+  }
+  .login-right {
+    flex: none; /* Remove flex behavior */
+    padding: 3rem 1rem; /* Reduce padding */
+  }
+
+  .login-container {
+    margin-top: 0;
+  }
+  .login-form {
+    max-width: 100%; /* Allow form to take full width */
+  }
+  .form-title {
+    font-size: 1.75rem; /* Reduce title size */
+  }
+  .submit-button {
+    font-size: 1rem; /* Reduce button text size */
+  }
+
+  .floating-message-container {
+    top: 150px;
+  }
 }
