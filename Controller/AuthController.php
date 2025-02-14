@@ -7,9 +7,9 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as PHPMailerException;
 use Exception;
 
-require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
-require_once 'C:/xampp/htdocs/raceconnectapi/Model/User.php';
-require_once 'C:/xampp/htdocs/raceconnectapi/Middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../Model/User.php';
+require_once __DIR__ . '/../Middleware/AuthMiddleware.php';
 
 class AuthController {
     private $user;

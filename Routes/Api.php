@@ -12,7 +12,7 @@ use Controller\Comment\PostCommentController;
 use Controller\Repost\PostRepostController;
 use Controller\AuthController;
 
-require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 class Api {
     private $conn;
