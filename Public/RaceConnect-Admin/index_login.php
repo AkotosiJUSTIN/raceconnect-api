@@ -133,7 +133,6 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
                             <span class="custom-checkbox"></span>
                             <span class="ml-2">&nbsp;&nbsp; Remember me</span>
                         </label>
-                        <a href="#" class="forgot-password">Forgot Password?</a>
                     </div>
                     <?php if ($error_message): ?>
                         <div class="error-message"><?php echo $error_message; ?></div>

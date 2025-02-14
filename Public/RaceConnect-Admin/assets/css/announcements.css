@@ -1,0 +1,164 @@
+/* General Body Styling */
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Main Content Section */
+.main-content {
+    flex: 1;
+    padding: 28px 48px;
+    overflow-y: auto; /* Enable vertical scrolling for main content */
+    gap: 24px; /* Consistent spacing between cards */
+}
+
+/* Responsive Design for Main Content */
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: repeat(2, 1fr); /* Two cards per row */
+        padding: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr; /* One card per row */
+        padding: 16px;
+    }
+}
+
+/* Announcement Form Styling */
+.announcement-form-container {
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    padding: 32px;
+    margin-bottom: 32px;
+    width: 1070px;
+    max-width: 1200px; /* Increased from 800px */
+    border: 1px solid #f0f0f0;
+}
+
+.announcement-form-container h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 16px;
+    position: relative;
+    padding-bottom: 12px;
+}
+
+.announcement-form-container h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 255px;
+    height: 3px;
+    background-color: #B91C1C;
+    border-radius: 2px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.announcement-form-container label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    display: block;
+    margin-bottom: 8px;
+    letter-spacing: 0.01em;
+}
+
+.announcement-form-container input,
+.announcement-form-container textarea {
+    justify-content: center;
+    width: 96%;
+    padding: 14px 16px;
+    font-size: 15px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    background-color: #f9fafb;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+}
+
+.announcement-form-container input:hover,
+.announcement-form-container textarea:hover {
+    background-color: #ffffff;
+    border-color: #d1d5db;
+}
+
+.announcement-form-container input:focus,
+.announcement-form-container textarea:focus {
+    background-color: #ffffff;
+    border-color: #B91C1C;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.1);
+}
+
+.announcement-form-container textarea {
+    min-height: 200px; /* Increased from 120px */
+    resize: vertical;
+}
+
+.submit-btn {
+    background-color: #B91C1C;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.submit-btn:hover {
+    background-color: #991b1b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.2);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+@media (max-width: 1280px) {
+    .announcement-form-container {
+        max-width: 90%; /* Responsive width for medium screens */
+    }
+
+    .announcement-form-container h2::after {
+        width: 255px;
+    }
+}
+
+@media (max-width: 640px) {
+    .announcement-form-container {
+        padding: 24px;
+        border-radius: 12px;
+    }
+    
+    .announcement-form-container h2 {
+        font-size: 20px;
+    }
+
+    .announcement-form-container h2::after {
+        width: 215px;
+    }
+    
+    .submit-btn {
+        width: 100%;
+    }
+}
