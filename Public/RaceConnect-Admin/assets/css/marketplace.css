@@ -89,14 +89,30 @@ body {
     -webkit-box-orient: vertical;
 }
 
-/* Product Interactions */
+/* Post Interactions (Non-Scrollable) */
 .product-interactions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    font-size: 16px;
+    font-size: 18px;
     color: #6b7280;
-    margin-top: auto;
+    margin-top: auto; /* Push interactions to the bottom */
+}
+
+.product-interactions box-icon {
+    cursor: pointer;
+    transition: color 0.3s ease;
+    margin-right: 6px;
+}
+
+.product-interactions box-icon:hover {
+    color: #1f2937;
+}
+
+.product-interactions span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
 }
 
 .likes-section {
