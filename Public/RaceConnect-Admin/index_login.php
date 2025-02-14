@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="assets/css/styles.css">
     <link rel="icon" href="./assets/RaceConnectLogo.png">
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+    <script src="assets/javascript/remember-me.js" defer></script>
 </head>
 <body>
     <!-- Header -->
@@ -105,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="login-container">
         <div class="login-form">
             <h2 class="form-title">Ready, Set, Connect!</h2>
-            <form action="index_login.php" method="POST">
+            <form id="loginForm" action="index_login.php" method="POST">
                 <div class="form-group">
                     <label for="email" class="input-label">Email</label>
                     <div class="input-wrapper">
@@ -125,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 <div class="remember-me">
                     <label class="checkbox-wrapper">
-                        <input name="remember-me" type="checkbox" class="checkbox-input" hidden>
+                        <input id="remember-me" name="remember-me" type="checkbox" class="checkbox-input" hidden>
                         <span class="custom-checkbox"></span>
                         <span class="ml-2">&nbsp;&nbsp; Remember me</span>
                     </label>
