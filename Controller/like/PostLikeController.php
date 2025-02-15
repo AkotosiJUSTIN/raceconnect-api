@@ -3,7 +3,7 @@ namespace Controller\Like;
 use Model\Like\PostLike;
 use Exception;
 
-require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 class PostLikeController {
     private $postLike;
 

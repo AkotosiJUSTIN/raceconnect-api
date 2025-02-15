@@ -12,7 +12,7 @@ use Controller\Comment\PostCommentController;
 use Controller\Repost\PostRepostController;
 use Controller\AuthController;
 
-require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 class Api {
     private $conn;
@@ -94,7 +94,7 @@ class Api {
                     $this->handleRequest(new PostController($this->conn), $method, $id);
                     break;
 
-                case 'marketplace-items':
+                case 'marketplace_items':
                     $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
                     break;
 
@@ -114,7 +114,7 @@ class Api {
                     $this->handleRequest(new PostLikeController($this->conn), $method, $id);
                     break;
 
-                case 'marketplace-item-likes':
+                case 'marketplace_item_likes':
                     $this->handleRequest(new MarketplaceItemLikeController($this->conn), $method, $id);
                     break;
 

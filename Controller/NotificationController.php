@@ -4,8 +4,8 @@ namespace Controller;
 use Model\Notification;
 use Exception;
 
-require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
-require_once 'C:/xampp/htdocs/raceconnectapi/Model/Notification.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../Model/Notification.php';
 
 class NotificationController {
     private $notification;
