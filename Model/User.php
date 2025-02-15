@@ -90,37 +90,26 @@ class User {
         return $stmt->execute();
     }
 
-    public function generatePasswordResetToken($email) {
-        $token = bin2hex(random_bytes(16));
-        $stmt = $this->pdo->prepare("UPDATE {$this->table} SET reset_token = :token, reset_token_expiry = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE email = :email");
-        $stmt->bindParam(':token', $token);
+    public function storeOtp($email, $otp) {
+        $stmt = $this->pdo->prepare("INSERT INTO Password_Resets (email, otp) VALUES (:email, :otp) ON DUPLICATE KEY UPDATE otp = :otp, created_at = CURRENT_TIMESTAMP");
         $stmt->bindParam(':email', $email);
-        if ($stmt->execute()) {
-            return $token;
-        }
-        return false;
-    }
-
-    public function getUserByResetToken($token) {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE reset_token = :token AND reset_token_expiry > NOW()");
-        $stmt->bindParam(':token', $token);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    public function resetPassword($token, $newPassword) {
-        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
-        $stmt = $this->pdo->prepare("UPDATE {$this->table} SET password = :password, reset_token = NULL, reset_token_expiry = NULL WHERE reset_token = :token");
-        $stmt->bindParam(':password', $hashedPassword);
-        $stmt->bindParam(':token', $token);
+        $stmt->bindParam(':otp', $otp);
         return $stmt->execute();
     }
 
-    public function updatePassword($id, $newPassword) {
+    public function verifyOtp($email, $otp) {
+        $stmt = $this->pdo->prepare("SELECT * FROM Password_Resets WHERE email = :email AND otp = :otp AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+        $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':otp', $otp);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+    }
+
+    public function resetPassword($email, $newPassword) {
         $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
-        $stmt = $this->pdo->prepare("UPDATE {$this->table} SET password = :password WHERE id = :id");
+        $stmt = $this->pdo->prepare("UPDATE {$this->table} SET password = :password WHERE email = :email");
         $stmt->bindParam(':password', $hashedPassword);
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':email', $email);
         return $stmt->execute();
     }
 }

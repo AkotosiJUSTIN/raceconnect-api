@@ -78,7 +78,7 @@ class Api {
                     $data = $this->getJsonInput();
                     $controller->forgotPassword($data);
                     break;
-
+    
                 case 'reset-password':
                     if ($method !== 'PUT') { // Ensure this is PUT
                         http_response_code(405);
@@ -88,17 +88,6 @@ class Api {
                     $controller = new AuthController($this->conn);
                     $data = $this->getJsonInput();
                     $controller->resetPassword($data);
-                    break;
-
-                case 'change-password':
-                    if ($method !== 'POST') {
-                        http_response_code(405);
-                        echo json_encode(['message' => 'Method Not Allowed: Use POST for change password']);
-                        exit;
-                    }
-                    $controller = new AuthController($this->conn);
-                    $data = $this->getJsonInput();
-                    $controller->changePassword($data);
                     break;
 
                 case 'posts':

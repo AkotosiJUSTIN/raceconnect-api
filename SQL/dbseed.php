@@ -6,9 +6,9 @@ try {
     $conn->beginTransaction();
 
     // Insert sample users
-    $conn->exec("INSERT INTO Users (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items, friend_count, friend_privacy) VALUES
-        ('john_doe', 'john@example.com', 'password123', '1990-01-01', '1234567890', '123 Main St', 30, 'profile1.jpg', 'Bio of John Doe', '[]', '[]', 5, 'Public'),
-        ('jane_doe', 'jane@example.com', 'password123', '1992-02-02', '0987654321', '456 Main St', 28, 'profile2.jpg', 'Bio of Jane Doe', '[]', '[]', 10, 'Friends Only')
+    $conn->exec("INSERT INTO Users (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items, friend_count, friend_privacy, reset_token, reset_token_expiry) VALUES
+        ('john_doe', 'john@example.com', 'password123', '1990-01-01', '1234567890', '123 Main St', 30, 'profile1.jpg', 'Bio of John Doe', '[]', '[]', 5, 'Public', NULL, NULL),
+        ('jane_doe', 'jane@example.com', 'password123', '1992-02-02', '0987654321', '456 Main St', 28, 'profile2.jpg', 'Bio of Jane Doe', '[]', '[]', 10, 'Friends Only', NULL, NULL)
     ");
 
     // Insert sample friends
@@ -17,9 +17,9 @@ try {
     ");
 
     // Insert sample posts
-    $conn->exec("INSERT INTO Posts (user_id, title, content, img_url, category, privacy, type) VALUES
-        (1, 'First Post', 'This is the content of the first post', 'image1.jpg', 'Formula 1', 'Public', 'image'),
-        (2, 'Second Post', 'This is the content of the second post', 'image2.jpg', 'NASCAR', 'Friends Only', 'image')
+    $conn->exec("INSERT INTO Posts (user_id, title, content, img_url, category, privacy, type, post_type) VALUES
+        (1, 'First Post', 'This is the content of the first post', 'image1.jpg', 'Formula 1', 'Public', 'image', 'normal'),
+        (2, 'Second Post', 'This is the content of the second post', 'image2.jpg', 'NASCAR', 'Friends Only', 'image', 'normal')
     ");
 
     // Insert sample marketplace items
