@@ -123,8 +123,6 @@ CREATE TABLE Post_Likes (
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
-
-
 CREATE TABLE Marketplace_Item_Likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,  -- User who liked
@@ -135,7 +133,6 @@ CREATE TABLE Marketplace_Item_Likes (
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE,
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
-
 
 -- Post Comments Table (Updated)
 CREATE TABLE Post_Comments (
@@ -162,7 +159,6 @@ CREATE TABLE Post_Reposts (
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
-
 -- Password Resets Table
 CREATE TABLE Password_Resets (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -171,4 +167,28 @@ CREATE TABLE Password_Resets (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (email) REFERENCES Users(email) ON DELETE CASCADE
+);
+
+CREATE TABLE User_Profile_Pictures (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE Post_Images (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE Marketplace_Item_Images (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    marketplace_item_id INT NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE
 );

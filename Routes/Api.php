@@ -126,6 +126,57 @@ class Api {
                     $this->handleRequest(new PostRepostController($this->conn), $method, $id);
                     break;
 
+                case 'upload-profile-picture':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for uploading profile picture']);
+                        exit;
+                    }
+                    
+                    if (empty($_FILES)) {
+                        http_response_code(400);
+                        echo json_encode(['message' => 'No file uploaded']);
+                        exit;
+                    }
+                
+                    $controller = new UserController($this->conn);
+                    $controller->uploadProfilePicture($_FILES); // ✅ Fix: Pass $_FILES directly
+                    break;
+                
+                case 'upload-post-image':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for uploading post image']);
+                        exit;
+                    }
+                
+                    if (empty($_FILES)) {
+                        http_response_code(400);
+                        echo json_encode(['message' => 'No file uploaded']);
+                        exit;
+                    }
+                
+                    $controller = new PostController($this->conn);
+                    $controller->uploadPostImage(); // ✅ Fix: Pass $_FILES directly
+                    break;
+                
+                case 'upload-item-image':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for uploading item image']);
+                        exit;
+                    }
+                
+                    if (empty($_FILES)) {
+                        http_response_code(400);
+                        echo json_encode(['message' => 'No file uploaded']);
+                        exit;
+                    }
+                
+                    $controller = new MarketplaceItemController($this->conn);
+                    $controller->uploadItemImage(); // ✅ Fix: Pass $_FILES directly
+                    break;
+                    
                 default:
                     http_response_code(404);
                     echo json_encode(['message' => 'Not Found: Invalid resource']);

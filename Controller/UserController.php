@@ -147,6 +147,39 @@ class UserController {
 
         return true;
     }
+
+    public function uploadProfilePicture($files) {
+        if (empty($_POST['user_id']) || empty($_FILES['image'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'User ID and image are required']);
+            return;
+        }
+    
+        try {
+            $userId = $_POST['user_id'];
+            $imageFile = $_FILES['image'];
+    
+            // Read image file
+            $imageData = file_get_contents($imageFile['tmp_name']);
+            $imageName = uniqid() . '-' . basename($imageFile['name']);
+    
+            // Upload to S3
+            $imageUrl = $this->user->uploadProfilePictureToS3($imageData, $imageName);
+    
+            // Save to database
+            if ($this->user->saveProfilePicture($userId, $imageUrl)) {
+                http_response_code(200);
+                echo json_encode(['message' => 'Profile picture uploaded successfully', 'image_url' => $imageUrl]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['message' => 'Failed to save profile picture']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to upload profile picture', 'error' => $e->getMessage()]);
+        }
+    }
+    
 }
 
 ?>

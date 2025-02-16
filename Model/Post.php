@@ -1,15 +1,47 @@
 <?php
 namespace Model;
 use PDO;
+use Aws\S3\S3Client;
+use Aws\Exception\AwsException;
+use Exception;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 class Post {
     private $pdo;
     private $table = "Posts";
+    private $s3;
 
     public function __construct($db) {
         $this->pdo = $db;
+        $this->s3 = new S3Client([
+            'version' => 'latest',
+            'region'  => 'ap-southeast-2', // Replace with your region
+            'credentials' => [
+            
+            ],
+        ]);
+    }
+
+    public function uploadPostImageToS3($imageData, $imageName) {
+        try {
+            $result = $this->s3->putObject([
+                'Bucket' => 'raceconnect-images', // Replace with your S3 bucket name
+                'Key'    => 'post-images/' . $imageName,
+                'Body'   => $imageData
+            ]);
+            return $result['ObjectURL'];
+        } catch (AwsException $e) {
+            throw new Exception('Failed to upload image to S3: ' . $e->getMessage());
+        }
+    }
+
+    public function savePostImage($postId, $imageUrl) {
+        $stmt = $this->pdo->prepare("INSERT INTO Post_Images (post_id, image_url) VALUES (:post_id, :image_url)");
+        return $stmt->execute([
+            ':post_id' => $postId,
+            ':image_url' => $imageUrl
+        ]);
     }
 
     public function getAllPosts() {

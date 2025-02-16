@@ -11,6 +11,7 @@
     },
     "minimum-stability": "stable",
     "require": {
-        "phpmailer/phpmailer": "^6.9"
+        "phpmailer/phpmailer": "^6.9",
+        "aws/aws-sdk-php": "^3.339"
     }
 }

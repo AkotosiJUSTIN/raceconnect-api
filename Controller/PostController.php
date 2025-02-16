@@ -104,4 +104,58 @@ class PostController {
             && !empty($data['user_id'])
             && !empty($data['content']);
     }
+
+    public function uploadPostImage() {
+        if (!isset($_POST['post_id']) || empty($_POST['post_id']) || !isset($_FILES['image']) || empty($_FILES['image']['name'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Post ID and at least one image are required']);
+            return;
+        }
+    
+        try {
+            $postId = $_POST['post_id'];
+            $imageUrls = [];
+    
+            // Check if multiple files were uploaded
+            if (is_array($_FILES['image']['name'])) {
+                // Handle multiple files
+                foreach ($_FILES['image']['tmp_name'] as $key => $tmpName) {
+                    if ($_FILES['image']['error'][$key] === UPLOAD_ERR_OK) {
+                        $imageData = file_get_contents($tmpName);
+                        $imageName = uniqid() . '-' . basename($_FILES['image']['name'][$key]);
+    
+                        // Upload to S3
+                        $imageUrl = $this->post->uploadPostImageToS3($imageData, $imageName);
+                        $imageUrls[] = $imageUrl;
+    
+                        // Save to database
+                        $this->post->savePostImage($postId, $imageUrl);
+                    }
+                }
+            } else {
+                // Handle single file
+                if ($_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                    $imageData = file_get_contents($_FILES['image']['tmp_name']);
+                    $imageName = uniqid() . '-' . basename($_FILES['image']['name']);
+    
+                    // Upload to S3
+                    $imageUrl = $this->post->uploadPostImageToS3($imageData, $imageName);
+                    $imageUrls[] = $imageUrl;
+    
+                    // Save to database
+                    $this->post->savePostImage($postId, $imageUrl);
+                }
+            }
+    
+            http_response_code(200);
+            echo json_encode([
+                'message' => 'Post images uploaded successfully',
+                'image_urls' => $imageUrls
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to upload post images', 'error' => $e->getMessage()]);
+        }
+    }
+    
 }

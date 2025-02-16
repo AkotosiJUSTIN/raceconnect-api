@@ -1,6 +1,9 @@
 <?php
 namespace Model;
 use PDO;
+use Aws\S3\S3Client;
+use Aws\Exception\AwsException;
+use Exception;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -8,8 +11,38 @@ class MarketplaceItem {
     private $pdo;
     private $table = "Marketplace_Items";
 
+    private $s3;
+
     public function __construct($db) {
         $this->pdo = $db;
+        $this->s3 = new S3Client([
+            'version' => 'latest',
+            'region'  => 'ap-southeast-2', // Replace with your region
+            'credentials' => [
+            
+            ],
+        ]);
+    }
+
+    public function uploadItemImageToS3($imageData, $imageName) {
+        try {
+            $result = $this->s3->putObject([
+                'Bucket' => 'raceconnect-images', // Replace with your S3 bucket name
+                'Key'    => 'item-images/' . $imageName,
+                'Body'   => $imageData
+            ]);
+            return $result['ObjectURL'];
+        } catch (AwsException $e) {
+            throw new Exception('Failed to upload image to S3: ' . $e->getMessage());
+        }
+    }
+
+    public function saveItemImage($itemId, $imageUrl) {
+        $stmt = $this->pdo->prepare("INSERT INTO Marketplace_Item_Images (marketplace_item_id, image_url) VALUES (:item_id, :image_url)");
+        return $stmt->execute([
+            ':item_id' => $itemId,
+            ':image_url' => $imageUrl
+        ]);
     }
 
     public function getAllItems() {
@@ -81,5 +114,6 @@ class MarketplaceItem {
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
     }
+    
 }
 ?>
