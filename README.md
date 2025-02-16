@@ -9,3 +9,9 @@ an api for raceconnect, our project for 2nd year 2nd sem.
  * for the link:
  * http://localhost:8000/{endpoint}
  */
+
+put this inside credentials:
+'key'  => '',
+'secret' => ''
+
+the key and secret is in the gc
