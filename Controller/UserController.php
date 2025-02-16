@@ -36,11 +36,7 @@ class UserController {
                     break;
 
                 case 'POST':
-                    if (isset($_GET['action']) && $_GET['action'] === 'login') {
-                        $this->loginUser($data);
-                    } else {
-                        $this->createUser($data);
-                    }
+                    $this->createUser($data);
                     break;
 
                 case 'PUT':
