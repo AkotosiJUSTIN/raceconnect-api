@@ -127,8 +127,8 @@ class AuthController {
                 $mail->isSMTP();
                 $mail->Host = 'smtp.gmail.com'; // Set the SMTP server to send through
                 $mail->SMTPAuth = true;
-                $mail->Username = 'cuagdannitsuj@gmail.com'; // SMTP username
-                $mail->Password = 'uftt nusi rxuk frky'; // SMTP password
+                $mail->Username = 'raceconnect.team@gmail.com'; // SMTP username
+                $mail->Password = 'cffw wobb ecns tksl'; // SMTP password
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port = 587;
 
