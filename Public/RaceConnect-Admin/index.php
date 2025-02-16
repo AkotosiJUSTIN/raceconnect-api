@@ -51,11 +51,8 @@ $total_posts = $row['total_posts'];
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="logo">
-            <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
-        </div>
         <div class="header-title">
-            Race Connect
+        <span class="welcomeMsg">Hi admin, <span class="username">&nbsp;<?php echo htmlspecialchars($username); ?></span>!</span>
         </div>
         <div class="header-menu">
             <!-- Mobile Header -->
@@ -63,11 +60,8 @@ $total_posts = $row['total_posts'];
                 <box-icon name='menu' type='solid' color="white" size="md"></box-icon>
             </div>
             <div class="relative">
-                <box-icon type='solid' name='user-circle' color="white" size="md" class="user-icon" id="userIcon"></box-icon>
+                <box-icon type='solid' name='user-circle' color="#b91c1c" size="lg" class="user-icon" id="userIcon"></box-icon>
                 <div id="dropdownMenu" class="dropdown-menu">
-                    <span class="welcomeMsg">Welcome <span class="username">&nbsp;<?php echo htmlspecialchars($username); ?></span>!</span>
-                    <a href="#" class="dropdown-item">Change Password</a>
-                    <a href="#" class="dropdown-item">Edit Profile</a>
                     <a href="logout.php" class="dropdown-item">Logout</a>
                 </div>
             </div>
@@ -81,9 +75,9 @@ $total_posts = $row['total_posts'];
         <!-- Logo Section -->
         <div class="logo-section">
             <div class="logo">
-                <box-icon name='car' type='solid' color="red" class="logo-icon"></box-icon>
-                <span class="logo-text">Admin View</span>
+                <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
             </div>
+            <span class="logo-text">Race Connect</span>
         </div>
 
     <!-- Navigation Menu -->
@@ -137,7 +131,7 @@ $total_posts = $row['total_posts'];
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="relative">
-                        <box-icon name='user' type="solid" color="red" class="stat-icon"></box-icon>
+                        <box-icon name='user' type="solid" color="#b91c1c" class="stat-icon"></box-icon>
                     </div>
                     <div class="stat-text">
                         <div class="stat-number"><?php echo $total_users; ?></div>
@@ -145,14 +139,14 @@ $total_posts = $row['total_posts'];
                     </div>
                 </div>
                 <div class="stat-card">
-                    <box-icon name='upload' color="red" class="stat-icon"></box-icon>
+                    <box-icon name='upload' color="#b91c1c" class="stat-icon"></box-icon>
                     <div class="stat-text">
                         <div class="stat-number"><?php echo $total_posts; ?></div>
                         <div class="stat-label">Total Posts</div>
                     </div>
                 </div>
                 <div class="stat-card">
-                <box-icon type='solid' name='star' color="red"></box-icon>
+                <box-icon type='solid' name='star' color="#b91c1c"></box-icon>
                     <div class="stat-text">
                         <div class="stat-number">Open Wheel Racing</div>
                         <div class="stat-label">Most Popular Category</div>

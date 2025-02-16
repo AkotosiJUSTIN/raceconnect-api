@@ -31,9 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
                     </div>
                     <div class="post-actions">
-                        <button class="edit-btn"><box-icon size="sm" name='edit' color="white"></box-icon></button>
-                        <button class="unsee-btn"><box-icon size="sm" type='solid' name='low-vision' color="white"></box-icon></button>
-                        <button class="delete-btn"><box-icon size="sm" type='solid' name='trash' color="white"></box-icon></button>
+                        <button class="unsee-btn" title="Hide Post"><box-icon type='solid' name='low-vision' color="white"></box-icon></button>
+                        <button class="delete-btn" title="Archive Post"><box-icon size="sm" type='solid' name='archive-in' color="white"></box-icon></button>
                     </div>
                 </div>
                 <!-- Scrollable Content -->

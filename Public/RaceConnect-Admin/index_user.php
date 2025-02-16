@@ -37,11 +37,8 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="logo">
-            <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
-        </div>
         <div class="header-title">
-            Race Connect
+        <span class="welcomeMsg">Hi admin, <span class="username">&nbsp;<?php echo htmlspecialchars($username); ?></span>!</span>
         </div>
         <div class="header-menu">
             <!-- Mobile Header -->
@@ -49,27 +46,25 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
                 <box-icon name='menu' type='solid' color="white" size="md"></box-icon>
             </div>
             <div class="relative">
-                <box-icon type='solid' name='user-circle' color="white" size="md" class="user-icon" id="userIcon"></box-icon>
+                <box-icon type='solid' name='user-circle' color="#b91c1c" size="lg" class="user-icon" id="userIcon"></box-icon>
                 <div id="dropdownMenu" class="dropdown-menu">
-                    <span class="welcomeMsg">Welcome <span class="username">&nbsp;<?php echo htmlspecialchars($username); ?></span>!</span>
-                    <a href="#" class="dropdown-item">Change Password</a>
-                    <a href="#" class="dropdown-item">Edit Profile</a>
                     <a href="logout.php" class="dropdown-item">Logout</a>
                 </div>
             </div>
+            
         </div>
     </div>
 
     <div class="flex">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar">
-            <!-- Logo Section -->
-            <div class="logo-section">
-                <div class="logo">
-                    <box-icon name='car' type='solid' color="red" class="logo-icon"></box-icon>
-                    <span class="logo-text">Admin View</span>
-                </div>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <!-- Logo Section -->
+        <div class="logo-section">
+            <div class="logo">
+                <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
             </div>
+            <span class="logo-text">Race Connect</span>
+        </div>
 
             <!-- Navigation Menu -->
             <nav class="nav-menu">
@@ -127,6 +122,7 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
 
                 <!-- Search and Filter Bar -->
                 <div class="search-filter-bar">
+                    <box-icon name='search' ></box-icon>
                     <input type="text" placeholder="Search users..." class="search-input">
                     <select class="filter-dropdown">
                         <option value="all">All</option>

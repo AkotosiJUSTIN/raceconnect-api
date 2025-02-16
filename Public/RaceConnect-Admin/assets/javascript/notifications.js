@@ -87,14 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${new Date(notification.created_at).toLocaleString()}</td>
                 <td>
                     <div class="actions">
-                        <button class="actions-item edit-btn" onclick="editNotification('${notification.id}')">
-                            <box-icon name='edit' color="white"></box-icon>
-                        </button>
-                        <button class="actions-item hide-btn" onclick="hideNotification('${notification.id}')">
+                        <button class="actions-item hide-btn" title="Hide Notification" onclick="hideNotification('${notification.id}')">
                             <box-icon type='solid' name='low-vision' color="white"></box-icon>
                         </button>
-                        <button class="actions-item delete-btn" onclick="deleteNotification('${notification.id}')">
-                            <box-icon type='solid' name='trash' color="white"></box-icon>
+                        <button class="actions-item delete-btn" title="Archive Notification" onclick="deleteNotification('${notification.id}')">
+                            <box-icon type='solid' name='archive-in' color="white"></box-icon></box-icon>
                         </button>
                     </div>
                 </td>

@@ -13,7 +13,7 @@ if (!isset($_SESSION['email'])) {
 }
 
 // Fetch users from the database
-$query = "SELECT username, created_at, status FROM users";
+$query = "SELECT username, created_at, status, suspension_days FROM users";
 $result = $conn->query($query);
 
 $users = [];

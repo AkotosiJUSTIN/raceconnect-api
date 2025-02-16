@@ -7,6 +7,8 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    overflow: auto;
+    background-image: url("/assets/race-bg.png");
 }
 
 .flex {
@@ -30,30 +32,25 @@ body {
 /* Header */
 .header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
-    background-color: #b91c1c; /* bg-red-700 */
     color: white;
     font-size: 40px;
-    height: 80px; /* Set a fixed height for the header */
+    height: 80px;
+    margin-left: 256px;
+    padding-right: 20px;
+    background-color: #e5e7eb;
+    z-index: 10;
 }
 
-.logo {
-    display: flex; 
-    align-items: center;
-}
-
-#rcLogo {
-    align-self: center;
-    height: 110px; /* Increased height */
-    margin-right: 10px;
-    max-height: 100%; /* Ensure the logo does not exceed the header height */
-}
-
+/* Responsive Header Title with clamp() */
 .header-title {
     flex: 1;
-    font-size: 42px;
-    font-weight: 900;
+    color: #b91c1c;
+    font-size: clamp(20px, 5vw, 42px);
+    font-weight: bolder;
+    margin: 0;
+    white-space: nowrap;
 }
 
 .header-menu {
@@ -65,11 +62,19 @@ body {
 
 .header #menuButton {
     display: none;
-    padding: 8px;
+    align-items: center;
+    justify-content: center;
+    border: none;
     border-radius: 8px;
     background-color: #b91c1c;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    font-size: 16px;
+    line-height: 1;
+    text-align: center;
+    width: auto;
+    height: auto;
+    outline: none;
 }
 
 .header button:hover {
@@ -77,15 +82,18 @@ body {
 }
 
 .header .user-icon {
-    font-size: 24px;
+    font-size: 34px;
     cursor: pointer;
     border-radius: 9999px;
     transition: background-color 0.3s ease, transform 0.3s ease;
     margin-right: 30px;
+    margin-top: 10px;
+    fill: white;
 }
 
 .header .user-icon:hover {
-    background-color: #a63434; /* hover:bg-gray-700 */
+    fill: white; /* hover:bg-gray-700 */
+    transform: scale(1.04);
 }
 
 /* Sidebar */
@@ -95,37 +103,46 @@ body {
     background-color: white;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease;
-    position: block; /* Fix the sidebar to the left side */
+    position: fixed; /* Fix the sidebar to the left side */
     top: 0;
     left: 0;
-    height: auto;
-    overflow-y: hidden; /* Allow vertical scroll */
+    overflow-y: hidden; /* Allow vertical scroll if content overflows */
+    border-radius: 20px;
     flex-shrink: 0;
+    z-index: 20; /* Ensure it stays above other elements */
+}
+
+/* Logo Section */
+.logo-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center items horizontally */
+    justify-content: center; /* Center items vertically */
+    text-align: center; /* Ensure text is centered */
+}
+
+/* Logo */
+#rcLogo {
+    height: 200px; /* Adjust the height of the logo */
+    max-height: 100%; /* Ensure the logo does not exceed its container */
+}
+
+/* Logo Text */
+.logo-text {
+    color: #b91c1c; /* text-red-700 */
+    font-size: 32px; /* Adjust font size */
+    font-weight: 900;
+    margin-top: 0; /* Remove default margin */
 }
 
 .sidebar.open {
     transform: translateX(0);
 }
 
-.sidebar .logo-section {
-    padding: 68px 24px 32px 24px;
-}
-
 .sidebar .logo {
     display: flex;
     align-items: center;
-    gap: 12px;
-}
-
-.sidebar .logo-icon {
-    width: 32px;
-    height: 32px;
-}
-
-.sidebar .logo-text {
-    color: #b91c1c; /* text-red-700 */
-    font-size: 26px;
-    font-weight: 900;
+    gap: 2px;
 }
 
 /* Navigation Menu */
@@ -146,6 +163,7 @@ body {
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
+    margin: 1em 0;
     text-decoration: none;
     color: #4b5563; /* text-gray-700 */
     border-radius: 8px;
@@ -173,7 +191,7 @@ body {
     padding: 16px 16px;
     width: 250px;
     font-size: 16px;
-    background-color: #ffffff;
+    background-color: #f3f0f0;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     box-shadow: 0px 16px 32px rgba(0, 0, 0, 0.1);
@@ -191,7 +209,7 @@ body {
 /* Dropdown Item */
 .dropdown-item {
     padding: 12px 24px;
-    color: #374151;
+    color: #b91c1c;
     text-decoration: none;
     display: flex;
     align-items: center;
@@ -212,17 +230,15 @@ body {
 }
 
 
-.dropdown-item i {
+.dropdown-item box-icon {
     font-size: 18px;
     color: inherit;
 }
 
 .welcomeMsg {
     color: #374151;
-    font-size: 1.4rem;
-    text-align: center;
-    display: flex;
-    justify-content: center;
+    font-size: 2rem;
+    margin-left: 1.4em;
     font-weight: bolder;
     padding: 3px;
 }
@@ -342,6 +358,7 @@ body {
     left: 0;
     height: 100%;
     z-index: 20;
+    border-radius: 0%;
 }
 
 .sidebar.open {
@@ -354,8 +371,10 @@ body {
     z-index: 30;
 }
 
-.header-title {
-    font-size: 32px;
+.welcomeMsg{
+    position: relative;
+    font-size:xx-large;
+    margin-right: 35px;
 }
 
 .header #menuButton {
@@ -371,8 +390,8 @@ body {
 }
 }
 
-@media (max-width: 480px) {
-    .header-title {
-        font-size: 24px;
+@media (max-width: 420px) {
+    .welcomeMsg{
+        display: none;
     }
 }

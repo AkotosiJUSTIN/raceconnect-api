@@ -35,7 +35,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     document.getElementById('bulkSuspend').addEventListener('click', function() {
-        performBulkAction('suspend_user.php', 'suspend');
+        Swal.fire({
+          title: 'Enter Suspension Duration',
+          input: 'number',
+          inputLabel: 'Number of days to suspend',
+          inputAttributes: {
+              min: 1,
+              step: 1
+          },
+          showCancelButton: true,
+          confirmButtonText: 'Suspend',
+          cancelButtonText: 'Cancel'
+      }).then((result) => {
+          if (result.isConfirmed && result.value > 0) {
+              const days = result.value;
+              performBulkActionWithDays('suspend_user.php', 'suspend', days);
+          }
+      });
     });
     
     document.getElementById('bulkUnban').addEventListener('click', function() {
@@ -71,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const username = user.username;
           const date = new Date(user.created_at);
           const status = user.status;
+          const suspensionDays = user.suspension_days ? `(${user.suspension_days} days)` : '';
       
           // Create a 3-dot button that toggles a dropdown menu
           const action = `
@@ -89,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <td><input type="checkbox" class="user-check" aria-label="${username}" onclick="updateSelectAll()"></td>
               <td>${username}</td>
               <td>${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}, ${date.getFullYear()}</td>
-              <td class="status-${status.toLowerCase()}">${status}</td>
+              <td class="status-${status.toLowerCase()}">${status} ${suspensionDays}</td>
               <td>${action}</td>
             </tr>
           `);

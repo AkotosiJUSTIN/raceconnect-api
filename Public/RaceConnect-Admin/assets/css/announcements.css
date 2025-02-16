@@ -9,8 +9,9 @@ body {
 
 /* Main Content Section */
 .main-content {
+    margin-left: 250px;
     flex: 1;
-    padding: 28px 48px;
+    padding: 2px 48px;
     overflow-y: auto; /* Enable vertical scrolling for main content */
     gap: 24px; /* Consistent spacing between cards */
 }
@@ -27,7 +28,9 @@ body {
     .main-content {
         grid-template-columns: 1fr; /* One card per row */
         padding: 16px;
+        margin-left: 0;
     }
+
 }
 
 /* Announcement Form Styling */
