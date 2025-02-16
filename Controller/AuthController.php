@@ -155,9 +155,15 @@ class AuthController {
 
     public function resetPassword($data) {
         try {
-            if (empty($data['email']) || empty($data['otp']) || empty($data['new_password'])) {
+            if (empty($data['email']) || empty($data['otp']) || empty($data['new_password']) || empty($data['confirm_password'])) {
                 http_response_code(400);
-                echo json_encode(['message' => 'Email, OTP, and new password are required']);
+                echo json_encode(['message' => 'Email, OTP, new password, and confirmation password are required']);
+                return;
+            }
+
+            if ($data['new_password'] !== $data['confirm_password']) {
+                http_response_code(400);
+                echo json_encode(['message' => 'New password and confirmation password do not match']);
                 return;
             }
 
