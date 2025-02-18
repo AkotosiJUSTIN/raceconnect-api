@@ -8,9 +8,9 @@ session_start();
 
 // Check if the user is logged in
 if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
-    if (isset($_COOKIE['email']) && isset($_COOKIE['username'])) {
+    if (isset($_COOKIE['email']) && isset($_COOKIE['admin_name'])) {
         $_SESSION['email'] = $_COOKIE['email'];
-        $_SESSION['username'] = $_COOKIE['username'];
+        $_SESSION['admin_name'] = $_COOKIE['admin_name'];
     } else {
         // Redirect to login page if not logged in
         header("Location: index_login.php");
@@ -19,9 +19,9 @@ if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
 }
 
 
-// Get the logged-in user's email and username
+// Get the logged-in user's email and admin_name
 $email = $_SESSION['email'];
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
+$admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest';
 
 // Query the database for user information
 $result = $conn->query("SELECT COUNT(*) AS total_users from users");
@@ -42,6 +42,10 @@ $total_posts = $row['total_posts'];
     <link rel="stylesheet" href="assets/css/styles.css">
     <link rel="stylesheet" href="assets/css/dashboard.css">
     <link rel="icon" href="./assets/RaceConnectLogo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lalezar&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
     <script src="assets/javascript/navBar.js" defer></script>
@@ -52,20 +56,13 @@ $total_posts = $row['total_posts'];
     <!-- Header -->
     <div class="header">
         <div class="header-title">
-        <span class="welcomeMsg">Hi admin, <span class="username">&nbsp;<?php echo htmlspecialchars($username); ?></span>!</span>
+        <span class="welcomeMsg">Dashboard |<span class="username">&nbsp;<?php echo htmlspecialchars($admin_name); ?></span>!</span>
         </div>
         <div class="header-menu">
             <!-- Mobile Header -->
             <div id="menuButton" aria-label="Toggle menu" class="menu-button" role="button" tabindex="0">
                 <box-icon name='menu' type='solid' color="white" size="md"></box-icon>
             </div>
-            <div class="relative">
-                <box-icon type='solid' name='user-circle' color="#b91c1c" size="lg" class="user-icon" id="userIcon"></box-icon>
-                <div id="dropdownMenu" class="dropdown-menu">
-                    <a href="logout.php" class="dropdown-item">Logout</a>
-                </div>
-            </div>
-            
         </div>
     </div>
 
@@ -120,6 +117,11 @@ $total_posts = $row['total_posts'];
                 </a>
             </li>
         </ul>
+        <div class="relative logout-btn">
+            <a href="logout.php" class="dropdown-item">
+                <box-icon name='log-out' color="#b91c1c" size="md" class="user-icon" id="userIcon" ></box-icon>
+            </a>
+        </div>
     </nav>
     </aside>
         <!-- Overlay for mobile -->

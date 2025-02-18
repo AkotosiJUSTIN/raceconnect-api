@@ -1,15 +1,15 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const logoutLink = document.querySelector('a[href="logout.php"]');
+    const logoutBtn = document.querySelector('.logout-btn');  // Select the logout button
     const logoutDialog = document.getElementById('logoutDialog');
     const confirmLogout = document.getElementById('confirmLogout');
     const cancelLogout = document.getElementById('cancelLogout');
 
-    logoutLink.addEventListener('click', function (event) {
+    logoutBtn.addEventListener('click', function (event) {
         event.preventDefault();
         logoutDialog.classList.add('show');
         setTimeout(() => {
             logoutDialog.querySelector('.dialog').classList.add('show');
-        }, 10); // Slight delay to trigger the animation
+        }, 10);
     });
 
     confirmLogout.addEventListener('click', function () {
@@ -20,6 +20,6 @@ document.addEventListener('DOMContentLoaded', function () {
         logoutDialog.querySelector('.dialog').classList.remove('show');
         setTimeout(() => {
             logoutDialog.classList.remove('show');
-        }, 300); // Match the duration of the CSS transition
+        }, 300);
     });
 });

@@ -1,28 +1,22 @@
 <?php
-// Include the database connection script
 require_once __DIR__ . '/../../db_connect.php';
 
-// Start session
-session_start();
-
-// Check if the user is logged in
-if (!isset($_SESSION['email'])) {
-    // Redirect to login page if not logged in
-    header("Location: index_login.html");
-    exit();
-}
-
-// Fetch users from the database
-$query = "SELECT username, created_at, status, suspension_days FROM users";
+$query = "SELECT username, status, created_at, suspension_end_date FROM users";
 $result = $conn->query($query);
 
 $users = [];
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $users[] = $row;
+while ($row = $result->fetch_assoc()) {
+    // Calculate remaining suspension days
+    if ($row['suspension_end_date'] && strtotime($row['suspension_end_date']) > time()) {
+        $remainingDays = (strtotime($row['suspension_end_date']) - time()) / 86400;
+        $row['suspension_days'] = ceil($remainingDays); // Round up to whole days
+    } else {
+        $row['suspension_days'] = null;
     }
+    $users[] = $row;
 }
 
-header('Content-Type: application/json');
 echo json_encode($users);
+
+$conn->close();
 ?>

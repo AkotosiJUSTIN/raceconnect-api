@@ -18,8 +18,8 @@ session_start();
 // Initialize error message
 $error_message = '';
 
-//Check if admin is already logged in
-if (isset($_SESSION['email']) && !empty($_SESSION['email'])){
+// Check if admin is already logged in
+if (isset($_SESSION['email']) && !empty($_SESSION['email'])) {
     // Redirect to main index page if already logged in
     header("Location: index.php");
     exit();
@@ -32,35 +32,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'];
     $remember_me = isset($_POST['remember_me']) ? true : false;
 
-    // Prepare and bind
-    $stmt = $conn->prepare("SELECT username, password FROM users WHERE email = ?");
+    // Prepare and bind for the admin table
+    $stmt = $conn->prepare("SELECT admin_name, password FROM admins WHERE email = ?");
     $stmt->bind_param("s", $email);
 
     // Execute statement
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // Check if user exists
+    // Check if admin exists
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
-        $username = $row['username'];
+        $admin_name = $row['admin_name'];
         $hashed_password = $row['password'];
 
         // Verify the password
         if (password_verify($password, $hashed_password)) {
             // Set session variables
             $_SESSION['email'] = $email;
-            $_SESSION['username'] = $username;
+            $_SESSION['admin_name'] = $admin_name;
 
             // Handle "Remember Me" functionality
             if ($remember_me) {
                 // Set cookies for 30 days if "Remember Me" is checked
                 setcookie('email', $email, time() + (86400 * 30), "/", "", true, true); // 30 days
-                setcookie('username', $username, time() + (86400 * 30), "/", "", true, true);
+                setcookie('admin_name', $admin_name, time() + (86400 * 30), "/", "", true, true);
             } else {
                 // Clear cookies if "Remember Me" is not checked
                 setcookie('email', '', time() - 3600, "/", "", true, true);
-                setcookie('username', '', time() - 3600, "/", "", true, true);
+                setcookie('admin_name', '', time() - 3600, "/", "", true, true);
             }
 
             // Redirect to the dashboard
