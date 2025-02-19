@@ -105,7 +105,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                 </ul>
 
                 <div class="relative logout-btn">
-                    <a href="logout.php" class="dropdown-item">
+                    <a href="logout.php" class="dropdown-item" title="Logout">
                         <box-icon name='log-out' color="#b91c1c" size="md" class="user-icon" id="userIcon" ></box-icon>
                     </a>
                 </div>
@@ -128,12 +128,11 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     <div class="group">
                         <box-icon name='search' ></box-icon>
                         <input id="query" class="search-input" type="search" placeholder="Search users..." name="searchbar" />
-                        <select class="filter-dropdown">
-                            <option value="all">All</option>
-                            <option value="active">Active</option>
-                            <option value="banned">Banned</option>
-                            <option value="suspended">Suspended</option>
-                        </select>
+                            <select class="filter-dropdown">
+                                <option value="all">All</option>
+                                <option value="active">Active</option>
+                                <option value="banned">Banned</option>
+                            </select>
                     </div>
 
                     <!-- Bulk Action Buttons -->

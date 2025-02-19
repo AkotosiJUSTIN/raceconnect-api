@@ -16,6 +16,8 @@ CREATE TABLE Users (
     friend_count INT DEFAULT 0,  -- Optional: Cache total friends
     friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public', -- Privacy setting
     last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Last active time
+    status ENUM('Active', 'Banned') DEFAULT 'Active',
+    suspension_end_date TIMESTAMP NULL, -- If the user is suspended
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -96,6 +98,9 @@ CREATE TABLE Notifications (
 CREATE TABLE Admins (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    admin_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
     role ENUM('content_moderator', 'community_manager',  'marketplace_manager') DEFAULT 'content_moderator',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE

@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function performBulkAction(url, actionType) {
     const selectedUsers = getSelectedUsers();
-
+  
     if (selectedUsers.length === 0) {
       return showAlert(
         "No users selected",
@@ -107,11 +107,13 @@ document.addEventListener("DOMContentLoaded", function () {
         "warning"
       );
     }
-
+  
     if (actionType === "ban") {
       // Ask admin for ban duration
       Swal.fire({
-        title: "Select Ban Duration",
+        title: "Ban Duration",
+        text: `Set the duration of the ban for the selected users`,
+        icon: "question",
         input: "select",
         inputOptions: {
           3: "3 Days",
@@ -137,7 +139,7 @@ document.addEventListener("DOMContentLoaded", function () {
       processBulkAction(url, actionType, selectedUsers, null);
     }
   }
-
+  
   function processBulkAction(url, actionType, selectedUsers, banDuration) {
     Swal.fire({
       title: `Are you sure?`,
@@ -165,11 +167,11 @@ document.addEventListener("DOMContentLoaded", function () {
               }))
           )
         );
-
+  
         Promise.all(promises)
           .then((results) => {
             const failedUsers = results.filter((res) => !res.success);
-            const successfulUsers = results.every((res) => res.success);
+            const successfulUsers = results.filter((res) => res.success);
             if (successfulUsers.length > 0) {
               Swal.fire({
                 title: "Success!",
@@ -177,7 +179,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 icon: "success",
               });
             }
-
+  
             if (failedUsers.length > 0) {
               Swal.fire({
                 title: "Unbanned!",
@@ -187,7 +189,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 icon: "success",
               });
             }
-
+  
+            // Uncheck the "Select All" checkbox and all individual checkboxes
+            document.querySelector(".select-all").checked = false;
+            document.querySelectorAll(".user-check").forEach((checkbox) => {
+              checkbox.checked = false;
+            });
+  
             fetchUsers(); // Refresh table after actions
           })
           .catch(() => {
