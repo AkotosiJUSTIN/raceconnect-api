@@ -1,18 +1,28 @@
-# raceconnect-api
-an api for raceconnect, our project for 2nd year 2nd sem.
+# RaceConnect API
 
+An API for RaceConnect, our project for 2nd year, 2nd semester.
 
- /*
- * To run the server
- * Type this in the terminal
- * php -S localhost:8000 -t public
- * for the link:
- * http://localhost:8000/{endpoint}
- */
+## Running the Server
 
-/* Put this inside credentials:
-*'key'  => 'putKeyHere',
-*'secret' => 'putSecretHere'
-*/
+To run the server, type the following command in the terminal:
 
-//the key and secret is in the gc
+```sh
+php -S localhost:8000 -t public
+```
+
+You can access the API at:
+
+```
+http://localhost:8000/{endpoint}
+```
+
+## Credentials for AWS S3
+
+Add the following credentials into the model of `Marketplace`,  `User` and `Post`, it's inside the function `_construct`:
+
+```php
+'key'    => 'putKeyHere',
+'secret' => 'putSecretHere'
+```
+
+**Note:** The key and secret can be found in the GC in Messenger.
