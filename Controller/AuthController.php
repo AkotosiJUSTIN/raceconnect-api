@@ -113,6 +113,14 @@ class AuthController {
                 return;
             }
 
+            // Check if the email exists in the database
+            $user = $this->user->getUserByEmail($data['email']);
+            if (!$user) {
+                http_response_code(404);
+                echo json_encode(['message' => 'Email not found']);
+                return;
+            }
+
             $otp = rand(100000, 999999); // Generate a 6-digit OTP
             if (!$this->user->storeOtp($data['email'], $otp)) {
                 http_response_code(500);

@@ -18,6 +18,7 @@ class User {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
+                // Add your AWS credentials here
             ],
         ]);
     }
@@ -36,30 +37,24 @@ class User {
     }
 
     public function saveProfilePicture($userId, $imageUrl) {
-        $this->pdo->beginTransaction();
+    $this->pdo->beginTransaction();
         try {
             // Insert into User_Profile_Pictures table (history of uploads)
-            $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
-            $stmt->execute([
-                ':user_id' => $userId,
-                ':image_url' => $imageUrl
-            ]);
-    
-            // Update Users table to store the latest profile picture
-            $stmt = $this->pdo->prepare("UPDATE Users SET profile_picture = :image_url WHERE id = :user_id");
-            $stmt->execute([
-                ':user_id' => $userId,
-                ':image_url' => $imageUrl
-            ]);
-    
-            $this->pdo->commit();
-            return true;
-        } catch (Exception $e) {
-            $this->pdo->rollBack();
-            return false;
+        $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
+        $stmt->execute([
+            ':user_id' => $userId,
+            ':image_url' => $imageUrl
+        ]);
         }
     }
-    
+
+    public function updateUserProfilePicture($userId, $imageUrl) {
+        $stmt = $this->pdo->prepare("UPDATE {$this->table} SET profile_picture = :image_url WHERE id = :user_id");
+        return $stmt->execute([
+            ':image_url' => $imageUrl,
+            ':user_id' => $userId
+        ]);
+    }
 
     public function getAllUsers() {
         $stmt = $this->pdo->query("SELECT * FROM {$this->table}");
@@ -69,6 +64,13 @@ class User {
     public function getUserById($id) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
         $stmt->bindParam(':id', $id);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function getUserByEmail($email) {
+        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE email = :email");
+        $stmt->bindParam(':email', $email);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
