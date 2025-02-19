@@ -100,7 +100,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     </li>
                 </ul>
                 <div class="relative logout-btn">
-                    <a href="logout.php" class="dropdown-item">
+                    <a href="logout.php" class="dropdown-item" title="Logout">
                         <box-icon name='log-out' color="#b91c1c" size="md" class="user-icon" id="userIcon" ></box-icon>
                     </a>
                 </div>

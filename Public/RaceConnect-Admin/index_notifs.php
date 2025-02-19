@@ -103,7 +103,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     </li>
                 </ul>
                 <div class="relative logout-btn">
-                    <a href="logout.php" class="dropdown-item">
+                    <a href="logout.php" class="dropdown-item" title="Logout">
                         <box-icon name='log-out' color="#b91c1c" size="md" class="user-icon" id="userIcon" ></box-icon>
                     </a>
                 </div>
@@ -123,11 +123,14 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
 
                 <!-- Search and Filter Bar -->
                 <div class="search-filter-bar">
-                    <box-icon name='search' ></box-icon>
-                    <input type="text" placeholder="Search notifications..." class="search-input">                    <select class="filter-dropdown">
-                        <option value="all">All</option>
-                        <option value="active">Hidden</option>
-                    </select>
+                    <div class="group">
+                        <box-icon name='search' ></box-icon>
+                        <input type="text" placeholder="Search notifications..." class="search-input">                    
+                        <select class="filter-dropdown">
+                            <option value="all">All</option>
+                            <option value="active">Hidden</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- User Table -->

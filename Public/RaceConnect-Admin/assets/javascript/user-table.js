@@ -70,15 +70,26 @@ document.addEventListener("DOMContentLoaded", function () {
         suspensionText = " (Permanent)";
       }
 
-      const action = `
+      let action = "";
+      if (status === "Active") {
+        action = `
             <div class="actions">
               <button class="dropdown-btn" onclick="toggleDropdown(event)">&#8942;</button>
               <div class="dropdown-content">
-                <a href="#" class="actions-item" onclick="unbanUser('${username}')">Unban</a>
                 <a href="#" class="actions-item" onclick="banUser('${username}')">Ban</a>
               </div>
             </div>
         `;
+      } else if (status === "Banned") {
+        action = `
+            <div class="actions">
+              <button class="dropdown-btn" onclick="toggleDropdown(event)">&#8942;</button>
+              <div class="dropdown-content">
+                  <a href="#" class="actions-item" onclick="unbanUser('${username}')">Unban</a>
+              </div>
+            </div>
+        `;
+      }
 
       rows.push(`
             <tr>
@@ -99,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function performBulkAction(url, actionType) {
     const selectedUsers = getSelectedUsers();
-  
+
     if (selectedUsers.length === 0) {
       return showAlert(
         "No users selected",
@@ -107,7 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "warning"
       );
     }
-  
+
     if (actionType === "ban") {
       // Ask admin for ban duration
       Swal.fire({
@@ -139,7 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
       processBulkAction(url, actionType, selectedUsers, null);
     }
   }
-  
+
   function processBulkAction(url, actionType, selectedUsers, banDuration) {
     Swal.fire({
       title: `Are you sure?`,
@@ -158,16 +169,14 @@ document.addEventListener("DOMContentLoaded", function () {
               username
             )}&ban_duration=${encodeURIComponent(banDuration)}`,
           }).then((response) =>
-            response
-              .json()
-              .then((data) => ({
-                username,
-                success: data.success,
-                error: data.error,
-              }))
+            response.json().then((data) => ({
+              username,
+              success: data.success,
+              error: data.error,
+            }))
           )
         );
-  
+
         Promise.all(promises)
           .then((results) => {
             const failedUsers = results.filter((res) => !res.success);
@@ -179,7 +188,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 icon: "success",
               });
             }
-  
+
             if (failedUsers.length > 0) {
               Swal.fire({
                 title: "Unbanned!",
@@ -189,13 +198,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 icon: "success",
               });
             }
-  
+
             // Uncheck the "Select All" checkbox and all individual checkboxes
             document.querySelector(".select-all").checked = false;
             document.querySelectorAll(".user-check").forEach((checkbox) => {
               checkbox.checked = false;
             });
-  
+
             fetchUsers(); // Refresh table after actions
           })
           .catch(() => {

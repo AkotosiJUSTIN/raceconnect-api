@@ -118,7 +118,7 @@ $total_posts = $row['total_posts'];
             </li>
         </ul>
         <div class="relative logout-btn">
-            <a href="logout.php" class="dropdown-item">
+            <a href="logout.php" class="dropdown-item" title="Logout">
                 <box-icon name='log-out' color="#b91c1c" size="md" class="user-icon" id="userIcon" ></box-icon>
             </a>
         </div>
