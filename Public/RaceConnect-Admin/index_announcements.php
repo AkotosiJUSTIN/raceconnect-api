@@ -1,20 +1,29 @@
 <?php
-// Include the database connection script (if needed later)
+// filepath: /c:/xampp/htdocs/RaceConnect-Admin/index.php
+// Include the database connection script
 require_once __DIR__ . '/../../db_connect.php';
 
 // Start session
 session_start();
 
 // Check if the user is logged in
-if (!isset($_SESSION['email'])) {
-    // Redirect to login page if not logged in
-    header("Location: index_login.html");
-    exit();
+if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
+    if (isset($_COOKIE['email']) && isset($_COOKIE['admin_name'])) {
+        $_SESSION['email'] = $_COOKIE['email'];
+        $_SESSION['admin_name'] = $_COOKIE['admin_name'];
+    } else {
+        // Redirect to login page if not logged in
+        header("Location: index_login.php");
+        exit();
+    }
 }
+
 
 // Get the logged-in user's email and admin_name
 $email = $_SESSION['email'];
 $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest';
+
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-behavior: smooth;">
@@ -32,7 +41,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
     <script src="assets/javascript/navBar.js" defer></script>
-    <script src="assets/javascript/announcement.js" defer></script>
+    <script src="assets/javascript/announcements.js" defer></script>
     <script src="assets/javascript/logout_script.js" defer></script>
 </head>
 <body>
@@ -130,6 +139,15 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
             </div>
         </div>
     </div>
+    <!-- Floating Message -->
+     <div class="floating-message-container">
+        <div class="floating-message">
+            <span id="floatingMessage">Announcement posted!</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+     </div>
     <!-- Logout Dialog -->
     <div id="logoutDialog" class="dialog-overlay">
         <div class="dialog">
