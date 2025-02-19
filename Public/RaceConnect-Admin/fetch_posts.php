@@ -12,8 +12,8 @@ if (!isset($_SESSION['email'])) {
     exit();
 }
 
-// Fetch posts from the database
-$query = "SELECT id, user_id, title, content, img_url, like_count, comment_count, repost_count, created_at FROM posts";
+// Fetch posts from the database, excluding hidden, archived, and active posts
+$query = "SELECT id, user_id, title, content, img_url, like_count, comment_count, repost_count, created_at FROM posts WHERE status NOT IN ('hidden', 'archived')";
 $result = $conn->query($query);
 
 $posts = [];

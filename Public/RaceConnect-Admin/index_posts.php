@@ -40,7 +40,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
     <!-- Header -->
     <div class="header">
         <div class="header-title">
-        <span class="welcomeMsg">Manage Posts |<span class="username">&nbsp;<?php echo htmlspecialchars($admin_name); ?></span>!</span>
+        <span class="welcomeMsg">Manage Posts |<span class="username">&nbsp;<?php echo htmlspecialchars($admin_name); ?></span></span>
         </div>
         <div class="header-menu">
             <!-- Mobile Header -->

@@ -13,10 +13,10 @@ body {
     margin-left: 250px;
     flex: 1;
     padding: 2px 48px;
-    overflow-y: auto; /* Enable vertical scrolling for main content */
+    overflow-y: auto;
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Three cards per row by default */
-    gap: 24px; /* Consistent spacing between cards */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
 }
 
 /* Responsive Design for Main Content */
@@ -99,26 +99,14 @@ body {
 
 /* Edit Button (Green) */
 .post-actions button:first-child {
-    background-color: #009934;
+    background-color: #5e6460;
     color: white;
 }
 
 .post-actions button:first-child:hover {
-    background-color: #007a2a;
+    background-color: #747d77;
     transform: translateY(-2px); /* Slight upward movement on hover */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
-}
-
-/* Share Button (Yellow) */
-.post-actions button:nth-child(2) {
-    background-color: #EFBA00;
-    color: white;
-}
-
-.post-actions button:nth-child(2):hover {
-    background-color: #cfa000;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .post-actions button:last-child {

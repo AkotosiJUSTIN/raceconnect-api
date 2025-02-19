@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             postCard.innerHTML = `
                 <div class="post-header">
                     <div class="user-info">
-                        <span class="user-name">${post.user_id}</span>
+                        <span class="user-name">${post.title}</span>
                         <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
                     </div>
                     <div class="post-actions">
@@ -51,7 +51,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
+            // Event listeners for the action buttons
+            postCard.querySelector('.unsee-btn').addEventListener('click', () => hidePost(post.id, postCard));
+            postCard.querySelector('.delete-btn').addEventListener('click', () => archivePost(post.id, postCard));
+
             mainContent.appendChild(postCard);
         });
+    }
+
+    function hidePost(postId, postCard) {
+        fetch(`hide_post.php?id=${postId}`, { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    postCard.style.display = 'none'; // Hide the post card
+                } else {
+                    console.error('Error hiding post:', result.message);
+                }
+            })
+            .catch(error => console.error('Error hiding post:', error));
+    }
+
+    function archivePost(postId, postCard) {
+        fetch(`archive_post.php?id=${postId}`, { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    postCard.style.display = 'none'; // Hide the post card
+                } else {
+                    console.error('Error archiving post:', result.message);
+                }
+            })
+            .catch(error => console.error('Error archiving post:', error));
     }
 });

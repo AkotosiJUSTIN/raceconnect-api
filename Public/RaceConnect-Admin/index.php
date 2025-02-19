@@ -56,7 +56,7 @@ $total_posts = $row['total_posts'];
     <!-- Header -->
     <div class="header">
         <div class="header-title">
-        <span class="welcomeMsg">Dashboard |<span class="username">&nbsp;<?php echo htmlspecialchars($admin_name); ?></span>!</span>
+        <span class="welcomeMsg">Dashboard |<span class="username">&nbsp;<?php echo htmlspecialchars($admin_name); ?></span></span>
         </div>
         <div class="header-menu">
             <!-- Mobile Header -->
