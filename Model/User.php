@@ -18,7 +18,6 @@ class User {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
-            
             ],
         ]);
     }
@@ -37,12 +36,30 @@ class User {
     }
 
     public function saveProfilePicture($userId, $imageUrl) {
-        $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
-        return $stmt->execute([
-            ':user_id' => $userId,
-            ':image_url' => $imageUrl
-        ]);
+        $this->pdo->beginTransaction();
+        try {
+            // Insert into User_Profile_Pictures table (history of uploads)
+            $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':image_url' => $imageUrl
+            ]);
+    
+            // Update Users table to store the latest profile picture
+            $stmt = $this->pdo->prepare("UPDATE Users SET profile_picture = :image_url WHERE id = :user_id");
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':image_url' => $imageUrl
+            ]);
+    
+            $this->pdo->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            return false;
+        }
     }
+    
 
     public function getAllUsers() {
         $stmt = $this->pdo->query("SELECT * FROM {$this->table}");

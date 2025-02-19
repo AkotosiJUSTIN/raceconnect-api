@@ -16,6 +16,11 @@ class MarketplaceItemController {
 
     public function processRequest($method, $id = null) {
         try {
+            if ($method === 'POST') {
+                $this->handlePostRequest();
+                return;
+            }
+
             $data = json_decode(file_get_contents("php://input"), true);
 
             switch ($method) {
@@ -32,28 +37,6 @@ class MarketplaceItemController {
                     } else {
                         http_response_code(200);
                         echo json_encode($this->item->getAllItems());
-                    }
-                    break;
-
-                case 'POST':
-                    if (!$this->validateItemData($data, true)) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data. Required: seller_id, title, description, price, category (optional), image_url (optional), status (optional)']);
-                        return;
-                    }
-
-                    // Set default values for optional fields
-                    $data['category'] = $data['category'] ?? 'Formula 1';
-                    $data['image_url'] = $data['image_url'] ?? null;
-                    $data['favorite_count'] = 0;
-                    $data['status'] = $data['status'] ?? 'available';
-
-                    if ($this->item->createItem($data)) {
-                        http_response_code(201);
-                        echo json_encode(['message' => 'Item created successfully']);
-                    } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to create item']);
                     }
                     break;
 
@@ -105,12 +88,87 @@ class MarketplaceItemController {
         }
     }
 
+    private function handlePostRequest() {
+        try {
+            // Debugging - Log request data
+            error_log(print_r($_POST, true));
+            error_log(print_r($_FILES, true));
+
+            if (!isset($_POST['seller_id'], $_POST['title'], $_POST['description'], $_POST['price'])) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Missing required fields: seller_id, title, description, price']);
+                return;
+            }
+
+            $data = [
+                'seller_id' => $_POST['seller_id'],
+                'title' => $_POST['title'],
+                'description' => $_POST['description'],
+                'price' => $_POST['price'],
+                'category' => $_POST['category'] ?? 'Formula 1',
+                'status' => $_POST['status'] ?? 'available',
+                'favorite_count' => 0,
+            ];
+
+            if (!$this->validateItemData($data, true)) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Invalid input data']);
+                return;
+            }
+
+            $itemId = $this->item->createItem($data);
+            if (!$itemId) {
+                http_response_code(500);
+                echo json_encode(['message' => 'Failed to create item']);
+                return;
+            }
+
+            $imageUrls = $this->handleImageUpload($itemId);
+            http_response_code(201);
+            echo json_encode([
+                'message' => 'Item created successfully',
+                'item_id' => $itemId,
+                'image_urls' => $imageUrls
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to create item', 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function handleImageUpload($itemId) {
+        $imageUrls = [];
+
+        if (!isset($_FILES['image']) || empty($_FILES['image']['name'][0])) {
+            return $imageUrls;
+        }
+
+        try {
+            $fileCount = count($_FILES['image']['name']);
+
+            for ($i = 0; $i < $fileCount; $i++) {
+                if ($_FILES['image']['error'][$i] === UPLOAD_ERR_OK) {
+                    $tmpName = $_FILES['image']['tmp_name'][$i];
+                    $imageData = file_get_contents($tmpName);
+                    $imageName = uniqid() . '-' . basename($_FILES['image']['name'][$i]);
+
+                    $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
+                    $imageUrls[] = $imageUrl;
+                    $this->item->saveItemImage($itemId, $imageUrl);
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Image upload failed: " . $e->getMessage());
+        }
+
+        return $imageUrls;
+    }
+
     private function validateItemData($data, $isNew = true) {
         $validCategories = ['Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship'];
         $validStatuses = ['available', 'sold', 'reserved'];
 
         if ($isNew) {
-            // Required fields for creating an item
             if (!isset($data['seller_id'], $data['title'], $data['description'], $data['price'])) {
                 return false;
             }
@@ -142,67 +200,4 @@ class MarketplaceItemController {
 
         return true;
     }
-
-    public function uploadItemImage() {
-        // Debugging - Log request data
-        error_log(print_r($_POST, true));
-        error_log(print_r($_FILES, true));
-    
-        // Validate input
-        if (!isset($_POST['item_id']) || empty($_POST['item_id']) || !isset($_FILES['image']) || empty($_FILES['image']['name'][0])) {
-            http_response_code(400);
-            echo json_encode(['message' => 'Item ID and at least one image are required']);
-            return;
-        }
-    
-        try {
-            $itemId = $_POST['item_id'];
-            $imageUrls = [];
-    
-            // Ensure images are uploaded correctly
-            if (is_array($_FILES['image']['name'])) {
-                $fileCount = count($_FILES['image']['name']); // Count number of uploaded files
-    
-                for ($i = 0; $i < $fileCount; $i++) {
-                    if ($_FILES['image']['error'][$i] === UPLOAD_ERR_OK) {
-                        $tmpName = $_FILES['image']['tmp_name'][$i];
-                        $imageData = file_get_contents($tmpName);
-                        $imageName = uniqid() . '-' . basename($_FILES['image']['name'][$i]);
-    
-                        // Upload to S3
-                        $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
-                        $imageUrls[] = $imageUrl;
-    
-                        // Save to database
-                        $this->item->saveItemImage($itemId, $imageUrl);
-                    }
-                }
-            } else {
-                // Handle single image upload
-                if ($_FILES['image']['error'] === UPLOAD_ERR_OK) {
-                    $imageData = file_get_contents($_FILES['image']['tmp_name']);
-                    $imageName = uniqid() . '-' . basename($_FILES['image']['name']);
-    
-                    // Upload to S3
-                    $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
-                    $imageUrls[] = $imageUrl;
-    
-                    // Save to database
-                    $this->item->saveItemImage($itemId, $imageUrl);
-                }
-            }
-    
-            http_response_code(200);
-            echo json_encode([
-                'message' => 'Item images uploaded successfully',
-                'image_urls' => $imageUrls
-            ]);
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to upload item images', 'error' => $e->getMessage()]);
-        }
-    }
-    
-    
-    
 }

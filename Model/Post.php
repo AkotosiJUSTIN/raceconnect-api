@@ -18,7 +18,6 @@ class Post {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
-            
             ],
         ]);
     }
@@ -58,14 +57,13 @@ class Post {
 
     public function createPost($data) {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} 
-            (user_id, title, content, img_url, like_count, comment_count, repost_count, category, type) 
-            VALUES (:user_id, :title, :content, :img_url, :like_count, :comment_count, :repost_count, :category, :type)");
+            (user_id, title, content, like_count, comment_count, repost_count, category, type) 
+            VALUES (:user_id, :title, :content, :like_count, :comment_count, :repost_count, :category, :type)");
         
         return $stmt->execute([
             ':user_id' => $data['user_id'],
             ':title' => $data['title'] ?? null,
             ':content' => $data['content'],
-            ':img_url' => $data['img_url'] ?? null,
             ':like_count' => $data['like_count'] ?? 0,
             ':comment_count' => $data['comment_count'] ?? 0,
             ':repost_count' => $data['repost_count'] ?? 0,

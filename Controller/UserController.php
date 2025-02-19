@@ -166,7 +166,7 @@ class UserController {
             // Upload to S3
             $imageUrl = $this->user->uploadProfilePictureToS3($imageData, $imageName);
     
-            // Save to database
+            // Save to database (this will update the profile picture)
             if ($this->user->saveProfilePicture($userId, $imageUrl)) {
                 http_response_code(200);
                 echo json_encode(['message' => 'Profile picture uploaded successfully', 'image_url' => $imageUrl]);
@@ -179,6 +179,7 @@ class UserController {
             echo json_encode(['message' => 'Failed to upload profile picture', 'error' => $e->getMessage()]);
         }
     }
+    
     
 }
 

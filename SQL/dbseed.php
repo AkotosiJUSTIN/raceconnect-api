@@ -6,9 +6,9 @@ try {
     $conn->beginTransaction();
 
     // Insert sample users
-    $conn->exec("INSERT INTO Users (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items, friend_count, friend_privacy, reset_token, reset_token_expiry) VALUES
-        ('john_doe', 'john@example.com', 'password123', '1990-01-01', '1234567890', '123 Main St', 30, 'profile1.jpg', 'Bio of John Doe', '[]', '[]', 5, 'Public', NULL, NULL),
-        ('jane_doe', 'jane@example.com', 'password123', '1992-02-02', '0987654321', '456 Main St', 28, 'profile2.jpg', 'Bio of Jane Doe', '[]', '[]', 10, 'Friends Only', NULL, NULL)
+    $conn->exec("INSERT INTO Users (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items, friend_count, friend_privacy) VALUES
+        ('john_doe', 'john@example.com', 'password123', '1990-01-01', '1234567890', '123 Main St', 30, 'profile1.jpg', 'Bio of John Doe', '[]', '[]', 5, 'Public'),
+        ('jane_doe', 'jane@example.com', 'password123', '1992-02-02', '0987654321', '456 Main St', 28, 'profile2.jpg', 'Bio of Jane Doe', '[]', '[]', 10, 'Friends Only')
     ");
 
     // Insert sample friends
@@ -17,15 +17,15 @@ try {
     ");
 
     // Insert sample posts
-    $conn->exec("INSERT INTO Posts (user_id, title, content, img_url, category, privacy, type, post_type) VALUES
-        (1, 'First Post', 'This is the content of the first post', 'image1.jpg', 'Formula 1', 'Public', 'image', 'normal'),
-        (2, 'Second Post', 'This is the content of the second post', 'image2.jpg', 'NASCAR', 'Friends Only', 'image', 'normal')
+    $conn->exec("INSERT INTO Posts (user_id, title, content, category, privacy, type, post_type) VALUES
+        (1, 'First Post', 'This is the content of the first post', 'Formula 1', 'Public', 'image', 'normal'),
+        (2, 'Second Post', 'This is the content of the second post', 'NASCAR', 'Friends Only', 'image', 'normal')
     ");
 
     // Insert sample marketplace items
-    $conn->exec("INSERT INTO Marketplace_Items (seller_id, title, description, price, category, image_url, status) VALUES
-        (1, 'Item 1', 'Description of item 1', 10.00, 'Formula 1', 'item1.jpg', 'available'),
-        (2, 'Item 2', 'Description of item 2', 20.00, 'NASCAR', 'item2.jpg', 'available')
+    $conn->exec("INSERT INTO Marketplace_Items (seller_id, title, description, price, category, status) VALUES
+        (1, 'Item 1', 'Description of item 1', 10.00, 'Formula 1', 'available'),
+        (2, 'Item 2', 'Description of item 2', 20.00, 'NASCAR', 'available')
     ");
 
     // Insert sample notifications

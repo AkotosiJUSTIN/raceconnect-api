@@ -19,7 +19,6 @@ class MarketplaceItem {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
-            
             ],
         ]);
     }
@@ -58,15 +57,14 @@ class MarketplaceItem {
     }
 
     public function createItem($data) {
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (seller_id, title, description, price, category, image_url, favorite_count, status) 
-                                    VALUES (:seller_id, :title, :description, :price, :category, :image_url, :favorite_count, :status)");
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (seller_id, title, description, price, category, favorite_count, status) 
+                                    VALUES (:seller_id, :title, :description, :price, :category, :favorite_count, :status)");
         return $stmt->execute([
             ':seller_id' => $data['seller_id'],
             ':title' => $data['title'],
             ':description' => $data['description'],
             ':price' => $data['price'],
             ':category' => $data['category'],
-            ':image_url' => $data['image_url'],
             ':favorite_count' => $data['favorite_count'],
             ':status' => $data['status']
         ]);
