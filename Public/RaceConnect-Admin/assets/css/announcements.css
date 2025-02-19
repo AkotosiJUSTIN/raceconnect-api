@@ -253,6 +253,11 @@ body {
         width: 180px; /* Adjust underline width */
     }
     .announcement-form-container textarea {
-        min-height: 150px; /* Reduce textarea height */
+        min-height: 150px;
+    }
+    .announcement-form-container input, .announcement-form-container textarea {
+        padding: 12px 14px;
+        width: 90%;
+        margin: 0 auto;
     }
 }

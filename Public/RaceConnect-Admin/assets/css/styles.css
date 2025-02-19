@@ -352,7 +352,7 @@ body {
 }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 312px) {
     .welcomeMsg{
         display: none;
     }
