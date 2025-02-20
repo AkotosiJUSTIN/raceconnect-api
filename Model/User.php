@@ -45,10 +45,7 @@ class User {
                 ':user_id' => $userId,
                 ':image_url' => $imageUrl
             ]);
-<<<<<<< HEAD
             
-=======
->>>>>>> eba74726ee12920a0b50c6837e32c3372220af15
             $this->pdo->commit();
         } catch (Exception $e) {
             $this->pdo->rollBack();

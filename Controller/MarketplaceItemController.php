@@ -130,16 +130,11 @@ class MarketplaceItemController {
     private function handleImageUpload($itemId) {
         $imageUrls = [];
     
-<<<<<<< HEAD
         if (!isset($_FILES['image']) || empty($_FILES['image']['name'])) {
-=======
-        if (!isset($_FILES['image']) || empty($_FILES['image']['name'][0])) {
->>>>>>> eba74726ee12920a0b50c6837e32c3372220af15
             return $imageUrls;
         }
     
         try {
-<<<<<<< HEAD
             // Normalize single file into array format
             $files = is_array($_FILES['image']['name']) ? $_FILES['image'] : [
                 'name' => [$_FILES['image']['name']],
@@ -150,19 +145,12 @@ class MarketplaceItemController {
             ];
     
             $fileCount = count($files['name']);
-=======
-            $fileCount = count($_FILES['image']['name']);
->>>>>>> eba74726ee12920a0b50c6837e32c3372220af15
     
             for ($i = 0; $i < $fileCount; $i++) {
                 if ($files['error'][$i] === UPLOAD_ERR_OK) {
                     $tmpName = $files['tmp_name'][$i];
                     $imageData = file_get_contents($tmpName);
-<<<<<<< HEAD
                     $imageName = uniqid() . '-' . basename($files['name'][$i]);
-=======
-                    $imageName = uniqid() . '-' . basename($_FILES['image']['name'][$i]);
->>>>>>> eba74726ee12920a0b50c6837e32c3372220af15
     
                     $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
                     $imageUrls[] = $imageUrl;
