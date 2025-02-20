@@ -18,7 +18,7 @@ class Post {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
-                
+
             ],
         ]);
     }
@@ -44,8 +44,12 @@ class Post {
         ]);
     }
 
-    public function getAllPosts() {
-        $stmt = $this->pdo->query("SELECT * FROM {$this->table}");
+    public function getAllPosts($limit = 10, $offset = 0) {
+        $query = "SELECT * FROM posts LIMIT :limit OFFSET :offset";
+        $stmt = $this->pdo->prepare($query);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

@@ -45,8 +45,11 @@ class MarketplaceItem {
         ]);
     }
 
-    public function getAllItems() {
-        $stmt = $this->pdo->query("SELECT * FROM {$this->table}");
+    public function getAllItems($limit = 10, $offset = 0) {
+        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} LIMIT :limit OFFSET :offset");
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
