@@ -37,14 +37,18 @@ class User {
     }
 
     public function saveProfilePicture($userId, $imageUrl) {
-    $this->pdo->beginTransaction();
+        $this->pdo->beginTransaction();
         try {
             // Insert into User_Profile_Pictures table (history of uploads)
-        $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
-        $stmt->execute([
-            ':user_id' => $userId,
-            ':image_url' => $imageUrl
-        ]);
+            $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
+            $stmt->execute([
+                ':user_id' => $userId,
+                ':image_url' => $imageUrl
+            ]);
+            $this->pdo->commit();
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            throw new Exception('Failed to save profile picture: ' . $e->getMessage());
         }
     }
 

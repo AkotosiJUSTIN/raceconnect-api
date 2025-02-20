@@ -87,9 +87,9 @@ $total_posts = $row['total_posts'];
                 </a>
             </li>
             <li>
-                <a href="index_user.php" class="nav-item">
-                    <box-icon name='user' type='solid' color='rgb(185 28 28)'></box-icon>
-                    <span>User</span>
+                <a href="index_marketplace.php" class="nav-item">
+                    <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
+                    <span>Marketplace</span>
                 </a>
             </li>
             <li>
@@ -99,15 +99,15 @@ $total_posts = $row['total_posts'];
                 </a>
             </li>
             <li>
-                <a href="index_notifs.php" class="nav-item">
-                    <box-icon name='bell' type='solid' color='rgb(185 28 28)'></box-icon>
-                    <span>Notifications</span>
+                <a href="index_user.php" class="nav-item">
+                    <box-icon name='user' type='solid' color='rgb(185 28 28)'></box-icon>
+                    <span>User</span>
                 </a>
             </li>
             <li>
-                <a href="index_marketplace.php" class="nav-item">
-                    <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
-                    <span>Marketplace</span>
+                <a href="index_notifs.php" class="nav-item">
+                    <box-icon name='bell' type='solid' color='rgb(185 28 28)'></box-icon>
+                    <span>Notifications</span>
                 </a>
             </li>
             <li>

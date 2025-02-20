@@ -71,9 +71,9 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                         </a>
                     </li>
                     <li>
-                        <a href="index_user.php" class="nav-item">
-                            <box-icon name='user' type='solid' color='rgb(185 28 28)'></box-icon>
-                            <span>User</span>
+                        <a href="#top" class="nav-item active">
+                            <box-icon name='store' type='solid' color='white'></box-icon>
+                            <span>Marketplace</span>
                         </a>
                     </li>
                     <li>
@@ -83,15 +83,15 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                         </a>
                     </li>
                     <li>
-                        <a href="index_notifs.php" class="nav-item">
-                            <box-icon name='bell' type='solid' color='rgb(185 28 28)'></box-icon>
-                            <span>Notifications</span>
+                        <a href="index_user.php" class="nav-item">
+                            <box-icon name='user' type='solid' color='rgb(185 28 28)'></box-icon>
+                            <span>User</span>
                         </a>
                     </li>
                     <li>
-                        <a href="#top" class="nav-item active">
-                            <box-icon name='store' type='solid' color='white'></box-icon>
-                            <span>Marketplace</span>
+                        <a href="index_notifs.php" class="nav-item">
+                            <box-icon name='bell' type='solid' color='rgb(185 28 28)'></box-icon>
+                            <span>Notifications</span>
                         </a>
                     </li>
                     <li>
