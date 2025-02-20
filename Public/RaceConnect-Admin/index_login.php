@@ -90,6 +90,10 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
     <title>RaceConnect Admin Login</title>
     <link rel="stylesheet" href="assets/css/admin-login.css">
     <link rel="icon" href="./assets/RaceConnectLogo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lalezar&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
     <script src="assets/javascript/remember-me.js" defer></script>
 </head>
