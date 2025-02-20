@@ -19,6 +19,7 @@ class MarketplaceItem {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
+
             ],
         ]);
     }

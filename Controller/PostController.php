@@ -120,20 +120,29 @@ class PostController {
 
     private function handleImageUpload($postId) {
         $imageUrls = [];
-
-        if (!isset($_FILES['image']) || empty($_FILES['image']['name'][0])) {
+    
+        if (!isset($_FILES['image']) || empty($_FILES['image']['name'])) {
             return $imageUrls;
         }
-
+    
         try {
-            $fileCount = count($_FILES['image']['name']);
-
+            // Normalize single file to array format
+            $files = is_array($_FILES['image']['name']) ? $_FILES['image'] : [
+                'name' => [$_FILES['image']['name']],
+                'type' => [$_FILES['image']['type']],
+                'tmp_name' => [$_FILES['image']['tmp_name']],
+                'error' => [$_FILES['image']['error']],
+                'size' => [$_FILES['image']['size']]
+            ];
+    
+            $fileCount = count($files['name']);
+    
             for ($i = 0; $i < $fileCount; $i++) {
-                if ($_FILES['image']['error'][$i] === UPLOAD_ERR_OK) {
-                    $tmpName = $_FILES['image']['tmp_name'][$i];
+                if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                    $tmpName = $files['tmp_name'][$i];
                     $imageData = file_get_contents($tmpName);
-                    $imageName = uniqid() . '-' . basename($_FILES['image']['name'][$i]);
-
+                    $imageName = uniqid() . '-' . basename($files['name'][$i]);
+    
                     $imageUrl = $this->post->uploadPostImageToS3($imageData, $imageName);
                     $imageUrls[] = $imageUrl;
                     $this->post->savePostImage($postId, $imageUrl);
@@ -142,7 +151,8 @@ class PostController {
         } catch (Exception $e) {
             error_log("Image upload failed: " . $e->getMessage());
         }
-
+    
         return $imageUrls;
     }
+    
 }
