@@ -22,10 +22,22 @@ try {
         (2, 'Second Post', 'This is the content of the second post', 'NASCAR', 'Friends Only', 'image', 'normal')
     ");
 
+    // Insert sample post images
+    $conn->exec("INSERT INTO Post_Images (post_id, image_url) VALUES
+        (1, 'image1.jpg'),
+        (2, 'image2.jpg')
+    ");
+
     // Insert sample marketplace items
     $conn->exec("INSERT INTO Marketplace_Items (seller_id, title, description, price, category, status) VALUES
         (1, 'Item 1', 'Description of item 1', 10.00, 'Formula 1', 'available'),
         (2, 'Item 2', 'Description of item 2', 20.00, 'NASCAR', 'available')
+    ");
+
+    // Insert sample marketplace item images
+    $conn->exec("INSERT INTO Marketplace_Item_Images (marketplace_item_id, image_url) VALUES
+        (1, 'item1.jpg'),
+        (2, 'item2.jpg')
     ");
 
     // Insert sample notifications
@@ -35,8 +47,8 @@ try {
     ");
 
     // Insert sample admins
-    $conn->exec("INSERT INTO Admins (user_id, role) VALUES
-        (2, 'content_moderator')
+    $conn->exec("INSERT INTO Admins (user_id, admin_name, email, password, role) VALUES
+        (2, 'Jane Doe', 'jane_admin@example.com', 'adminpassword', 'content_moderator')
     ");
 
     // Insert sample admin analytics

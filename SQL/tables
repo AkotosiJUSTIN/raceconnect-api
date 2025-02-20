@@ -17,6 +17,7 @@ CREATE TABLE Users (
     friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public', -- Privacy setting
     last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Last active time
     status ENUM('Active', 'Banned') DEFAULT 'Active',
+    report ENUM ('None', 'Reported') DEFAULT 'None',
     suspension_end_date TIMESTAMP NULL, -- If the user is suspended
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -57,6 +58,7 @@ CREATE TABLE Posts (
     privacy ENUM('Public', 'Only me', 'Friends Only' ) DEFAULT 'Public',
     type ENUM('text', 'image', 'video') DEFAULT 'text',
     post_type ENUM('announcement', 'normal') DEFAULT 'normal', -- New column for post type
+    report ENUM ('None', 'Reported') DEFAULT 'None',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
@@ -72,6 +74,7 @@ CREATE TABLE Marketplace_Items (
     category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship' ) DEFAULT 'Formula 1',
     favorite_count INT DEFAULT 0,
     status ENUM('available', 'sold', 'reserved') DEFAULT 'available',
+    report ENUM ('None', 'Reported') DEFAULT 'None',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE
