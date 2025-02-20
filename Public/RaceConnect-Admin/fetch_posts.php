@@ -2,21 +2,17 @@
 // Include the database connection script
 require_once __DIR__ . '/../../db_connect.php';
 
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 // Start session
 session_start();
 
 // Check if the user is logged in
 if (!isset($_SESSION['email'])) {
+    // Redirect to login page if not logged in
     header("Location: index_login.html");
     exit();
 }
 
-// Fetch posts from the database
+// Fetch posts from the database, excluding hidden and archived posts
 $query = "
     SELECT 
         p.id, 
@@ -27,44 +23,26 @@ $query = "
         p.comment_count, 
         p.repost_count, 
         p.created_at,
-        GROUP_CONCAT(DISTINCT pi.image_url) AS images,
-        GROUP_CONCAT(DISTINCT pc.comment) AS comments,
-        GROUP_CONCAT(DISTINCT pl.user_id) AS likes,
-        GROUP_CONCAT(DISTINCT pr.user_id) AS reposts
+        GROUP_CONCAT(DISTINCT pi.image_url) AS images
     FROM posts p
     LEFT JOIN post_images pi ON p.id = pi.post_id
-    LEFT JOIN post_comments pc ON p.id = pc.post_id
-    LEFT JOIN post_likes pl ON p.id = pl.post_id
-    LEFT JOIN post_reposts pr ON p.id = pr.post_id
-    WHERE p.status NOT IN ('hidden', 'archived')
+    WHERE p.status NOT IN ('hidden', 'archived') OR p.status IS NULL
     GROUP BY p.id
-    ORDER BY p.created_at DESC
 ";
+$result = $conn->query($query);
 
-// Initialize response array
-$response = ['success' => false, 'data' => [], 'error' => null];
-
-try {
-    $result = $conn->query($query);
-    if ($result === false) {
-        throw new Exception("Database query failed: " . $conn->error);
+$posts = [];
+if ($result === false) {
+    // Query failed
+    $response = ['success' => false, 'error' => $conn->error];
+} else if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        // Convert the comma-separated images string into an array
+        $row['images'] = $row['images'] ? explode(',', $row['images']) : [];
+        $posts[] = $row;
     }
-
-    $posts = [];
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $posts[] = $row;
-        }
-    }
-
-    $response['success'] = true;
-    $response['data'] = $posts;
-} catch (Exception $e) {
-    $response['error'] = $e->getMessage();
 }
 
 header('Content-Type: application/json');
-echo json_encode($response);
-
-$conn->close();
+echo json_encode(['success' => true, 'data' => $posts]);
 ?>

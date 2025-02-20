@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(result => {
-                console.log('Fetched result:', result); // Debugging statement
                 if (result.success) {
                     populatePosts(result.data);
                 } else {
@@ -45,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${post.content}
                     </div>
                     <div class="post-image">
-                        <img src="${post.images}" alt="Post Image">
+                        ${post.images.map(image => `<img src="${image}" alt="Post Image">`).join('')}
                     </div>
                 </div>
 
