@@ -35,8 +35,11 @@ class MarketplaceItemController {
                             echo json_encode(['message' => 'Item not found']);
                         }
                     } else {
+                        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+                        $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+                        $items = $this->item->getAllItems($limit, $offset);
                         http_response_code(200);
-                        echo json_encode($this->item->getAllItems());
+                        echo json_encode($items);
                     }
                     break;
 
