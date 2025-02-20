@@ -9,9 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 return response.json();
             })
-            .then(posts => {
-                console.log('Fetched posts:', posts); // Debugging statement
-                populatePosts(posts);
+            .then(result => {
+                console.log('Fetched result:', result); // Debugging statement
+                if (result.success) {
+                    populatePosts(result.data);
+                } else {
+                    console.error('Server error:', result.error);
+                }
             })
             .catch(error => console.error('Error fetching posts:', error));
     }
@@ -27,13 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
             postCard.innerHTML = `
                 <div class="post-header">
                     <div class="user-info">
-                        <span class="user-name">${post.user_id}</span>
+                        <span class="user-name">${post.title}</span>
                         <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
                     </div>
                     <div class="post-actions">
-                        <button class="edit-btn"><box-icon size="sm" name='edit' color="white"></box-icon></button>
-                        <button class="unsee-btn"><box-icon size="sm" type='solid' name='low-vision' color="white"></box-icon></button>
-                        <button class="delete-btn"><box-icon size="sm" type='solid' name='trash' color="white"></box-icon></button>
+                        <button class="unsee-btn" title="Hide Post"><box-icon type='solid' name='low-vision' color="white"></box-icon></button>
+                        <button class="delete-btn" title="Archive Post"><box-icon size="sm" type='solid' name='archive-in' color="white"></box-icon></button>
                     </div>
                 </div>
                 <!-- Scrollable Content -->
@@ -42,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${post.content}
                     </div>
                     <div class="post-image">
-                        <img src="${post.img_url}" alt="Post Image">
+                        <img src="${post.images}" alt="Post Image">
                     </div>
                 </div>
 
@@ -52,7 +55,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
+            // Event listeners for the action buttons
+            postCard.querySelector('.unsee-btn').addEventListener('click', () => hidePost(post.id, postCard));
+            postCard.querySelector('.delete-btn').addEventListener('click', () => archivePost(post.id, postCard));
+
             mainContent.appendChild(postCard);
         });
+    }
+
+    function hidePost(postId, postCard) {
+        fetch(`hide_post.php?id=${postId}`, { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    postCard.style.display = 'none'; // Hide the post card
+                } else {
+                    console.error('Error hiding post:', result.message);
+                }
+            })
+            .catch(error => console.error('Error hiding post:', error));
+    }
+
+    function archivePost(postId, postCard) {
+        fetch(`archive_post.php?id=${postId}`, { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    postCard.style.display = 'none'; // Hide the post card
+                } else {
+                    console.error('Error archiving post:', result.message);
+                }
+            })
+            .catch(error => console.error('Error archiving post:', error));
     }
 });

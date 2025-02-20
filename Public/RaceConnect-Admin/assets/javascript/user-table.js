@@ -1,303 +1,359 @@
-document.addEventListener('DOMContentLoaded', function() {
-    fetchUsers();
-    const selectAll = document.querySelector('.select-all');
-    const searchInput = document.querySelector('.search-input');
-    const filterDropdown = document.querySelector('.filter-dropdown');
-    const bulkBan = document.getElementById('bulkBan');
-    const bulkSuspend = document.getElementById('bulkSuspend');
-    const bulkUnban = document.getElementById('bulkUnban');
-    let usersData = [];
+document.addEventListener("DOMContentLoaded", function () {
+  fetchUsers();
 
-    // Select All checkbox click handler
-    selectAll.addEventListener('click', function() {
-        const userChecks = document.querySelectorAll('.user-check');
-        if (selectAll.checked) {
-            userChecks.forEach(checkbox => checkbox.checked = true);
-        } else {
-            userChecks.forEach(checkbox => checkbox.checked = false);
-        }
-        updateSelectedUsers();
+  // Get elements
+  const selectAll = document.querySelector(".select-all");
+  const searchInput = document.querySelector(".search-input");
+  const filterDropdown = document.querySelector(".filter-dropdown");
+  const bulkBan = document.getElementById("bulkBan");
+  const bulkUnban = document.getElementById("bulkUnban");
+  let usersData = [];
+
+  // Event Listeners
+  selectAll.addEventListener("click", toggleSelectAll);
+  searchInput.addEventListener("input", filterAndPopulateTable);
+  filterDropdown.addEventListener("change", filterAndPopulateTable);
+  bulkBan.addEventListener("click", () =>
+    performBulkAction("ban_user.php", "ban")
+  );
+  bulkUnban.addEventListener("click", () =>
+    performBulkAction("unban_user.php", "unban")
+  );
+
+  // Fetch user data from the server
+  function fetchUsers() {
+    fetch("fetch_users.php")
+      .then((response) => response.json())
+      .then((users) => {
+        usersData = users;
+        populateTable(users);
+      })
+      .catch((error) => console.error("Error fetching users:", error));
+  }
+
+  // Toggle selection of all checkboxes
+  function toggleSelectAll() {
+    const userChecks = document.querySelectorAll(".user-check");
+    userChecks.forEach((checkbox) => (checkbox.checked = selectAll.checked));
+    updateSelectedUsers();
+  }
+
+  // Filter users based on search input and status filter
+  function filterAndPopulateTable() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const filterValue = filterDropdown.value;
+
+    const filteredUsers = usersData.filter((user) => {
+      const matchesSearch = user.username.toLowerCase().includes(searchTerm);
+      const matchesFilter =
+        filterValue === "all" || user.status.toLowerCase() === filterValue;
+      return matchesSearch && matchesFilter;
     });
 
-    // Search input event listener
-    searchInput.addEventListener('input', function() {
-        filterAndPopulateTable();
-    });
+    populateTable(filteredUsers);
+  }
 
-    // Filter dropdown event listener
-    filterDropdown.addEventListener('change', function() {
-        filterAndPopulateTable();
-    });
+  function populateTable(users) {
+    const tbody = document.getElementById("userTableBody");
+    let rows = [];
 
-    // Bulk action buttons click handlers
-    document.getElementById('bulkBan').addEventListener('click', function() {
-        performBulkAction('ban_user.php', 'ban');
-    });
-    
-    document.getElementById('bulkSuspend').addEventListener('click', function() {
-        performBulkAction('suspend_user.php', 'suspend');
-    });
-    
-    document.getElementById('bulkUnban').addEventListener('click', function() {
-        performBulkAction('unban_user.php', 'unban');
-    });
-    
+    users.forEach((user) => {
+      const username = user.username;
+      const date = new Date(user.created_at);
+      const status = user.status || "Active";
 
-    function fetchUsers() {
-        fetch('fetch_users.php')
-            .then(response => response.json())
-            .then(users => {
-                usersData = users;
-                populateTable(users);
-            })
-            .catch(error => console.error('Error fetching users:', error));
-    }
+      // Display suspension days if user is banned
+      let suspensionText = "";
+      if (status === "Banned" && user.suspension_days !== null) {
+        suspensionText = ` (${user.suspension_days} days left)`;
+      } else if (status === "Banned") {
+        suspensionText = " (Permanent)";
+      }
 
-    function filterAndPopulateTable() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const filterValue = filterDropdown.value;
-        const filteredUsers = usersData.filter(user => {
-            const matchesSearch = user.username.toLowerCase().includes(searchTerm);
-            const matchesFilter = filterValue === 'all' || user.status.toLowerCase() === filterValue;
-            return matchesSearch && matchesFilter;
-        });
-        populateTable(filteredUsers);
-    }
-
-    function populateTable(users) {
-        const tbody = document.getElementById('userTableBody');
-        let rows = [];
-        users.forEach(user => {
-          const username = user.username;
-          const date = new Date(user.created_at);
-          const status = user.status;
-      
-          // Create a 3-dot button that toggles a dropdown menu
-          const action = `
+      let action = "";
+      if (status === "Active") {
+        action = `
             <div class="actions">
               <button class="dropdown-btn" onclick="toggleDropdown(event)">&#8942;</button>
               <div class="dropdown-content">
-                <a href="#" class="actions-item" onclick="unbanUser('${username}')">Unban</a>
                 <a href="#" class="actions-item" onclick="banUser('${username}')">Ban</a>
-                <a href="#" class="actions-item" onclick="suspendUser('${username}')">Suspend</a>
               </div>
             </div>
-          `;
-      
-          rows.push(`
+        `;
+      } else if (status === "Banned") {
+        action = `
+            <div class="actions">
+              <button class="dropdown-btn" onclick="toggleDropdown(event)">&#8942;</button>
+              <div class="dropdown-content">
+                  <a href="#" class="actions-item" onclick="unbanUser('${username}')">Unban</a>
+              </div>
+            </div>
+        `;
+      }
+
+      rows.push(`
             <tr>
-              <td><input type="checkbox" class="user-check" aria-label="${username}" onclick="updateSelectAll()"></td>
-              <td>${username}</td>
-              <td>${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}, ${date.getFullYear()}</td>
-              <td class="status-${status.toLowerCase()}">${status}</td>
-              <td>${action}</td>
+                <td><input type="checkbox" class="user-check" aria-label="${username}" onclick="updateSelectAll()"></td>
+                <td>${username}</td>
+                <td>${date.toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                })}, ${date.getFullYear()}</td>
+                <td class="status-${status.toLowerCase()}">${status}${suspensionText}</td>
+                <td>${action}</td>
             </tr>
-          `);
-        });
-        tbody.innerHTML = rows.join('');
-      }
-      
-      // Function to toggle the dropdown menu
-      function toggleDropdown(event) {
-        event.stopPropagation();
-        const dropdown = event.currentTarget.nextElementSibling;
-        
-        // Optionally close other open dropdowns
-        document.querySelectorAll('.dropdown-content.show').forEach(content => {
-          if (content !== dropdown) {
-            content.classList.remove('show');
-          }
-        });
-        
-        dropdown.classList.toggle('show');
-      }
-      
-      // Close dropdown if clicking outside
-      document.addEventListener('click', function() {
-        document.querySelectorAll('.dropdown-content.show').forEach(content => {
-          content.classList.remove('show');
-        });
-      });
-      
+        `);
+    });
 
-      function performBulkAction(url, actionType) {
-        const selectedUsers = Array.from(document.querySelectorAll('.user-check:checked'))
-            .map(checkbox => checkbox.getAttribute('aria-label'));
-    
-        if (selectedUsers.length === 0) {
-            Swal.fire({
-                title: 'No users selected',
-                text: 'Please select at least one user.',
-                icon: 'warning',
-                confirmButtonText: 'Ok',
-                confirmButtonColor: '#B91C1C',
-            });
-            return;
+    tbody.innerHTML = rows.join("");
+  }
+
+  function performBulkAction(url, actionType) {
+    const selectedUsers = getSelectedUsers();
+
+    if (selectedUsers.length === 0) {
+      return showAlert(
+        "No users selected",
+        "Please select at least one user.",
+        "warning"
+      );
+    }
+
+    if (actionType === "ban") {
+      // Ask admin for ban duration
+      Swal.fire({
+        title: "Ban Duration",
+        text: `Set the duration of the ban for the selected users`,
+        icon: "question",
+        input: "select",
+        inputOptions: {
+          3: "3 Days",
+          7: "7 Days",
+          30: "30 Days",
+          permanent: "Permanent Ban",
+        },
+        inputPlaceholder: "Choose duration...",
+        showCancelButton: true,
+        inputValidator: (value) => {
+          if (!value) {
+            return "You must select a ban duration!";
+          }
+        },
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const banDuration = result.value;
+          processBulkAction(url, actionType, selectedUsers, banDuration);
         }
-    
-        Swal.fire({
-            title: `Are you sure?`,
-            text: `You are about to ${actionType} ${selectedUsers.length} user(s).`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: `Yes`,
-            cancelButtonText: 'No'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const promises = selectedUsers.map(username => {
-                    return fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `username=${encodeURIComponent(username)}`
-                    })
-                    .then(response => response.json());
-                });
-    
-                Promise.all(promises).then(results => {
-                    const allSuccess = results.every(res => res.success);
-    
-                    if (allSuccess) {
-                        Swal.fire('Success!', `${actionType} completed successfully.`, 'success')
-                            .then(() => fetchUsers()); // Refresh the user list
-                    } else {
-                        Swal.fire('Error!', `Some users could not be ${actionType}ed.`, 'error');
-                    }
-                }).catch(error => {
-                    console.error(`Error during ${actionType}:`, error);
-                    Swal.fire('Error!', 'An error occurred. Please try again.', 'error');
-                });
+      });
+    } else {
+      // No duration required for unbanning
+      processBulkAction(url, actionType, selectedUsers, null);
+    }
+  }
+
+  function processBulkAction(url, actionType, selectedUsers, banDuration) {
+    Swal.fire({
+      title: `Are you sure?`,
+      text: `You are about to ${actionType} ${selectedUsers.length} user(s).`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: `Yes`,
+      cancelButtonText: "No",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const promises = selectedUsers.map((username) =>
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `username=${encodeURIComponent(
+              username
+            )}&ban_duration=${encodeURIComponent(banDuration)}`,
+          }).then((response) =>
+            response.json().then((data) => ({
+              username,
+              success: data.success,
+              error: data.error,
+            }))
+          )
+        );
+
+        Promise.all(promises)
+          .then((results) => {
+            const failedUsers = results.filter((res) => !res.success);
+            const successfulUsers = results.filter((res) => res.success);
+            if (successfulUsers.length > 0) {
+              Swal.fire({
+                title: "Success!",
+                text: `${successfulUsers.length} user(s) ${actionType}ed successfully.`,
+                icon: "success",
+              });
             }
-        });
-    }
-    
-    
-    function banUser(username) {
-        Swal.fire({
-          title: 'Are you sure?',
-          text: `Do you really want to ban: ${username}?`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Yes',
-          cancelButtonText: 'No'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            // Proceed with the ban operation if confirmed
-            fetch('ban_user.php', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: `username=${encodeURIComponent(username)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                Swal.fire('Banned!', `${username} has been banned.`, 'success')
-                .then(() => {
-                    fetchUsers();
-                });
-              } else {
-                Swal.fire('Error!', `There was an issue banning ${username}.`, 'error');
-              }
-            })
-            .catch(error => {
-              console.error('Error:', error);
-              Swal.fire('Error!', 'An error occurred.', 'error');
+
+            if (failedUsers.length > 0) {
+              Swal.fire({
+                title: "Unbanned!",
+                html: `The following users could not be ${actionType}ed: <br><strong>${failedUsers
+                  .map((u) => u.username)
+                  .join(", ")}</strong>`,
+                icon: "success",
+              });
+            }
+
+            // Uncheck the "Select All" checkbox and all individual checkboxes
+            document.querySelector(".select-all").checked = false;
+            document.querySelectorAll(".user-check").forEach((checkbox) => {
+              checkbox.checked = false;
             });
-          }
-        });
-    }
 
-    function unbanUser(username) {
-        Swal.fire({
-          title: 'Are you sure?',
-          text: `Do you really want to unban: ${username}?`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Yes',
-          cancelButtonText: 'No'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            // Proceed with the ban operation if confirmed
-            fetch('unban_user.php', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: `username=${encodeURIComponent(username)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                Swal.fire('Unbanned!', `${username} has been unbanned.`, 'success')
-                .then(() => {
-                    fetchUsers();
-                });
-              } else {
-                Swal.fire('Error!', `There was an issue unbanning ${username}.`, 'error');
-              }
-            })
-            .catch(error => {
-              console.error('Error:', error);
-              Swal.fire('Error!', 'An error occurred.', 'error');
-            });
-          }
-        });
-    }
+            fetchUsers(); // Refresh table after actions
+          })
+          .catch(() => {
+            Swal.fire(
+              "Error!",
+              "An error occurred. Please try again.",
+              "error"
+            );
+          });
+      }
+    });
+  }
 
-      function suspendUser(username) {
-        Swal.fire({
-          title: 'Are you sure?',
-          text: `Do you really want to suspend: ${username}?`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Yes',
-          cancelButtonText: 'No'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            // Proceed with the ban operation if confirmed
-            fetch('suspend_user.php', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: `username=${encodeURIComponent(username)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                Swal.fire('Banned!', `${username} has been suspended.`, 'success')
-                .then(() => {
-                    fetchUsers();
-                });
-              } else {
-                Swal.fire('Error!', `There was an issue suspending ${username}.`, 'error');
-              }
-            })
-            .catch(error => {
-              console.error('Error:', error);
-              Swal.fire('Error!', 'An error occurred.', 'error');
-            });
-          }
-        });
-    }
+  // Ban a single user
+  function banUser(username) {
+    Swal.fire({
+      title: "Ban Duration",
+      text: `Select the number of days to ban ${username}:`,
+      icon: "question",
+      input: "select",
+      inputOptions: {
+        3: "3 Days",
+        7: "7 Days",
+        30: "30 Days",
+        permanent: "Permanent Ban",
+      },
+      inputPlaceholder: "Select duration",
+      showCancelButton: true,
+      confirmButtonText: "Ban User",
+      cancelButtonText: "Cancel",
+      inputValidator: (value) => {
+        if (!value) {
+          return "You must select a ban duration!";
+        }
+      },
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const banDuration = result.value; // Get selected duration
 
-    window.updateSelectAll = function() {
-        const userChecks = document.querySelectorAll('.user-check');
-        const allChecked = Array.from(userChecks).every(checkbox => checkbox.checked);
-        selectAll.checked = allChecked;
-        updateSelectedUsers();
-    }
+        fetch("ban_user.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `username=${encodeURIComponent(
+            username
+          )}&ban_duration=${banDuration}`,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              Swal.fire(
+                "Banned!",
+                `${username} has been banned for ${banDuration} days.`,
+                "success"
+              ).then(() => fetchUsers());
+            } else {
+              Swal.fire("Error!", `Failed to ban ${username}.`, "error");
+            }
+          })
+          .catch(() => {
+            Swal.fire("Error!", "An error occurred.", "error");
+          });
+      }
+    });
+  }
 
-    window.banUser = banUser;
-    window.unbanUser = unbanUser;
-    window.suspendUser = suspendUser;
-    window.toggleDropdown = toggleDropdown;
+  // Unban a single user
+  function unbanUser(username) {
+    confirmAction("Unban", username, "unban_user.php");
+  }
 
-    function updateSelectedUsers() {
-        const selectedUsers = Array.from(document.querySelectorAll('.user-check:checked')).map(checkbox => checkbox.getAttribute('aria-label'));
-        console.log('Selected users:', selectedUsers);
-    }
+  // Confirm and perform ban/unban action
+  function confirmAction(action, username, url) {
+    Swal.fire({
+      title: `Are you sure?`,
+      text: `Do you really want to ${action.toLowerCase()}: ${username}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes",
+      cancelButtonText: "No",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `username=${encodeURIComponent(username)}`,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            showAlert(
+              data.success ? `${action}ed!` : "Error!",
+              data.success
+                ? `${username} has been ${action.toLowerCase()}ed.`
+                : `There was an issue ${action.toLowerCase()}ing ${username}.`,
+              data.success ? "success" : "error",
+              fetchUsers
+            );
+          })
+          .catch(() => showAlert("Error!", "An error occurred.", "error"));
+      }
+    });
+  }
+
+  // Show a SweetAlert notification
+  function showAlert(title, text, icon, callback) {
+    Swal.fire({ title, text, icon }).then(() => callback && callback());
+  }
+
+  // Toggle dropdown menu
+  function toggleDropdown(event) {
+    event.stopPropagation();
+    const dropdown = event.currentTarget.nextElementSibling;
+
+    document.querySelectorAll(".dropdown-content.show").forEach((content) => {
+      if (content !== dropdown) content.classList.remove("show");
+    });
+
+    dropdown.classList.toggle("show");
+  }
+
+  // Close dropdown if clicking outside
+  document.addEventListener("click", () => {
+    document
+      .querySelectorAll(".dropdown-content.show")
+      .forEach((content) => content.classList.remove("show"));
+  });
+
+  // Update select all checkbox state
+  window.updateSelectAll = function () {
+    const allChecked = [...document.querySelectorAll(".user-check")].every(
+      (checkbox) => checkbox.checked
+    );
+    selectAll.checked = allChecked;
+    updateSelectedUsers();
+  };
+
+  // Get selected users
+  function getSelectedUsers() {
+    return [...document.querySelectorAll(".user-check:checked")].map(
+      (checkbox) => checkbox.getAttribute("aria-label")
+    );
+  }
+
+  // Log selected users
+  function updateSelectedUsers() {
+    console.log("Selected users:", getSelectedUsers());
+  }
+
+  // Expose functions to global scope
+  window.banUser = banUser;
+  window.unbanUser = unbanUser;
+  window.toggleDropdown = toggleDropdown;
 });

@@ -1,82 +1,72 @@
 document.addEventListener('DOMContentLoaded', () => {
     const announcementForm = document.getElementById('announcementForm');
     const announcementContainer = document.getElementById('announcementContainer');
+    const floatingMessageContainer = document.querySelector('.floating-message-container');
+    const progressBar = document.querySelector('.progress');
 
-    // Mock data for existing announcements
-    let announcements = [
-        {
-            id: 1,
-            title: "System Maintenance",
-            content: "The system will undergo maintenance on October 15th.",
-            created_at: "2023-10-10T10:00:00Z"
-        },
-        {
-            id: 2,
-            title: "New Feature Release",
-            content: "We have released a new feature for notifications!",
-            created_at: "2023-10-08T14:30:00Z"
-        }
-    ];
-
-    // Populate existing announcements
-    populateAnnouncements(announcements);
+    // Fetch and display announcements on page load
+    fetchAnnouncements();
 
     // Handle form submission
-    announcementForm.addEventListener('submit', (event) => {
+    announcementForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        // Get form values
-        const title = document.getElementById('announcementTitle').value.trim();
-        const content = document.getElementById('announcementContent').value.trim();
+        const formData = new FormData(announcementForm);
 
-        if (!title || !content) {
-            alert('Please fill in all fields.');
-            return;
-        }
-
-        // Create a new announcement object
-        const newAnnouncement = {
-            id: Date.now(), // Use timestamp as a unique ID
-            title: title,
-            content: content,
-            created_at: new Date().toISOString()
-        };
-
-        // Add the new announcement to the list
-        announcements.unshift(newAnnouncement);
-
-        // Clear the form
-        announcementForm.reset();
-
-        // Re-render the announcements
-        populateAnnouncements(announcements);
+        fetch('post_announcement.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                // Clear the form
+                announcementForm.reset();
+                // Fetch and display the updated list of announcements
+                fetchAnnouncements();
+                // Show the floating message
+                showFloatingMessage();
+            } else {
+                alert(result.message);
+            }
+        })
+        .catch(error => console.error('Error posting announcement:', error));
     });
 
-    // Populate the announcements container
-    function populateAnnouncements(announcements) {
-        announcementContainer.innerHTML = ''; // Clear existing content
+    // Function to fetch and display announcements
+    function fetchAnnouncements() {
+        fetch('fetch_announcements.php')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .catch(error => console.error('Error fetching announcements:', error));
+    }
 
-        if (announcements.length === 0) {
-            announcementContainer.innerHTML = '<p>No announcements available.</p>';
-            return;
-        }
+    // Function to show the floating message
+    function showFloatingMessage() {
+        floatingMessageContainer.style.display = 'block';
+        progressBar.style.width = '100%';
 
-        announcements.forEach(announcement => {
-            const date = new Date(announcement.created_at);
-            const formattedDate = `${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}, ${date.getFullYear()}`;
+        let timeLeft = 10; // Total time in seconds
+        const interval = setInterval(() => {
+            timeLeft--; // Decrease time left by 1 second
 
-            const announcementCard = document.createElement('div');
-            announcementCard.className = 'announcement-card';
-            announcementCard.innerHTML = `
-                <div class="announcement-header">
-                    <h3 class="announcement-title">${announcement.title}</h3>
-                    <span class="announcement-date">${formattedDate}</span>
-                </div>
-                <div class="announcement-content">
-                    <p>${announcement.content}</p>
-                </div>
-            `;
-            announcementContainer.appendChild(announcementCard);
-        });
+            // Update the width of the progress bar
+            progressBar.style.width = `${(timeLeft / 10) * 100}%`;
+
+            // If time is up, hide the floating message
+            if (timeLeft <= 0) {
+                clearInterval(interval); // Stop the interval
+                floatingMessageContainer.style.display = 'none'; // Hide the message
+            }
+        }, 1000); // Run every second
     }
 });

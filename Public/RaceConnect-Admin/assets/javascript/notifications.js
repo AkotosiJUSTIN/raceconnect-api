@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(notifications => {
-                console.log('Fetched notifications:', notifications); // Debugging statement
                 notificationsData = notifications;
                 filterAndPopulateTable();
             })
@@ -49,17 +48,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const filterValue = filterDropdown.value;
     
         const filteredNotifications = notificationsData.filter(notification => {
-            // Ensure `notification.notification` exists and is a string
-            const notificationText = notification.notification && typeof notification.notification === 'string'
-            ? notification.notification.toLowerCase()
-            : '';
+            const notificationText = notification.content && typeof notification.content === 'string'
+                ? notification.content.toLowerCase()
+                : '';
     
             const matchesSearch =
-                (notification.notification && notification.notification.toLowerCase().includes(searchTerm)) ||
+                (notification.content && notification.content.toLowerCase().includes(searchTerm)) ||
                 (notification.user_id && notification.user_id.toString().toLowerCase().includes(searchTerm)) ||
                 (notification.created_at && notification.created_at.toLowerCase().includes(searchTerm));
     
-            // Ensure `notification.status` exists and is a string
             const status = notification.status && typeof notification.status === 'string'
                 ? notification.status.toLowerCase()
                 : '';
@@ -74,32 +71,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateNotifications(notifications) {
         const notificationsList = document.getElementById('notificationTableBody');
         notificationsList.innerHTML = ''; // Clear the current notifications
-
+    
         notifications.forEach(notification => {
-            console.log('Notification data:', notification); // Debugging statement
-
             const notificationRow = document.createElement('tr');
-
+    
             notificationRow.innerHTML = `
                 <td><input type="checkbox" class="notification-check" aria-label="${notification.id}"></td>
                 <td>${notification.user_id}</td>
-                <td>${notification.notification}</td>
+                <td>${notification.content}</td>
                 <td>${new Date(notification.created_at).toLocaleString()}</td>
                 <td>
                     <div class="actions">
-                        <button class="actions-item edit-btn" onclick="editNotification('${notification.id}')">
-                            <box-icon name='edit' color="white"></box-icon>
-                        </button>
-                        <button class="actions-item hide-btn" onclick="hideNotification('${notification.id}')">
+                        <button class="actions-item hide-btn" title="Hide Notification" onclick="hideNotification('${notification.id}')">
                             <box-icon type='solid' name='low-vision' color="white"></box-icon>
                         </button>
-                        <button class="actions-item delete-btn" onclick="deleteNotification('${notification.id}')">
-                            <box-icon type='solid' name='trash' color="white"></box-icon>
+                        <button class="actions-item delete-btn" title="Archive Notification" onclick="deleteNotification('${notification.id}')">
+                            <box-icon type='solid' name='archive-in' color="white"></box-icon>
                         </button>
                     </div>
                 </td>
             `;
-
+    
             notificationsList.appendChild(notificationRow);
         });
     }

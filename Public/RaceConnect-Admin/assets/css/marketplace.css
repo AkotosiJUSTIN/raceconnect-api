@@ -1,5 +1,6 @@
 /* General Body Styling */
 body {
+    font-family: "Inter", serif;
     margin: 0;
     padding: 0;
     display: flex;
@@ -9,8 +10,9 @@ body {
 
 /* Marketplace Layout */
 .main-content {
+    margin-left: 250px;
     flex: 1;
-    padding: 28px 48px;
+    padding: 2px 48px;
     overflow-y: auto;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -229,3 +231,13 @@ body {
     transition: all 0.3s ease;
 }
 
+@media (max-width: 768px){
+    .main-content{
+        margin-left: 0;
+    }
+
+    .product-card{
+        width: 60%;
+        margin: 0 auto;
+    }
+}

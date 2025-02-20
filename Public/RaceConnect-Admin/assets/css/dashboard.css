@@ -1,11 +1,10 @@
 /* Main Content */
 .main-content {
-    padding: 28px 48px;
+    margin-left: 250px;
+    padding: 2px 48px;
     flex: 1;
-    height: fit-content;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 
 /* Stats Grid */
@@ -131,6 +130,8 @@
 @media (max-width: 768px) {
     .main-content {
         padding: 20px;
+        margin-left: 0;
+        overflow: auto;
     }
 
     .stats-grid {

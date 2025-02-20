@@ -1,4 +1,5 @@
 body {
+    font-family: "Inter", serif;
     margin: 0;
     padding: 0;
     display: flex;
@@ -22,13 +23,16 @@ body {
     flex: 1;
     padding: 1.8rem 3rem;
     overflow-y: auto;
+    margin-left: 250px;
+    padding: 2px 48px;
 }
 
 .user-management {
     background-color: white;
-    border-radius: 8px;
+    border-radius: 18px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 1.5rem;
+    margin-bottom: 30px;
 }
 
 .section-header {
@@ -47,59 +51,150 @@ body {
     margin: 0;
 }
 
+/* Search Filter Bar */
 .search-filter-bar {
     display: flex;
+    align-items: center;
+    justify-content: space-between; /* Ensure elements are spaced out */
     gap: 1rem;
     margin-bottom: 1.5rem;
+    background-color: #f9fafb;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+    width: 100%; /* Take up full width */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
+/* Search Input */
 .search-input {
-    flex: 1;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
+    font-family: "Inter", sans-serif;
+    width: 100%;
+    height: 50px;
+    padding-left: 3rem;
+    border: 2px solid #E5E7EB;
+    border-radius: 10px;
+    background-color: #ffffff;
     outline: none;
-    transition: border-color 0.3s ease;
+    color: #1F2937;
+    font-size: 1rem;
+    transition: all 0.3s ease-in-out;
+    cursor: text;
+    z-index: 0;
+}
+
+.search-input::placeholder {
+    color: #791818;
+    font-style: italic;
+    opacity: 1;
+}
+
+.search-input:hover {
+    border-color: #991b1b;
+    box-shadow: 0 0 0 4px rgba(208, 49, 49, 0.2);
 }
 
 .search-input:focus {
-    border-color: #B91C1C;
+    border-color: #b91c1c;
+    box-shadow: 0 0 0 4px rgba(205, 40, 40, 0.3);
 }
 
+.search-input:active {
+    transform: scale(0.98);
+}
+
+.group {
+    display: flex;
+    align-items: center;
+    position: relative;
+    flex-grow: 1; /* Allow the group to take up available space */
+    gap: 1rem;
+}
+
+/* Search Icon */
+.search-filter-bar box-icon {
+    fill: #5e2222;
+    position: absolute;
+    left: 1.25rem;
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+    z-index: 1;
+    transition: fill 0.2s ease-in-out;
+}
+
+.search-input:focus + box-icon {
+    fill: #991b1b;
+}
+
+/* Filter Dropdown */
 .filter-dropdown {
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    color: white;
+    padding: 0.75rem 1.5rem 0.75rem 1rem;
+    border: 2px solid #E5E7EB;
+    border-radius: 10px;
     font-size: 1rem;
     outline: none;
-    transition: border-color 0.3s ease;
+    background-color: #ae0a0a;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='16' height='16'%3E%3Cpath fill='%23FFFFFF' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); /* Custom arrow */
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 16px;
 }
 
-.filter-dropdown:focus {
-    border-color: #B91C1C;
+.filter-dropdown:focus,
+.filter-dropdown:hover {
+    background-color: #b43636;
+    box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.2);
 }
 
+/* Style for dropdown options */
+.filter-dropdown option {
+    padding: 0.75rem;
+    background-color: #ffffff;
+    color: #374151;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.filter-dropdown option:hover {
+    background-color: #F3F4F6;
+}
+
+/* Bulk Action Buttons */
 .bulk-actions {
     display: flex;
-    gap: 10px;
+    gap: 0.5rem;
+    margin-left: auto;
 }
 
 .bulk-action-btn {
-    padding: 0.75em;
-    font-size: 14px;
-    font-weight: bold;
-    color: white;
-    background-color: #B91C1C;
+    padding: 0.75rem 1rem;
     border: none;
-    border-radius: 5px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background-color: #B91C1C;
     cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .bulk-action-btn:hover {
-    background-color: #9d2f23; 
-    transform: scale(1.05);
+    background-color: #991b1b;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bulk-action-btn:active {
+    transform: scale(0.98);
 }
 
 .table-container {
@@ -203,11 +298,12 @@ tr:nth-child(even) {
     padding: 8px;
 }
 
+/* 3 Dots*/
 .dropdown-content {
     position: absolute;
-    top: 0;                   /* Align top edges (or use top: 100% for below the button) */
-    left: 100%;               /* Position to the right edge of .actions */
-    margin-left: 8px;         /* Optional gap from the button */
+    top: 0;
+    left: 100%;
+    margin-left: 8px;
     background-color: #fff;
     min-width: 100px;
     box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
@@ -279,10 +375,20 @@ tr:nth-child(even) {
         gap: 0.75rem;
         margin-top: 8px;
     }
+
+    thead th {
+        font-size: 1rem; /* Reduce font size for tablets */
+        padding: 0.75rem; /* Adjust padding for a more compact view */
+    }
+
+    .dropdown-content{
+        z-index: 100;
+    }
 }
 
 @media (max-width: 768px) {
     .main-content {
+        margin-left: 250px;
         margin-left: 0;
     }
 
@@ -305,7 +411,26 @@ tr:nth-child(even) {
     .user-management {
         padding: 1rem;
       }
-      table th, table td {
-        padding: 0.75rem; /* Slightly smaller padding on mobile */
-      }
+
+
+    table th, table td {
+        padding: 0.5rem; /* Reduce padding for both th and td */
+        position: relative;
+    }
+
+    /* Optional: You can make the table more compact by changing column width or making it scrollable */
+    table {
+        width: 100%;
+        table-layout: auto; /* Let the table layout adjust dynamically */
+    }
+    
+    /* Make the table scroll horizontally if it overflows */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    thead th {
+        font-size: 0.9rem; /* Further reduce font size on smaller screens */
+        padding: 0.5rem; /* Further reduce padding for smaller screens */
+    }
 }

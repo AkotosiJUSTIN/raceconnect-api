@@ -1,20 +1,29 @@
 <?php
-// Include the database connection script (if needed later)
+// filepath: /c:/xampp/htdocs/RaceConnect-Admin/index.php
+// Include the database connection script
 require_once __DIR__ . '/../../db_connect.php';
 
 // Start session
 session_start();
 
 // Check if the user is logged in
-if (!isset($_SESSION['email'])) {
-    // Redirect to login page if not logged in
-    header("Location: index_login.html");
-    exit();
+if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
+    if (isset($_COOKIE['email']) && isset($_COOKIE['admin_name'])) {
+        $_SESSION['email'] = $_COOKIE['email'];
+        $_SESSION['admin_name'] = $_COOKIE['admin_name'];
+    } else {
+        // Redirect to login page if not logged in
+        header("Location: index_login.php");
+        exit();
+    }
 }
 
-// Get the logged-in user's email and username
+
+// Get the logged-in user's email and admin_name
 $email = $_SESSION['email'];
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
+$admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest';
+
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-behavior: smooth;">
@@ -25,47 +34,40 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
     <link rel="stylesheet" href="assets/css/styles.css">
     <link rel="stylesheet" href="assets/css/announcements.css">
     <link rel="icon" href="./assets/RaceConnectLogo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lalezar&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
     <script src="assets/javascript/navBar.js" defer></script>
-    <script src="assets/javascript/announcement.js" defer></script>
+    <script src="assets/javascript/announcements.js" defer></script>
     <script src="assets/javascript/logout_script.js" defer></script>
 </head>
 <body>
     <!-- Header -->
     <div class="header">
-        <div class="logo">
-            <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
-        </div>
         <div class="header-title">
-            Race Connect
+        <span class="welcomeMsg">System Announcements |<span class="username">&nbsp;<?php echo htmlspecialchars($admin_name); ?></span></span>
         </div>
         <div class="header-menu">
             <!-- Mobile Header -->
             <div id="menuButton" aria-label="Toggle menu" class="menu-button" role="button" tabindex="0">
                 <box-icon name='menu' type='solid' color="white" size="md"></box-icon>
             </div>
-            <div class="relative">
-                <box-icon type='solid' name='user-circle' color="white" size="md" class="user-icon" id="userIcon"></box-icon>
-                <div id="dropdownMenu" class="dropdown-menu">
-                    <span class="welcomeMsg">Welcome <span class="username">&nbsp;<?php echo htmlspecialchars($username); ?></span>!</span>
-                    <a href="#" class="dropdown-item">Change Password</a>
-                    <a href="#" class="dropdown-item">Edit Profile</a>
-                    <a href="logout.php" class="dropdown-item">Logout</a>
-                </div>
-            </div>
         </div>
     </div>
+
     <div class="flex">
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar">
-            <!-- Logo Section -->
-            <div class="logo-section">
-                <div class="logo">
-                    <box-icon name='car' type='solid' color="red" class="logo-icon"></box-icon>
-                    <span class="logo-text">Admin View</span>
-                </div>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <!-- Logo Section -->
+        <div class="logo-section">
+            <div class="logo">
+                <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">
             </div>
+            <span class="logo-text">Race Connect</span>
+        </div>
             <!-- Navigation Menu -->
             <nav class="nav-menu">
                 <ul class="nav-list">
@@ -106,6 +108,11 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
                         </a>
                     </li>
                 </ul>
+                <div class="relative logout-btn">
+                    <a href="logout.php" class="dropdown-item" title="Logout">
+                        <box-icon name='log-out' color="#b91c1c" size="md" class="user-icon" id="userIcon" ></box-icon>
+                    </a>
+                </div>
             </nav>
         </aside>
         <!-- Overlay for mobile -->
@@ -132,6 +139,15 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest';
             </div>
         </div>
     </div>
+    <!-- Floating Message -->
+     <div class="floating-message-container">
+        <div class="floating-message">
+            <span id="floatingMessage">Announcement posted!</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+     </div>
     <!-- Logout Dialog -->
     <div id="logoutDialog" class="dialog-overlay">
         <div class="dialog">
