@@ -84,19 +84,18 @@ class PostController {
 
  private function handlePostRequest() {
     try {
-        error_log(print_r($_POST, true));
-        error_log(print_r($_FILES, true));
+        // Check if the request is multipart/form-data
+        if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false) {
+            $data = $_POST;
+        } else {
+            $data = json_decode(file_get_contents("php://input"), true);
+        }
 
-        if (!isset($_POST['user_id'], $_POST['content'])) {
+        if (!isset($data['user_id'], $data['content'])) {
             http_response_code(400);
             echo json_encode(['message' => 'Missing required fields: user_id, content']);
             return;
         }
-
-        $data = [
-            'user_id' => $_POST['user_id'],
-            'content' => $_POST['content'],
-        ];
 
         $postId = $this->post->createPost($data);
         if (!$postId) {

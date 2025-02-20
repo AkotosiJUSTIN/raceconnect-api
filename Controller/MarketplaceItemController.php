@@ -90,29 +90,16 @@ class MarketplaceItemController {
 
     private function handlePostRequest() {
         try {
-            // Debugging - Log request data
-            error_log(print_r($_POST, true));
-            error_log(print_r($_FILES, true));
-
-            if (!isset($_POST['seller_id'], $_POST['title'], $_POST['description'], $_POST['price'])) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Missing required fields: seller_id, title, description, price']);
-                return;
+            // Check if the request is multipart/form-data
+            if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false) {
+                $data = $_POST;
+            } else {
+                $data = json_decode(file_get_contents("php://input"), true);
             }
 
-            $data = [
-                'seller_id' => $_POST['seller_id'],
-                'title' => $_POST['title'],
-                'description' => $_POST['description'],
-                'price' => $_POST['price'],
-                'category' => $_POST['category'] ?? 'Formula 1',
-                'status' => $_POST['status'] ?? 'available',
-                'favorite_count' => 0,
-            ];
-
-            if (!$this->validateItemData($data, true)) {
+            if (!isset($data['seller_id'], $data['title'], $data['description'], $data['price'])) {
                 http_response_code(400);
-                echo json_encode(['message' => 'Invalid input data']);
+                echo json_encode(['message' => 'Missing required fields: seller_id, title, description, price']);
                 return;
             }
 
@@ -123,7 +110,11 @@ class MarketplaceItemController {
                 return;
             }
 
-            $imageUrls = $this->handleImageUpload($itemId);
+            $imageUrls = [];
+            if (isset($_FILES['image']) && !empty($_FILES['image']['name'][0])) {
+                $imageUrls = $this->handleImageUpload($itemId);
+            }
+
             http_response_code(201);
             echo json_encode([
                 'message' => 'Item created successfully',
@@ -138,20 +129,20 @@ class MarketplaceItemController {
 
     private function handleImageUpload($itemId) {
         $imageUrls = [];
-
+    
         if (!isset($_FILES['image']) || empty($_FILES['image']['name'][0])) {
             return $imageUrls;
         }
-
+    
         try {
             $fileCount = count($_FILES['image']['name']);
-
+    
             for ($i = 0; $i < $fileCount; $i++) {
                 if ($_FILES['image']['error'][$i] === UPLOAD_ERR_OK) {
                     $tmpName = $_FILES['image']['tmp_name'][$i];
                     $imageData = file_get_contents($tmpName);
                     $imageName = uniqid() . '-' . basename($_FILES['image']['name'][$i]);
-
+    
                     $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
                     $imageUrls[] = $imageUrl;
                     $this->item->saveItemImage($itemId, $imageUrl);
@@ -160,7 +151,7 @@ class MarketplaceItemController {
         } catch (Exception $e) {
             error_log("Image upload failed: " . $e->getMessage());
         }
-
+    
         return $imageUrls;
     }
 
@@ -183,10 +174,6 @@ class MarketplaceItemController {
         }
 
         if (isset($data['price']) && (!is_numeric($data['price']) || $data['price'] <= 0)) {
-            return false;
-        }
-
-        if (isset($data['favorite_count']) && (!is_numeric($data['favorite_count']) || $data['favorite_count'] < 0)) {
             return false;
         }
 
