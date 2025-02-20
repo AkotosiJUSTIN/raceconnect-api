@@ -82,41 +82,45 @@ class PostController {
         }
     }
 
-    private function handlePostRequest() {
-        try {
-            error_log(print_r($_POST, true));
-            error_log(print_r($_FILES, true));
+ private function handlePostRequest() {
+    try {
+        error_log(print_r($_POST, true));
+        error_log(print_r($_FILES, true));
 
-            if (!isset($_POST['user_id'], $_POST['content'])) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Missing required fields: user_id, content']);
-                return;
-            }
-
-            $data = [
-                'user_id' => $_POST['user_id'],
-                'content' => $_POST['content'],
-            ];
-
-            $postId = $this->post->createPost($data);
-            if (!$postId) {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to create post']);
-                return;
-            }
-
-            $imageUrls = $this->handleImageUpload($postId);
-            http_response_code(201);
-            echo json_encode([
-                'message' => 'Post created successfully',
-                'post_id' => $postId,
-                'image_urls' => $imageUrls
-            ]);
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to create post', 'error' => $e->getMessage()]);
+        if (!isset($_POST['user_id'], $_POST['content'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Missing required fields: user_id, content']);
+            return;
         }
+
+        $data = [
+            'user_id' => $_POST['user_id'],
+            'content' => $_POST['content'],
+        ];
+
+        $postId = $this->post->createPost($data);
+        if (!$postId) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to create post']);
+            return;
+        }
+
+        $imageUrls = [];
+        if (isset($_FILES['image']) && !empty($_FILES['image']['name'][0])) {
+            $imageUrls = $this->handleImageUpload($postId);
+        }
+
+        http_response_code(201);
+        echo json_encode([
+            'message' => 'Post created successfully',
+            'post_id' => $postId,
+            'image_urls' => $imageUrls
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['message' => 'Failed to create post', 'error' => $e->getMessage()]);
     }
+}
 
     private function handleImageUpload($postId) {
         $imageUrls = [];
