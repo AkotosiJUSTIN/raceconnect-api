@@ -58,16 +58,14 @@ class MarketplaceItem {
     }
 
     public function createItem($data) {
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (seller_id, title, description, price, category, favorite_count, status) 
-                                    VALUES (:seller_id, :title, :description, :price, :category, :favorite_count, :status)");
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (seller_id, title, description, price, category) 
+                                    VALUES (:seller_id, :title, :description, :price, :category)");
         return $stmt->execute([
             ':seller_id' => $data['seller_id'],
             ':title' => $data['title'],
             ':description' => $data['description'],
             ':price' => $data['price'],
-            ':category' => $data['category'],
-            ':favorite_count' => $data['favorite_count'],
-            ':status' => $data['status']
+            ':category' => $data['category']
         ]);
     }
 

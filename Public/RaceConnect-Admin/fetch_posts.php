@@ -12,17 +12,37 @@ if (!isset($_SESSION['email'])) {
     exit();
 }
 
-// Fetch posts from the database
-$query = "SELECT id, user_id, title, content, img_url, like_count, comment_count, repost_count, created_at FROM posts";
+// Fetch posts from the database, excluding hidden and archived posts
+$query = "
+    SELECT 
+        p.id, 
+        p.user_id, 
+        p.title, 
+        p.content, 
+        p.like_count, 
+        p.comment_count, 
+        p.repost_count, 
+        p.created_at,
+        GROUP_CONCAT(DISTINCT pi.image_url) AS images
+    FROM posts p
+    LEFT JOIN post_images pi ON p.id = pi.post_id
+    WHERE p.status NOT IN ('hidden', 'archived') OR p.status IS NULL
+    GROUP BY p.id
+";
 $result = $conn->query($query);
 
 $posts = [];
-if ($result->num_rows > 0) {
+if ($result === false) {
+    // Query failed
+    $response = ['success' => false, 'error' => $conn->error];
+} else if ($result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
+        // Convert the comma-separated images string into an array
+        $row['images'] = $row['images'] ? explode(',', $row['images']) : [];
         $posts[] = $row;
     }
 }
 
 header('Content-Type: application/json');
-echo json_encode($posts);
+echo json_encode(['success' => true, 'data' => $posts]);
 ?>

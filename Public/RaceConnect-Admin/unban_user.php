@@ -11,7 +11,7 @@ if (!isset($_SESSION['email'])) {
 
 $username = $_POST['username'];
 
-$query = "UPDATE users SET status = 'active' WHERE username = ?";
+$query = "UPDATE users SET status = 'Active' WHERE username = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param('s', $username);
 $stmt->execute();
