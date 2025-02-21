@@ -79,7 +79,7 @@ class Post {
             (user_id, title, content, like_count, comment_count, repost_count, category, type) 
             VALUES (:user_id, :title, :content, :like_count, :comment_count, :repost_count, :category, :type)");
         
-        return $stmt->execute([
+        $success = $stmt->execute([
             ':user_id' => (int) $data['user_id'], // Ensure user_id is an integer
             ':title' => htmlspecialchars($data['title'] ?? null, ENT_QUOTES, 'UTF-8'),
             ':content' => htmlspecialchars($data['content'], ENT_QUOTES, 'UTF-8'),
@@ -89,7 +89,14 @@ class Post {
             ':category' => htmlspecialchars($data['category'] ?? 'Formula 1', ENT_QUOTES, 'UTF-8'),
             ':type' => htmlspecialchars($data['type'] ?? 'text', ENT_QUOTES, 'UTF-8')
         ]);
+    
+        if ($success) {
+            return $this->pdo->lastInsertId(); // ✅ Return the post ID
+        }
+    
+        return false; // ❌ Return false if insert failed
     }
+    
 
     public function updatePost($id, $data) {
         $fields = [];

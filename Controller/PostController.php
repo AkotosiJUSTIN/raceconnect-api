@@ -56,15 +56,18 @@ class PostController {
             }
 
             $postId = $this->post->createPost($data);
-            if (!$postId) {
+            if (!$postId || $postId == 0) {
                 throw new Exception('Failed to create post.');
             }
+            error_log("Generated Post ID: " . $postId); // Debugging: Check if the ID is valid
+
+
 
             // Add a short delay to ensure database consistency (if needed)
             usleep(500000); // 500ms delay
 
             $imageUrls = $this->handleImageUpload($postId);
-            
+
             if (!empty($_FILES['image']['name']) && empty($imageUrls)) {
                 // Rollback: Delete post if image upload fails
                 $this->post->deletePost($postId);
