@@ -4,8 +4,12 @@ use PDO;
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
 use Exception;
+use Dotenv\Dotenv;
 
 require_once __DIR__ . '/../vendor/autoload.php';
+
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
 
 class MarketplaceItem {
     private $pdo;
@@ -18,8 +22,8 @@ class MarketplaceItem {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
-                'key'    => 'YOUR_AWS_ACCESS_KEY',
-                'secret' => 'YOUR_AWS_SECRET_KEY',
+                'key'    => $_ENV['AWS_ACCESS_KEY'],
+                'secret' => $_ENV['AWS_SECRET_KEY'],
             ],
         ]);
     }

@@ -12,6 +12,7 @@
     "minimum-stability": "stable",
     "require": {
         "phpmailer/phpmailer": "^6.9",
-        "aws/aws-sdk-php": "^3.339"
+        "aws/aws-sdk-php": "^3.339",
+        "vlucas/phpdotenv": "^5.6"
     }
 }
