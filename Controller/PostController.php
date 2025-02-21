@@ -64,6 +64,14 @@ class PostController {
             usleep(500000); // 500ms delay
 
             $imageUrls = $this->handleImageUpload($postId);
+            
+            if (!empty($_FILES['image']['name']) && empty($imageUrls)) {
+                // Rollback: Delete post if image upload fails
+                $this->post->deletePost($postId);
+                http_response_code(500);
+                echo json_encode(['message' => 'Post creation failed due to image upload error']);
+                return;
+            }
 
             http_response_code(201);
             echo json_encode([
