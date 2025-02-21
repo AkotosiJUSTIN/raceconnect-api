@@ -3,6 +3,7 @@
 namespace Controller;
 use Model\User;
 use Exception;
+use PDOException;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../Model/User.php';
@@ -20,19 +21,7 @@ class UserController {
 
             switch ($method) {
                 case 'GET':
-                    if ($id) {
-                        $user = $this->user->getUserById($id);
-                        if ($user) {
-                            http_response_code(200);
-                            echo json_encode($user);
-                        } else {
-                            http_response_code(404);
-                            echo json_encode(['message' => 'User not found']);
-                        }
-                    } else {
-                        http_response_code(200);
-                        echo json_encode($this->user->getAllUsers());
-                    }
+                    $this->handleGetRequest($id);
                     break;
 
                 case 'POST':
@@ -41,8 +30,7 @@ class UserController {
 
                 case 'PUT':
                     if (!$id) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'User ID is required']);
+                        $this->sendErrorResponse(400, 'User ID is required for updating.');
                         return;
                     }
                     $this->updateUser($id, $data);
@@ -50,73 +38,77 @@ class UserController {
 
                 case 'DELETE':
                     if (!$id) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'User ID is required']);
+                        $this->sendErrorResponse(400, 'User ID is required for deletion.');
                         return;
                     }
                     $this->deleteUser($id);
                     break;
 
                 default:
-                    http_response_code(405);
-                    echo json_encode(['message' => 'Unsupported HTTP method']);
+                    $this->sendErrorResponse(405, 'Unsupported HTTP method.');
+            }
+        } catch (PDOException $e) {
+            $this->sendErrorResponse(500, 'Database error occurred.', $e);
+        } catch (Exception $e) {
+            $this->sendErrorResponse(500, 'An unexpected error occurred.', $e);
+        }
+    }
+
+    private function handleGetRequest($id) {
+        try {
+            if ($id) {
+                $user = $this->user->getUserById($id);
+                if ($user) {
+                    $this->sendSuccessResponse(200, $user);
+                } else {
+                    $this->sendErrorResponse(404, 'User not found.');
+                }
+            } else {
+                $users = $this->user->getAllUsers();
+                $this->sendSuccessResponse(200, $users);
             }
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'An error occurred', 'error' => $e->getMessage()]);
+            $this->sendErrorResponse(500, 'Failed to retrieve user data.', $e);
         }
     }
 
     private function createUser($data) {
         if (!$this->validateUserInput($data, true)) return;
 
-        if ($this->user->createUser($data)) {
-            http_response_code(201);
-            echo json_encode(['message' => 'User created successfully']);
-        } else {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to create user']);
+        try {
+            if ($this->user->createUser($data)) {
+                $this->sendSuccessResponse(201, 'User created successfully.');
+            } else {
+                $this->sendErrorResponse(500, 'Failed to create user.');
+            }
+        } catch (PDOException $e) {
+            $this->sendErrorResponse(500, 'Database error while creating user.', $e);
         }
     }
 
     private function updateUser($id, $data) {
         if (!$this->validateUserInput($data, false)) return;
 
-        if ($this->user->updateUser($id, $data)) {
-            http_response_code(200);
-            echo json_encode(['message' => 'User updated successfully']);
-        } else {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to update user']);
+        try {
+            if ($this->user->updateUser($id, $data)) {
+                $this->sendSuccessResponse(200, 'User updated successfully.');
+            } else {
+                $this->sendErrorResponse(500, 'Failed to update user.');
+            }
+        } catch (PDOException $e) {
+            $this->sendErrorResponse(500, 'Database error while updating user.', $e);
         }
     }
 
     private function deleteUser($id) {
-        if ($this->user->deleteUser($id)) {
-            http_response_code(200);
-            echo json_encode(['message' => 'User deleted successfully']);
-        } else {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to delete user']);
-        }
-    }
-
-    private function loginUser($data) {
-        if (empty($data['username']) || empty($data['password'])) {
-            http_response_code(400);
-            echo json_encode(['message' => 'Username and password are required']);
-            return;
-        }
-
-        $user = $this->user->loginUser($data['username'], $data['password']);
-        if ($user) {
-            $token = bin2hex(random_bytes(32));
-            $this->user->storeToken($user['id'], $token);
-            http_response_code(200);
-            echo json_encode(['message' => 'Login successful', 'token' => $token, 'user' => $user]);
-        } else {
-            http_response_code(401);
-            echo json_encode(['message' => 'Invalid credentials']);
+        try {
+            if ($this->user->deleteUser($id)) {
+                $this->sendSuccessResponse(200, 'User deleted successfully.');
+            } else {
+                $this->sendErrorResponse(500, 'Failed to delete user.');
+            }
+        } catch (PDOException $e) {
+            $this->sendErrorResponse(500, 'Database error while deleting user.', $e);
         }
     }
 
@@ -126,22 +118,19 @@ class UserController {
         if ($isNewUser) {
             foreach ($requiredFields as $field) {
                 if (empty($data[$field])) {
-                    http_response_code(400);
-                    echo json_encode(['message' => "Missing required field: $field"]);
+                    $this->sendErrorResponse(400, "Missing required field: $field.");
                     return false;
                 }
             }
         }
 
         if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            http_response_code(400);
-            echo json_encode(['message' => 'Invalid email format']);
+            $this->sendErrorResponse(400, 'Invalid email format.');
             return false;
         }
 
         if (!empty($data['password']) && strlen($data['password']) < 6) {
-            http_response_code(400);
-            echo json_encode(['message' => 'Password must be at least 6 characters long']);
+            $this->sendErrorResponse(400, 'Password must be at least 6 characters long.');
             return false;
         }
 
@@ -150,37 +139,48 @@ class UserController {
 
     public function uploadProfilePicture($files) {
         if (empty($_POST['user_id']) || empty($_FILES['image'])) {
-            http_response_code(400);
-            echo json_encode(['message' => 'User ID and image are required']);
+            $this->sendErrorResponse(400, 'User ID and image are required.');
             return;
         }
-    
+
         try {
             $userId = $_POST['user_id'];
             $imageFile = $_FILES['image'];
-    
+
             // Read image file
             $imageData = file_get_contents($imageFile['tmp_name']);
             $imageName = uniqid() . '-' . basename($imageFile['name']);
-    
+
             // Upload to S3
             $imageUrl = $this->user->uploadProfilePictureToS3($imageData, $imageName);
-    
-            // Save to database (this will update the profile picture)
+
+            // Save to database
             if ($this->user->saveProfilePicture($userId, $imageUrl)) {
-                http_response_code(200);
-                echo json_encode(['message' => 'Profile picture uploaded successfully', 'image_url' => $imageUrl]);
+                $this->sendSuccessResponse(200, ['message' => 'Profile picture uploaded successfully.', 'image_url' => $imageUrl]);
             } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to save profile picture']);
+                $this->sendErrorResponse(500, 'Failed to save profile picture.');
             }
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to upload profile picture', 'error' => $e->getMessage()]);
+            $this->sendErrorResponse(500, 'Error during profile picture upload.', $e);
         }
     }
-    
-    
+
+    private function sendSuccessResponse($statusCode, $data) {
+        http_response_code($statusCode);
+        echo json_encode(is_array($data) ? $data : ['message' => $data]);
+    }
+
+    private function sendErrorResponse($statusCode, $message, $exception = null) {
+        http_response_code($statusCode);
+        $errorResponse = ['message' => $message];
+
+        if ($exception) {
+            $errorResponse['error'] = $exception->getMessage();
+            error_log('Error: ' . $exception->getMessage()); // Log error for debugging
+        }
+
+        echo json_encode($errorResponse);
+    }
 }
 
 ?>

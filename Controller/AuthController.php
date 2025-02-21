@@ -1,6 +1,7 @@
 <?php
 
 namespace Controller;
+
 use Model\User;
 use Middleware\AuthMiddleware;
 use PHPMailer\PHPMailer\PHPMailer;
@@ -20,30 +21,26 @@ class AuthController {
         $this->authMiddleware = new AuthMiddleware($db);
     }
 
+    private function handleError($statusCode, $message) {
+        http_response_code($statusCode);
+        echo json_encode(['message' => $message]);
+        exit;
+    }
+
     public function login($data) {
         try {
             if (empty($data['username']) || empty($data['password'])) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Username and password are required']);
-                return;
+                $this->handleError(400, 'Username and password are required');
             }
 
             $user = $this->user->loginUser($data['username'], $data['password']);
-
             if (!$user) {
-                http_response_code(401);
-                echo json_encode(['message' => 'Invalid username or password']);
-                return;
+                $this->handleError(401, 'Invalid username or password');
             }
 
-            // Generate a secure token
             $token = bin2hex(random_bytes(32));
-
-            // Save the token in the database
             if (!$this->authMiddleware->storeToken($user['id'], $token)) {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to store token']);
-                return;
+                $this->handleError(500, 'Failed to store authentication token');
             }
 
             http_response_code(200);
@@ -58,139 +55,75 @@ class AuthController {
             ]);
 
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'An error occurred during login', 'error' => $e->getMessage()]);
-        }
-    }
-
-    public function logout() {
-        try {
-            $headers = apache_request_headers();
-            $authHeader = $headers['Authorization'] ?? '';
-
-            if (empty($authHeader)) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Authorization header is missing']);
-                return;
-            }
-
-            if (!preg_match('/^Bearer\s(\S+)$/', $authHeader, $matches)) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Invalid token format']);
-                return;
-            }
-
-            $token = $matches[1];
-
-            // Validate token
-            if (!$this->authMiddleware->validateToken($token)) {
-                http_response_code(401);
-                echo json_encode(['message' => 'Invalid or expired token']);
-                return;
-            }
-
-            // Revoke token
-            if (!$this->authMiddleware->revokeToken($token)) {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to revoke token']);
-                return;
-            }
-
-            http_response_code(200);
-            echo json_encode(['message' => 'Logout successful']);
-
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'An error occurred during logout', 'error' => $e->getMessage()]);
+            $this->handleError(500, 'An error occurred during login');
         }
     }
 
     public function forgotPassword($data) {
         try {
             if (empty($data['email'])) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Email is required']);
-                return;
+                $this->handleError(400, 'Email is required');
             }
 
-            // Check if the email exists in the database
             $user = $this->user->getUserByEmail($data['email']);
             if (!$user) {
-                http_response_code(404);
-                echo json_encode(['message' => 'Email not found']);
-                return;
+                $this->handleError(404, 'Email not found');
             }
 
-            $otp = rand(100000, 999999); // Generate a 6-digit OTP
+            $otp = rand(100000, 999999);
             if (!$this->user->storeOtp($data['email'], $otp)) {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to generate OTP']);
-                return;
+                $this->handleError(500, 'Failed to generate OTP');
             }
 
-            // Send email with PHPMailer
             $mail = new PHPMailer(true);
             try {
-                //Server settings
                 $mail->isSMTP();
-                $mail->Host = 'smtp.gmail.com'; // Set the SMTP server to send through
+                $mail->Host = 'smtp.gmail.com';
                 $mail->SMTPAuth = true;
-                $mail->Username = 'raceconnect.team@gmail.com'; // SMTP username
-                $mail->Password = 'cffw wobb ecns tksl'; // SMTP password
+                $mail->Username = 'raceconnect.team@gmail.com';
+                $mail->Password = 'cffw wobb ecns tksl';
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port = 587;
 
-                //Recipients
                 $mail->setFrom('RaceConnect@gmail.com', 'RaceConnect');
                 $mail->addAddress($data['email']);
-
-                // Content
                 $mail->isHTML(true);
                 $mail->Subject = 'Password Reset OTP';
                 $mail->Body = "Your OTP for password reset is: <strong>$otp</strong>";
 
                 $mail->send();
+                http_response_code(200);
                 echo json_encode(['message' => 'OTP sent to email']);
             } catch (PHPMailerException $e) {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to send email', 'error' => $e->getMessage()]);
+                $this->handleError(500, 'Failed to send email');
             }
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'An error occurred', 'error' => $e->getMessage()]);
+            $this->handleError(500, 'An error occurred while processing your request');
         }
     }
 
     public function resetPassword($data) {
         try {
             if (empty($data['email']) || empty($data['otp']) || empty($data['new_password']) || empty($data['confirm_password'])) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Email, OTP, new password, and confirmation password are required']);
-                return;
+                $this->handleError(400, 'All fields are required');
             }
 
             if ($data['new_password'] !== $data['confirm_password']) {
-                http_response_code(400);
-                echo json_encode(['message' => 'New password and confirmation password do not match']);
-                return;
+                $this->handleError(400, 'Passwords do not match');
             }
 
-            // Verify OTP
             if (!$this->user->verifyOtp($data['email'], $data['otp'])) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Invalid or expired OTP']);
-                return;
+                $this->handleError(400, 'Invalid or expired OTP');
             }
 
             if ($this->user->resetPassword($data['email'], $data['new_password'])) {
+                http_response_code(200);
                 echo json_encode(['message' => 'Password reset successful']);
             } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to reset password']);
+                $this->handleError(500, 'Failed to reset password');
             }
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'An error occurred', 'error' => $e->getMessage()]);
+            $this->handleError(500, 'An error occurred while resetting password');
         }
     }
 }

@@ -10,7 +10,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 class MarketplaceItem {
     private $pdo;
     private $table = "Marketplace_Items";
-
     private $s3;
 
     public function __construct($db) {
@@ -19,7 +18,8 @@ class MarketplaceItem {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
-
+                'key'    => 'YOUR_AWS_ACCESS_KEY',
+                'secret' => 'YOUR_AWS_SECRET_KEY',
             ],
         ]);
     }
@@ -27,7 +27,7 @@ class MarketplaceItem {
     public function uploadItemImageToS3($imageData, $imageName) {
         try {
             $result = $this->s3->putObject([
-                'Bucket' => 'raceconnect-images', // Replace with your S3 bucket name
+                'Bucket' => 'raceconnect-images', 
                 'Key'    => 'item-images/' . $imageName,
                 'Body'   => $imageData
             ]);
@@ -40,8 +40,8 @@ class MarketplaceItem {
     public function saveItemImage($itemId, $imageUrl) {
         $stmt = $this->pdo->prepare("INSERT INTO Marketplace_Item_Images (marketplace_item_id, image_url) VALUES (:item_id, :image_url)");
         return $stmt->execute([
-            ':item_id' => $itemId,
-            ':image_url' => $imageUrl
+            ':item_id' => (int) $itemId, // Explicit type conversion
+            ':image_url' => htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8') // Sanitize URL
         ]);
     }
 
@@ -55,7 +55,7 @@ class MarketplaceItem {
 
     public function getItemById($id) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -63,46 +63,42 @@ class MarketplaceItem {
     public function createItem($data) {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (seller_id, title, description, price, category) 
                                     VALUES (:seller_id, :title, :description, :price, :category)");
-        return $stmt->execute([
-            ':seller_id' => $data['seller_id'],
-            ':title' => $data['title'],
-            ':description' => $data['description'],
-            ':price' => $data['price'],
-            ':category' => $data['category']
+        $result = $stmt->execute([
+            ':seller_id' => (int) $data['seller_id'],
+            ':title' => htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8'),
+            ':description' => htmlspecialchars($data['description'], ENT_QUOTES, 'UTF-8'),
+            ':price' => (float) $data['price'],
+            ':category' => htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8')
         ]);
+
+        if ($result) {
+            return $this->pdo->lastInsertId(); // Return inserted ID
+        }
+        return false;
     }
 
     public function updateItem($id, $data) {
         $fields = [];
-        $params = [':id' => $id];
+        $params = [':id' => (int) $id];
 
-        if (isset($data['title'])) {
+        if (!empty($data['title'])) {
             $fields[] = "title = :title";
-            $params[':title'] = $data['title'];
+            $params[':title'] = htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8');
         }
-        if (isset($data['description'])) {
+        if (!empty($data['description'])) {
             $fields[] = "description = :description";
-            $params[':description'] = $data['description'];
+            $params[':description'] = htmlspecialchars($data['description'], ENT_QUOTES, 'UTF-8');
         }
-        if (isset($data['price'])) {
+        if (!empty($data['price']) && is_numeric($data['price'])) {
             $fields[] = "price = :price";
-            $params[':price'] = $data['price'];
+            $params[':price'] = (float) $data['price'];
         }
-        if (isset($data['category'])) {
+        if (!empty($data['category'])) {
             $fields[] = "category = :category";
-            $params[':category'] = $data['category'];
+            $params[':category'] = htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8');
         }
-        if (isset($data['image_url'])) {
-            $fields[] = "image_url = :image_url";
-            $params[':image_url'] = $data['image_url'];
-        }
-        if (isset($data['favorite_count'])) {
-            $fields[] = "favorite_count = :favorite_count";
-            $params[':favorite_count'] = $data['favorite_count'];
-        }
-        if (isset($data['status'])) {
-            $fields[] = "status = :status";
-            $params[':status'] = $data['status'];
+        if (empty($fields)) {
+            return false; // No valid fields to update
         }
 
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id");
@@ -111,9 +107,8 @@ class MarketplaceItem {
 
     public function deleteItem($id) {
         $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         return $stmt->execute();
     }
-    
 }
 ?>

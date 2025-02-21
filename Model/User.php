@@ -18,6 +18,8 @@ class User {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
+                'key'    => 'AWS_ACCESS_KEY',
+                'secret' => 'AWS_Sname: ECRET_KEY',
             ],
         ]);
     }
@@ -25,7 +27,7 @@ class User {
     public function uploadProfilePictureToS3($imageData, $imageName) {
         try {
             $result = $this->s3->putObject([
-                'Bucket' => 'raceconnect-images', // Replace with your S3 bucket name
+                'Bucket' => 'raceconnect-images',
                 'Key'    => 'profile-pictures/' . $imageName,
                 'Body'   => $imageData
             ]);
@@ -38,13 +40,11 @@ class User {
     public function saveProfilePicture($userId, $imageUrl) {
         $this->pdo->beginTransaction();
         try {
-            // Insert into User_Profile_Pictures table (history of uploads)
             $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
             $stmt->execute([
-                ':user_id' => $userId,
-                ':image_url' => $imageUrl
+                ':user_id' => intval($userId),
+                ':image_url' => filter_var($imageUrl, FILTER_SANITIZE_URL)
             ]);
-            
             $this->pdo->commit();
         } catch (Exception $e) {
             $this->pdo->rollBack();
@@ -55,24 +55,28 @@ class User {
     public function updateUserProfilePicture($userId, $imageUrl) {
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET profile_picture = :image_url WHERE id = :user_id");
         return $stmt->execute([
-            ':image_url' => $imageUrl,
-            ':user_id' => $userId
+            ':image_url' => filter_var($imageUrl, FILTER_SANITIZE_URL),
+            ':user_id' => intval($userId)
         ]);
     }
 
-    public function getAllUsers() {
-        $stmt = $this->pdo->query("SELECT * FROM {$this->table}");
+    public function getAllUsers($limit = 50, $offset = 0) {
+        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} LIMIT :limit OFFSET :offset");
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getUserById($id) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':id', intval($id), PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function getUserByEmail($email) {
+        $email = filter_var($email, FILTER_SANITIZE_EMAIL);
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE email = :email");
         $stmt->bindParam(':email', $email);
         $stmt->execute();
@@ -82,15 +86,15 @@ class User {
     public function createUser($data) {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (username, email, password) VALUES (:username, :email, :password)");
         return $stmt->execute([
-            ':username' => $data['username'],
-            ':email' => $data['email'],
+            ':username' => htmlspecialchars($data['username']),
+            ':email' => filter_var($data['email'], FILTER_SANITIZE_EMAIL),
             ':password' => password_hash($data['password'], PASSWORD_BCRYPT)
         ]);
     }
 
     public function updateUser($id, $data) {
         $fields = [];
-        $params = [':id' => $id];
+        $params = [':id' => intval($id)];
 
         foreach ($data as $key => $value) {
             if ($key === 'password') {
@@ -108,7 +112,7 @@ class User {
 
     public function deleteUser($id) {
         $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':id', intval($id), PDO::PARAM_INT);
         return $stmt->execute();
     }
 
@@ -125,18 +129,25 @@ class User {
     }
 
     public function storeToken($user_id, $token) {
+        $hashedToken = password_hash($token, PASSWORD_BCRYPT);
         $stmt = $this->pdo->prepare("INSERT INTO user_tokens (user_id, token) VALUES (:user_id, :token)");
         return $stmt->execute([
-            ':user_id' => $user_id,
-            ':token' => $token
+            ':user_id' => intval($user_id),
+            ':token' => $hashedToken
         ]);
     }
 
     public function validateToken($token) {
-        $stmt = $this->pdo->prepare("SELECT * FROM user_tokens WHERE token = :token");
-        $stmt->bindParam(':token', $token);
+        $stmt = $this->pdo->prepare("SELECT * FROM user_tokens");
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC); // Return token data if valid, else null
+        $tokens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($tokens as $storedToken) {
+            if (password_verify($token, $storedToken['token'])) {
+                return $storedToken;
+            }
+        }
+        return false;
     }
 
     public function revokeToken($token) {
@@ -146,16 +157,19 @@ class User {
     }
 
     public function storeOtp($email, $otp) {
-        $stmt = $this->pdo->prepare("INSERT INTO Password_Resets (email, otp) VALUES (:email, :otp) ON DUPLICATE KEY UPDATE otp = :otp, created_at = CURRENT_TIMESTAMP");
-        $stmt->bindParam(':email', $email);
-        $stmt->bindParam(':otp', $otp);
+        $stmt = $this->pdo->prepare("INSERT INTO Password_Resets (email, otp) VALUES (:email, :otp) 
+                                     ON DUPLICATE KEY UPDATE otp = :otp, created_at = CURRENT_TIMESTAMP");
+        $stmt->bindParam(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
+        $stmt->bindParam(':otp', intval($otp));
         return $stmt->execute();
     }
 
     public function verifyOtp($email, $otp) {
-        $stmt = $this->pdo->prepare("SELECT * FROM Password_Resets WHERE email = :email AND otp = :otp AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-        $stmt->bindParam(':email', $email);
-        $stmt->bindParam(':otp', $otp);
+        $stmt = $this->pdo->prepare("SELECT * FROM Password_Resets 
+                                     WHERE email = :email AND otp = :otp 
+                                     AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+        $stmt->bindParam(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
+        $stmt->bindParam(':otp', intval($otp));
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
     }
@@ -164,7 +178,7 @@ class User {
         $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET password = :password WHERE email = :email");
         $stmt->bindParam(':password', $hashedPassword);
-        $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
         return $stmt->execute();
     }
 }

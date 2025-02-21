@@ -18,16 +18,22 @@ class Post {
             'version' => 'latest',
             'region'  => 'ap-southeast-2', // Replace with your region
             'credentials' => [
-
+                'key'    => 'AWS_ACCESS_KEY',
+                'secret' => 'AWS_Sname: ECRET_KEY',
             ],
         ]);
     }
 
     public function uploadPostImageToS3($imageData, $imageName) {
+        // Validate file type and size before uploading
+        if (!$this->isValidImage($imageData)) {
+            throw new Exception("Invalid image file.");
+        }
+
         try {
             $result = $this->s3->putObject([
                 'Bucket' => 'raceconnect-images', // Replace with your S3 bucket name
-                'Key'    => 'post-images/' . $imageName,
+                'Key'    => 'post-images/' . basename($imageName), // Prevent path traversal
                 'Body'   => $imageData
             ]);
             return $result['ObjectURL'];
@@ -36,17 +42,21 @@ class Post {
         }
     }
 
+    private function isValidImage($imageData) {
+        // Basic validation for image files
+        return (strlen($imageData) > 0 && strlen($imageData) <= 5000000); // 5MB limit
+    }
+
     public function savePostImage($postId, $imageUrl) {
         $stmt = $this->pdo->prepare("INSERT INTO Post_Images (post_id, image_url) VALUES (:post_id, :image_url)");
         return $stmt->execute([
-            ':post_id' => $postId,
-            ':image_url' => $imageUrl
+            ':post_id' => (int) $postId,  // Force integer conversion
+            ':image_url' => filter_var($imageUrl, FILTER_SANITIZE_URL)
         ]);
     }
 
     public function getAllPosts($limit = 10, $offset = 0) {
-        $query = "SELECT * FROM posts LIMIT :limit OFFSET :offset";
-        $stmt = $this->pdo->prepare($query);
+        $stmt = $this->pdo->prepare("SELECT * FROM posts LIMIT :limit OFFSET :offset");
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
@@ -55,7 +65,7 @@ class Post {
 
     public function getPostById($id) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -66,52 +76,52 @@ class Post {
             VALUES (:user_id, :title, :content, :like_count, :comment_count, :repost_count, :category, :type)");
         
         return $stmt->execute([
-            ':user_id' => $data['user_id'],
-            ':title' => $data['title'] ?? null,
-            ':content' => $data['content'],
-            ':like_count' => $data['like_count'] ?? 0,
-            ':comment_count' => $data['comment_count'] ?? 0,
-            ':repost_count' => $data['repost_count'] ?? 0,
-            ':category' => $data['category'] ?? 'Formula 1',
-            ':type' => $data['type'] ?? 'text'
+            ':user_id' => (int) $data['user_id'], // Ensure user_id is an integer
+            ':title' => htmlspecialchars($data['title'] ?? null, ENT_QUOTES, 'UTF-8'),
+            ':content' => htmlspecialchars($data['content'], ENT_QUOTES, 'UTF-8'),
+            ':like_count' => (int) ($data['like_count'] ?? 0),
+            ':comment_count' => (int) ($data['comment_count'] ?? 0),
+            ':repost_count' => (int) ($data['repost_count'] ?? 0),
+            ':category' => htmlspecialchars($data['category'] ?? 'Formula 1', ENT_QUOTES, 'UTF-8'),
+            ':type' => htmlspecialchars($data['type'] ?? 'text', ENT_QUOTES, 'UTF-8')
         ]);
     }
 
     public function updatePost($id, $data) {
         $fields = [];
-        $params = [':id' => $id];
+        $params = [':id' => (int) $id];
 
-        if (isset($data['title'])) {
+        if (!empty($data['title'])) {
             $fields[] = "title = :title";
-            $params[':title'] = $data['title'];
+            $params[':title'] = htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8');
         }
-        if (isset($data['content'])) {
+        if (!empty($data['content'])) {
             $fields[] = "content = :content";
-            $params[':content'] = $data['content'];
+            $params[':content'] = htmlspecialchars($data['content'], ENT_QUOTES, 'UTF-8');
         }
-        if (isset($data['img_url'])) {
+        if (!empty($data['img_url'])) {
             $fields[] = "img_url = :img_url";
-            $params[':img_url'] = $data['img_url'];
+            $params[':img_url'] = filter_var($data['img_url'], FILTER_SANITIZE_URL);
         }
         if (isset($data['like_count'])) {
             $fields[] = "like_count = :like_count";
-            $params[':like_count'] = $data['like_count'];
+            $params[':like_count'] = (int) $data['like_count'];
         }
         if (isset($data['comment_count'])) {
             $fields[] = "comment_count = :comment_count";
-            $params[':comment_count'] = $data['comment_count'];
+            $params[':comment_count'] = (int) $data['comment_count'];
         }
         if (isset($data['repost_count'])) {
             $fields[] = "repost_count = :repost_count";
-            $params[':repost_count'] = $data['repost_count'];
+            $params[':repost_count'] = (int) $data['repost_count'];
         }
-        if (isset($data['category'])) {
+        if (!empty($data['category'])) {
             $fields[] = "category = :category";
-            $params[':category'] = $data['category'];
+            $params[':category'] = htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8');
         }
-        if (isset($data['type'])) {
+        if (!empty($data['type'])) {
             $fields[] = "type = :type";
-            $params[':type'] = $data['type'];
+            $params[':type'] = htmlspecialchars($data['type'], ENT_QUOTES, 'UTF-8');
         }
 
         if (empty($fields)) {
@@ -124,7 +134,7 @@ class Post {
 
     public function deletePost($id) {
         $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         return $stmt->execute();
     }
 }
