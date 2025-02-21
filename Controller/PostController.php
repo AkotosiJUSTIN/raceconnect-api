@@ -60,6 +60,9 @@ class PostController {
                 throw new Exception('Failed to create post.');
             }
 
+            // Add a short delay to ensure database consistency (if needed)
+            usleep(500000); // 500ms delay
+
             $imageUrls = $this->handleImageUpload($postId);
 
             http_response_code(201);
