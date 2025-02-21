@@ -130,5 +130,26 @@ class AuthController {
             $this->handleError(500, 'An error occurred while resetting password');
         }
     }
+
+    public function logout() {
+        try {
+            $headers = getallheaders();
+            if (!isset($headers['Authorization'])) {
+                $this->handleError(400, 'Authorization token is required');
+            }
+    
+            $token = str_replace('Bearer ', '', $headers['Authorization']);
+            if (!$this->authMiddleware->revokeToken($token)) {
+                $this->handleError(500, 'Failed to log out');
+            }
+    
+            http_response_code(200);
+            echo json_encode(['message' => 'Logout successful']);
+        } catch (Exception $e) {
+            $this->handleError(500, 'An error occurred while logging out');
+        }
+    }
+    
 }
 ?>
+    
