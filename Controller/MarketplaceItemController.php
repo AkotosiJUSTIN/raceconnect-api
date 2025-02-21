@@ -85,9 +85,10 @@ class MarketplaceItemController {
             }
             
             $itemId = $this->item->createItem($data);
-            if (!$itemId) {
-                throw new Exception("Database error: failed to create item.");
+            if (!$itemId || $itemId == 0) {
+                throw new Exception('Failed to create item.');
             }
+            error_log("Generated Post ID: " . $itemId); // Debugging: Check if the ID is valid
             
             $imageUrls = $this->handleImageUpload($itemId);
             http_response_code(201);
