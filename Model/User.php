@@ -28,6 +28,7 @@ class User {
         ]);
     }
 
+    // Upload profile picture to S3
     public function uploadProfilePictureToS3($imageData, $imageName) {
         try {
             $result = $this->s3->putObject([
@@ -41,21 +42,20 @@ class User {
         }
     }
 
+    // Save profile picture URL to database
     public function saveProfilePicture($userId, $imageUrl) {
-        $this->pdo->beginTransaction();
         try {
             $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
             $stmt->execute([
                 ':user_id' => intval($userId),
                 ':image_url' => filter_var($imageUrl, FILTER_SANITIZE_URL)
             ]);
-            $this->pdo->commit();
         } catch (Exception $e) {
-            $this->pdo->rollBack();
             throw new Exception('Failed to save profile picture: ' . $e->getMessage());
         }
     }
 
+    // Update profile picture in Users table
     public function updateUserProfilePicture($userId, $imageUrl) {
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET profile_picture = :image_url WHERE id = :user_id");
         return $stmt->execute([
@@ -64,29 +64,32 @@ class User {
         ]);
     }
 
+    // Get all users with pagination
     public function getAllUsers($limit = 50, $offset = 0) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} LIMIT :limit OFFSET :offset");
-        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int) $offset, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Get user by ID
     public function getUserById($id) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', intval($id), PDO::PARAM_INT);
+        $stmt->bindValue(':id', (int) $id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Get user by email
     public function getUserByEmail($email) {
-        $email = filter_var($email, FILTER_SANITIZE_EMAIL);
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE email = :email");
-        $stmt->bindParam(':email', $email);
+        $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Create a new user
     public function createUser($data) {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (username, email, password) VALUES (:username, :email, :password)");
         return $stmt->execute([
@@ -96,6 +99,7 @@ class User {
         ]);
     }
 
+    // Update user details
     public function updateUser($id, $data) {
         $fields = [];
         $params = [':id' => intval($id)];
@@ -114,76 +118,93 @@ class User {
         return $stmt->execute($params);
     }
 
+    // Delete user
     public function deleteUser($id) {
         $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', intval($id), PDO::PARAM_INT);
+        $stmt->bindValue(':id', intval($id), PDO::PARAM_INT);
         return $stmt->execute();
     }
 
+    // User login
     public function loginUser($username, $password) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE username = :username");
-        $stmt->bindParam(':username', $username);
+        $stmt->bindValue(':username', $username);
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user && password_verify($password, $user['password'])) {
-            return $user;
-        }
-        return false;
+        return ($user && password_verify($password, $user['password'])) ? $user : false;
     }
 
+    // Store authentication token
     public function storeToken($user_id, $token) {
-        $hashedToken = password_hash($token, PASSWORD_BCRYPT);
         $stmt = $this->pdo->prepare("INSERT INTO user_tokens (user_id, token) VALUES (:user_id, :token)");
         return $stmt->execute([
             ':user_id' => intval($user_id),
-            ':token' => $hashedToken
+            ':token' => $token // No hashing to allow direct lookup
         ]);
     }
 
+    // Validate authentication token
     public function validateToken($token) {
-        $stmt = $this->pdo->prepare("SELECT * FROM user_tokens");
+        $stmt = $this->pdo->prepare("SELECT * FROM user_tokens WHERE token = :token");
+        $stmt->bindValue(':token', $token);
         $stmt->execute();
-        $tokens = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($tokens as $storedToken) {
-            if (password_verify($token, $storedToken['token'])) {
-                return $storedToken;
-            }
-        }
-        return false;
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Revoke authentication token
     public function revokeToken($token) {
         $stmt = $this->pdo->prepare("DELETE FROM user_tokens WHERE token = :token");
-        $stmt->bindParam(':token', $token);
+        $stmt->bindValue(':token', $token);
         return $stmt->execute();
     }
 
+    // Store OTP
     public function storeOtp($email, $otp) {
-        $stmt = $this->pdo->prepare("INSERT INTO Password_Resets (email, otp) VALUES (:email, :otp) 
-                                     ON DUPLICATE KEY UPDATE otp = :otp, created_at = CURRENT_TIMESTAMP");
-        $stmt->bindParam(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
-        $stmt->bindParam(':otp', intval($otp));
+        $stmt = $this->pdo->prepare("INSERT INTO Password_Resets (email, otp, created_at) VALUES (:email, :otp, NOW()) 
+                                     ON DUPLICATE KEY UPDATE otp = :otp, created_at = NOW()");
+        $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
+        $stmt->bindValue(':otp', intval($otp));
         return $stmt->execute();
     }
 
+    // Verify OTP (valid for 1 hour)
     public function verifyOtp($email, $otp) {
-        $stmt = $this->pdo->prepare("SELECT * FROM Password_Resets 
-                                     WHERE email = :email AND otp = :otp 
+        $stmt = $this->pdo->prepare("SELECT * FROM Password_Resets WHERE email = :email AND otp = :otp 
                                      AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-        $stmt->bindParam(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
-        $stmt->bindParam(':otp', intval($otp));
+        $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
+        $stmt->bindValue(':otp', intval($otp));
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
     }
 
+    public function deleteOtp($email) {
+        error_log("Attempting to delete OTP for: " . $email); // Debug log
+    
+        $stmt = $this->pdo->prepare("DELETE FROM Password_Resets WHERE email = :email");
+        $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
+    
+        $result = $stmt->execute();
+    
+        if ($result) {
+            error_log("OTP deleted successfully for: " . $email);
+        } else {
+            error_log("Failed to delete OTP for: " . $email);
+            error_log("PDO Error: " . implode(", ", $stmt->errorInfo())); // Log error info
+        }
+    
+        return $result;
+    }
+    
+    
+
+    // Reset password
     public function resetPassword($email, $newPassword) {
-        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET password = :password WHERE email = :email");
-        $stmt->bindParam(':password', $hashedPassword);
-        $stmt->bindParam(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
-        return $stmt->execute();
+        return $stmt->execute([
+            ':password' => password_hash($newPassword, PASSWORD_BCRYPT),
+            ':email' => filter_var($email, FILTER_SANITIZE_EMAIL)
+        ]);
     }
 }
 ?>

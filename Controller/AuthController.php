@@ -111,16 +111,19 @@ class AuthController {
             if (empty($data['email']) || empty($data['otp']) || empty($data['new_password']) || empty($data['confirm_password'])) {
                 $this->handleError(400, 'All fields are required');
             }
-
+    
             if ($data['new_password'] !== $data['confirm_password']) {
                 $this->handleError(400, 'Passwords do not match');
             }
-
+    
             if (!$this->user->verifyOtp($data['email'], $data['otp'])) {
                 $this->handleError(400, 'Invalid or expired OTP');
             }
-
+    
             if ($this->user->resetPassword($data['email'], $data['new_password'])) {
+                // ✅ Delete OTP after successful password reset
+                $this->user->deleteOtp($data['email']);
+    
                 http_response_code(200);
                 echo json_encode(['message' => 'Password reset successful']);
             } else {
@@ -130,6 +133,7 @@ class AuthController {
             $this->handleError(500, 'An error occurred while resetting password');
         }
     }
+    
 
     public function logout() {
         try {
@@ -139,6 +143,14 @@ class AuthController {
             }
     
             $token = str_replace('Bearer ', '', $headers['Authorization']);
+    
+            // Validate token and get user details
+            $user = $this->authMiddleware->validateToken($token);
+            if (!$user) {
+                $this->handleError(401, 'Invalid token');
+            }
+    
+            // Revoke token
             if (!$this->authMiddleware->revokeToken($token)) {
                 $this->handleError(500, 'Failed to log out');
             }
@@ -149,7 +161,6 @@ class AuthController {
             $this->handleError(500, 'An error occurred while logging out');
         }
     }
-    
 }
 ?>
     
