@@ -14,28 +14,57 @@ body {
   height: 100vh;
 }
 
-/* Split-screen layout */
 .login-left {
   flex: 1;
+  position: relative;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
   padding: 2rem;
   text-align: center;
+  overflow: hidden; /* Prevent image overflow */
+}
+
+/* Background image styling */
+.login-left > img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.8;
+  z-index: 1;
+}
+
+/* Add a dark overlay for better contrast */
+.login-left::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.85) 0%, rgba(153, 27, 27, 0.85) 100%);
+  z-index: 2;
 }
 
 .logo-subtitle-container {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 1rem;
+  z-index: 3; /* Ensure content stays above background */
+  max-width: 90%; /* Prevent content from touching edges */
+  margin: 0 auto;
 }
 
 .logo img {
   width: 20em;
   height: auto;
   max-width: 100%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); /* Subtle logo shadow */
 }
 
 .login-subtitle {
@@ -45,23 +74,31 @@ body {
   line-height: 1.6;
   margin: 0;
   flex: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); /* Improve text readability */
 }
 
-/* Responsive Design */
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  .login-left {
-    height: 100px;
+  .logo-subtitle-container {
+    flex-direction: column;
+    text-align: center;
   }
-  .logo img {
-    width: 6em;
-  }
-
+  
   .login-subtitle {
-    font-size: 1rem;
+    text-align: center;
   }
+  
+  .logo img {
+    width: 8em;
+    margin-top: 100px;
+  }
+}
 
-  .login-left {
-    padding: 1rem;
+/* Responsive adjustments */
+@media (max-width: 420px) {
+  .logo img {
+    width: 4em;
+    margin-top: 140px;
   }
 }
 
@@ -306,7 +343,7 @@ body {
   }
   .login-right {
     flex: none; /* Remove flex behavior */
-    padding: 3rem 1rem; /* Reduce padding */
+    padding: 4rem 1rem; /* Reduce padding */
   }
 
   .login-container {
@@ -323,6 +360,6 @@ body {
   }
 
   .floating-message-container {
-    top: 150px;
+    top: 120px;
   }
 }

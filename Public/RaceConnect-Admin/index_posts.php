@@ -101,12 +101,13 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                             <span>Announcements</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="logout.php" class="nav-item logout-btn" title="Logout">
+                            <box-icon name='log-out' color="#b91c1c" size="md" id="userIcon" ></box-icon>
+                            <span>Log Out</span>
+                        </a>
+                    </li>
                 </ul>
-                <div class="relative logout-btn">
-                    <a href="logout.php" class="dropdown-item" title="Logout">
-                        <box-icon name='log-out' color="#b91c1c" size="md" class="user-icon" id="userIcon" ></box-icon>
-                    </a>
-                </div>
             </nav>
         </aside>
 

@@ -100,6 +100,8 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
 <body>
 <!-- Split-screen layout -->
     <div class="login-left">
+        <img src="./assets/race-bg.jpg" alt="RCBackground">
+        <img src="./assets/racecar.png" alt="RCCar" id="rcCar">
         <div class="logo-subtitle-container">
             <div class="logo">
                 <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" id="rcLogo">

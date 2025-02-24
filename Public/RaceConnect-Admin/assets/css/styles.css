@@ -184,13 +184,7 @@ body {
 }
 
 .logout-btn{
-    margin-left: 160px;
-    margin-top: 50px;
-}
-
-.logout-btn:hover{
-    transition: ease-in-out .2s;
-    transform: scale(1.2);
+    padding: 2px 9px;
 }
 
 .dropdown-item box-icon {
@@ -329,10 +323,6 @@ body {
     transform: translateX(0);
 }
 
-.logout-btn{
-    margin-top: 10px;
-}
-
 .header-menu {
     justify-content: right; /* Ensure buttons are spaced out */
     width: 100%; /* Ensure the header menu takes full width */
@@ -345,6 +335,10 @@ body {
 
 .sidebar.open + #overlay {
     display: block;
+}
+
+.nav-list {
+    margin-top: -30px;
 }
 
 .header button:focus + #overlay {
