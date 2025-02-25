@@ -30,9 +30,6 @@ switch ($action) {
     case 'unban_user':
         unbanUser($conn);
         break;
-    case 'suspend_user':
-        suspendUser($conn);
-        break;
     case 'archive_post':
         archivePost($conn);
         break;
@@ -109,16 +106,35 @@ function fetchPosts($conn) {
 }
 
 function fetchUsers($conn) {
-    $query = "SELECT username, status, created_at, suspension_end_date FROM users";
-    $result = $conn->query($query);
+    // First, update any expired bans
+    $updateQuery = "UPDATE users 
+                   SET status = 'Active', suspension_end_date = NULL 
+                   WHERE status = 'Banned' 
+                   AND suspension_end_date IS NOT NULL 
+                   AND suspension_end_date <= NOW()";
+    $conn->query($updateQuery);
 
+    // Then fetch all users
+    $query = "SELECT username, status, created_at, suspension_end_date,
+              CASE 
+                WHEN status = 'Banned' AND suspension_end_date IS NOT NULL 
+                THEN TIMESTAMPDIFF(SECOND, NOW(), suspension_end_date) / 86400
+                ELSE NULL 
+              END as suspension_days
+              FROM users";
+    
+    $result = $conn->query($query);
     $users = [];
+    
     while ($row = $result->fetch_assoc()) {
-        if ($row['suspension_end_date'] && strtotime($row['suspension_end_date']) > time()) {
-            $remainingDays = (strtotime($row['suspension_end_date']) - time()) / 86400;
-            $row['suspension_days'] = ceil($remainingDays);
-        } else {
-            $row['suspension_days'] = null;
+        if ($row['suspension_days'] !== null) {
+            $row['suspension_days'] = ceil($row['suspension_days']);
+            // If suspension has expired but hasn't been caught by the update
+            if ($row['suspension_days'] <= 0) {
+                $row['status'] = 'Active';
+                $row['suspension_days'] = null;
+                $row['suspension_end_date'] = null;
+            }
         }
         $users[] = $row;
     }
@@ -190,37 +206,6 @@ function unbanUser($conn) {
     }
 
     $stmt->bind_param("s", $username);
-    $executeSuccess = $stmt->execute();
-
-    $response = ["success" => $executeSuccess];
-    if (!$executeSuccess) {
-        $response["error"] = $stmt->error;
-    }
-
-    $stmt->close();
-    echo json_encode($response);
-}
-
-function suspendUser($conn) {
-    $username = $_POST['username'] ?? null;
-    $suspensionDays = $_POST['suspension_days'] ?? null;
-
-    if (!$username || !$suspensionDays) {
-        echo json_encode(["success" => false, "error" => "Missing parameters"]);
-        return;
-    }
-
-    $suspensionEndDate = date('Y-m-d H:i:s', strtotime("+$suspensionDays days"));
-
-    $query = "UPDATE users SET status = 'Suspended', suspension_end_date = ? WHERE username = ?";
-    $stmt = $conn->prepare($query);
-
-    if (!$stmt) {
-        echo json_encode(["success" => false, "error" => "Database error: " . $conn->error]);
-        return;
-    }
-
-    $stmt->bind_param("ss", $suspensionEndDate, $username);
     $executeSuccess = $stmt->execute();
 
     $response = ["success" => $executeSuccess];
