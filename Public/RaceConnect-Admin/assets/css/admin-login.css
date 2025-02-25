@@ -6,7 +6,7 @@
   font-family: "Inter", serif;
 }
 body {
-  background-color: #e5e7eb; /* bg-gray-200 */
+  background-color: #e5e7eb;
   font-family: "Inter", serif;
   margin: 0;
   padding: 0;
@@ -23,10 +23,9 @@ body {
   align-items: center;
   padding: 2rem;
   text-align: center;
-  overflow: hidden; /* Prevent image overflow */
+  overflow: hidden;
 }
 
-/* Background image styling */
 .login-left > img {
   position: absolute;
   top: 0;
@@ -38,7 +37,6 @@ body {
   z-index: 1;
 }
 
-/* Add a dark overlay for better contrast */
 .login-left::after {
   content: '';
   position: absolute;
@@ -55,8 +53,8 @@ body {
   display: flex;
   align-items: center;
   gap: 1rem;
-  z-index: 3; /* Ensure content stays above background */
-  max-width: 90%; /* Prevent content from touching edges */
+  z-index: 3;
+  max-width: 90%;
   margin: 0 auto;
 }
 
@@ -64,7 +62,7 @@ body {
   width: 20em;
   height: auto;
   max-width: 100%;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)); /* Subtle logo shadow */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .login-subtitle {
@@ -74,23 +72,29 @@ body {
   line-height: 1.6;
   margin: 0;
   flex: 1;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); /* Improve text readability */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
+  .login-left {
+    display: none;
+  }
+
   .logo-subtitle-container {
     flex-direction: column;
     text-align: center;
+    margin-top: 2rem;
   }
-  
-  .login-subtitle {
-    text-align: center;
-  }
-  
+
   .logo img {
     width: 8em;
-    margin-top: 100px;
+    margin: 0 auto;
+  }
+
+  .login-subtitle {
+    text-align: center;
+    font-size: 1rem;
+    margin-top: 1rem;
   }
 }
 
@@ -98,7 +102,9 @@ body {
 @media (max-width: 420px) {
   .logo img {
     width: 4em;
-    margin-top: 140px;
+  }
+  .login-subtitle {
+    font-size: 0.875rem;
   }
 }
 
@@ -224,11 +230,17 @@ body {
   transform: rotate(45deg);
 }
 
-.forgot-password {
+.forgot-password-link {
   color: #b91c1c;
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
+  transition: 0.3s ease;
+}
+
+.forgot-password-link:hover {
+  color: #991b1b;
+  transform: scale(1.05);
 }
 
 .error-message {
@@ -339,24 +351,24 @@ body {
 /* Responsive Design */
 @media (max-width: 768px) {
   body {
-    flex-direction: column; /* Stack sections vertically on smaller screens */
+    flex-direction: column;
   }
   .login-right {
-    flex: none; /* Remove flex behavior */
-    padding: 4rem 1rem; /* Reduce padding */
+    flex: none;
+    padding: 7.5rem 1rem;
   }
 
   .login-container {
     margin-top: 0;
   }
   .login-form {
-    max-width: 100%; /* Allow form to take full width */
+    max-width: 100%;
   }
   .form-title {
-    font-size: 1.75rem; /* Reduce title size */
+    font-size: 1.75rem;
   }
   .submit-button {
-    font-size: 1rem; /* Reduce button text size */
+    font-size: 1rem;
   }
 
   .floating-message-container {

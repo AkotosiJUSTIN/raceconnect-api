@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchPosts();
 
     function fetchPosts() {
-        fetch('fetch_posts.php')
+        fetch('fetch_api.php?action=fetch_posts')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -16,7 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Server error:', result.error);
                 }
             })
-            .catch(error => console.error('Error fetching posts:', error));
+            .catch(error => {
+                console.error('Error fetching posts:', error);
+                // Log the response text for debugging
+                fetch('fetch_api.php?action=fetch_posts')
+                    .then(response => response.text())
+                    .then(text => console.log('Response text:', text));
+            });
     }
 
     function populatePosts(posts) {
@@ -63,7 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function hidePost(postId, postCard) {
-        fetch(`hide_post.php?id=${postId}`, { method: 'POST' })
+        fetch('fetch_api.php?action=hide_post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `post_id=${encodeURIComponent(postId)}`
+        })
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -81,7 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function archivePost(postId, postCard) {
-        fetch(`archive_post.php?id=${postId}`, { method: 'POST' })
+        fetch('fetch_api.php?action=archive_post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `post_id=${encodeURIComponent(postId)}`
+        })
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');

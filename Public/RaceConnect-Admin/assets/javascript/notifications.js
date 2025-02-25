@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchNotifications, 30000);
 
     function fetchNotifications() {
-        fetch('fetch_notifications.php')
+        fetch('fetch_api.php?action=fetch_notifications')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');

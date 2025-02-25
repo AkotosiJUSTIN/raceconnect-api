@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const formData = new FormData(announcementForm);
 
-        fetch('post_announcement.php', {
+        fetch('fetch_api.php?action=post_announcement', {
             method: 'POST',
             body: formData
         })
@@ -40,33 +40,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to fetch and display announcements
     function fetchAnnouncements() {
-        fetch('fetch_announcements.php')
+        fetch('fetch_api.php?action=fetch_announcements')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 return response.json();
             })
+            .then(data => {
+                // Update the announcement container with fetched data
+                announcementContainer.innerHTML = data.map(announcement => `
+                    <div class="announcement">
+                        <h3>${announcement.title}</h3>
+                        <p>${announcement.content}</p>
+                        <small>${announcement.created_at}</small>
+                    </div>
+                `).join('');
+            })
             .catch(error => console.error('Error fetching announcements:', error));
     }
 
     // Function to show the floating message
     function showFloatingMessage() {
-        floatingMessageContainer.style.display = 'block';
-        progressBar.style.width = '100%';
-
-        let timeLeft = 10; // Total time in seconds
-        const interval = setInterval(() => {
-            timeLeft--; // Decrease time left by 1 second
-
-            // Update the width of the progress bar
-            progressBar.style.width = `${(timeLeft / 10) * 100}%`;
-
-            // If time is up, hide the floating message
-            if (timeLeft <= 0) {
-                clearInterval(interval); // Stop the interval
-                floatingMessageContainer.style.display = 'none'; // Hide the message
-            }
-        }, 1000); // Run every second
+        floatingMessageContainer.classList.add('show');
+        setTimeout(() => {
+            floatingMessageContainer.classList.remove('show');
+        }, 3000);
     }
 });

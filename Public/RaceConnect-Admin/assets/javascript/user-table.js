@@ -14,15 +14,15 @@ document.addEventListener("DOMContentLoaded", function () {
   searchInput.addEventListener("input", filterAndPopulateTable);
   filterDropdown.addEventListener("change", filterAndPopulateTable);
   bulkBan.addEventListener("click", () =>
-    performBulkAction("ban_user.php", "ban")
+    performBulkAction("fetch_api.php?action=ban_user", "ban")
   );
   bulkUnban.addEventListener("click", () =>
-    performBulkAction("unban_user.php", "unban")
+    performBulkAction("fetch_api.php?action=unban_user", "unban")
   );
 
   // Fetch user data from the server
   function fetchUsers() {
-    fetch("fetch_users.php")
+    fetch("fetch_api.php?action=fetch_users")
       .then((response) => response.json())
       .then((users) => {
         usersData = users;
@@ -244,7 +244,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (result.isConfirmed) {
         const banDuration = result.value; // Get selected duration
 
-        fetch("ban_user.php", {
+        fetch("fetch_api.php?action=ban_user", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: `username=${encodeURIComponent(
@@ -272,17 +272,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Unban a single user
   function unbanUser(username) {
-    confirmAction("Unban", username, "unban_user.php");
+    confirmAction("Unban", username, "fetch_api.php?action=unban_user");
   }
 
   // Confirm and perform ban/unban action
   function confirmAction(action, username, url) {
     Swal.fire({
-      title: `Are you sure?`,
-      text: `Do you really want to ${action.toLowerCase()}: ${username}?`,
+      title: `Are you sure you want to ${action.toLowerCase()} ${username}?`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes",
+      confirmButtonText: `Yes, ${action}`,
       cancelButtonText: "No",
     }).then((result) => {
       if (result.isConfirmed) {
@@ -293,16 +292,19 @@ document.addEventListener("DOMContentLoaded", function () {
         })
           .then((response) => response.json())
           .then((data) => {
-            showAlert(
-              data.success ? `${action}ed!` : "Error!",
-              data.success
-                ? `${username} has been ${action.toLowerCase()}ed.`
-                : `There was an issue ${action.toLowerCase()}ing ${username}.`,
-              data.success ? "success" : "error",
-              fetchUsers
-            );
+            if (data.success) {
+              Swal.fire(
+                `${action}ed!`,
+                `${username} has been ${action.toLowerCase()}ed.`,
+                "success"
+              ).then(() => fetchUsers());
+            } else {
+              Swal.fire("Error!", `Failed to ${action.toLowerCase()} ${username}.`, "error");
+            }
           })
-          .catch(() => showAlert("Error!", "An error occurred.", "error"));
+          .catch(() => {
+            Swal.fire("Error!", "An error occurred.", "error");
+          });
       }
     });
   }
