@@ -4,7 +4,7 @@ namespace Model\Repost;
 use PDO;
 use PDOException;
 
-require_once 'C:/xampp/htdocs/raceconnectapi/vendor/autoload.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 class PostRepost {
     private $pdo;
     private $table = "Post_Reposts";
