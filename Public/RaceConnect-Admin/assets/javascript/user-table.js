@@ -1,15 +1,20 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Increase refresh frequency to check more often for expired bans
-  fetchUsers();
-  setInterval(fetchUsers, 30000); // Refresh every 30 seconds instead of 60
-
-  // Get elements
   const selectAll = document.querySelector(".select-all");
   const searchInput = document.querySelector(".search-input");
   const filterDropdown = document.querySelector(".filter-dropdown");
   const bulkBan = document.getElementById("bulkBan");
   const bulkUnban = document.getElementById("bulkUnban");
   let usersData = [];
+
+  searchInput.addEventListener('input', filterAndPopulateTable);
+  filterDropdown.addEventListener('change', filterAndPopulateTable);
+  selectAll.addEventListener('change', toggleSelectAll);
+  bulkBan.addEventListener('click', () => performBulkAction('fetch_api.php?action=ban_user', 'ban'));
+  bulkUnban.addEventListener('click', () => performBulkAction('fetch_api.php?action=unban_user', 'unban'));
+
+  // Initial fetch
+  fetchUsers();
+  setInterval(fetchUsers, 30000); // Refresh every 30 seconds
 
   // Fetch user data from the server
   function fetchUsers() {
