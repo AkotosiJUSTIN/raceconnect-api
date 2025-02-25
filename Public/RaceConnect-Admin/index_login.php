@@ -96,6 +96,7 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lalezar&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
     <script src="assets/javascript/remember-me.js" defer></script>
+    <script src="assets/javascript/forgot-password.js" defer></script>
 </head>
 <body>
 <!-- Split-screen layout -->
@@ -113,6 +114,10 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
     </div>
     <div class="login-right">
         <div class="login-container">
+            <div class="header-container">
+                <img src="./assets/RaceConnectLogo.png" alt="RaceConnect Logo" class="dashboard-logo">
+                <h2 class="dashboard-title">Race Connect Dashboard</h2>
+            </div>
             <div class="login-form">
                 <h2 class="form-title">Ready, Set, Connect!</h2>
                 <form id="loginForm" action="index_login.php" method="POST">
@@ -139,7 +144,7 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
                             <span class="custom-checkbox"></span>
                             <span>&nbsp;&nbsp; Remember me</span>
                         </label>
-                        <a href="index_forgot_password.php" class="forgot-password-link"><span>&nbsp;&nbsp; Forgot Password?</span></a>
+                        <a href="" class="forgot-password"><span>&nbsp;&nbsp; Forgot Password?</span></a>
                     </div>
                     <?php if ($error_message): ?>
                         <div class="error-message"><?php echo $error_message; ?></div>
@@ -147,6 +152,58 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
                     <button type="submit" class="submit-button">Log In</button>
                 </form>
             </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotPasswordModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" data-modal="forgotPasswordModal">&times;</span>
+            <h2 class="form-title">Forgot Password</h2>
+            <div id="modalMessage"></div>
+            <form id="forgotPasswordForm">
+                <div class="form-group">
+                    <label for="resetEmail" class="input-label">Email</label>
+                    <div class="input-wrapper">
+                        <box-icon type='solid' name='envelope' color="#dc2626" class="input-icon"></box-icon>
+                        <input type="email" id="resetEmail" name="email" required class="text-input" autofocus>
+                    </div>
+                </div>
+                <button type="submit" class="submit-button">Send OTP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" data-modal="resetPasswordModal">&times;</span>
+            <h2 class="form-title">Reset Password</h2>
+            <div id="resetModalMessage"></div>
+            <form id="resetPasswordForm">
+                <div class="form-group">
+                    <label for="otp" class="input-label">OTP</label>
+                    <div class="input-wrapper">
+                        <box-icon type='solid' name='key' color="#dc2626" class="input-icon"></box-icon>
+                        <input type="text" id="otp" name="otp" required class="text-input" autofocus>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="new_password" class="input-label">New Password</label>
+                    <div class="input-wrapper">
+                        <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
+                        <input type="password" id="new_password" name="new_password" required class="text-input">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password" class="input-label">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
+                        <input type="password" id="confirm_password" name="confirm_password" required class="text-input">
+                    </div>
+                </div>
+                <button type="submit" class="submit-button">Reset Password</button>
+            </form>
         </div>
     </div>
 
