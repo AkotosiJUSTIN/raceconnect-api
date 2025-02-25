@@ -354,24 +354,25 @@ body {
   border: 1px solid #f87171;
 }
 
-/* Floating Message */
 .floating-message-container {
   position: fixed;
-  top: 20px;
+  top: 40px;
   right: 20px;
   z-index: 1000;
-  animation: floatIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
 }
 
-@keyframes floatIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.floating-message-container.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.floating-message-container.hide {
+  opacity: 0;
+  transform: translateX(100%);
 }
 
 .floating-message {
@@ -379,11 +380,10 @@ body {
   color: white;
   padding: 1rem 2rem;
   border-radius: 10px;
-  font-family: "Segoe UI", system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 500;
   box-shadow: 0 15px 20px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      0 4px 6px -4px rgba(0, 0, 0, 0.1);
   position: relative;
   border: 1px solid rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(4px);
@@ -393,41 +393,27 @@ body {
 }
 
 .progress-bar {
-  width: 100%;
-  height: 6px;
-  background-color: rgba(184, 182, 182, 0.2);
-  border-radius: 0px 0px 0px 30px;
-  overflow: hidden;
-  position: relative;
-}
-.progress {
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(
-    90deg,
-    rgba(154, 112, 112, 0.8) 0%,
-    rgba(154, 108, 108, 0.4) 100%
-  );
-  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-.progress::after {
-  content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.2);
-  animation: progressShine 2s infinite;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
 }
-@keyframes progressShine {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+
+.progress {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transform-origin: left;
+  animation: progress 3s linear forwards;
+}
+
+@keyframes progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
 @media (max-width: 768px) {

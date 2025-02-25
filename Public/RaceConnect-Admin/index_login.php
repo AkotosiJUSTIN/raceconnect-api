@@ -232,25 +232,26 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
             }
         }
 
-        // Timer for floating message
-        document.addEventListener('DOMContentLoaded', function () {
-            const floatingMessageContainer = document.querySelector('.floating-message-container');
-            if (floatingMessageContainer) {
-                const progressBar = document.querySelector('.progress');
+        // Replace the existing showFloatingMessage function
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.floating-message-container');
+            if (container) {
+                // Show message
+                requestAnimationFrame(() => {
+                    container.style.display = 'block';
+                    container.classList.add('show');
+                });
 
-                let timeLeft = 10; // Total time in seconds
-                const interval = setInterval(() => {
-                    timeLeft--; // Decrease time left by 1 second
-
-                    // Update the width of the progress bar
-                    progressBar.style.width = `${(timeLeft / 10) * 100}%`;
-
-                    // If time is up, remove the floating message
-                    if (timeLeft <= 0) {
-                        clearInterval(interval); // Stop the interval
-                        floatingMessageContainer.remove(); // Remove the message from the DOM
-                    }
-                }, 1000); // Run every second
+                // Hide message after 3 seconds
+                setTimeout(() => {
+                    container.classList.remove('show');
+                    container.classList.add('hide');
+                    
+                    // Remove element after animation
+                    setTimeout(() => {
+                        container.style.display = 'none';
+                    }, 500);
+                }, 3000);
             }
         });
     </script>
