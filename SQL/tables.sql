@@ -60,7 +60,8 @@ CREATE TABLE Posts (
     status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+    `report` ENUM('none', 'reported') DEFAULT 'none'
 );
 
 -- Marketplace Items Table
@@ -72,26 +73,30 @@ CREATE TABLE Marketplace_Items (
     price DECIMAL(10, 2) NOT NULL,
     category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship' ) DEFAULT 'Formula 1',
     favorite_count INT DEFAULT 0,
-    status ENUM('available', 'sold', 'reserved') DEFAULT 'available',
+    status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
     report ENUM ('None', 'Reported') DEFAULT 'None',
+    reported_at TIMESTAMP NULL,
+    previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL,
+    listing_status ENUM('Available', 'Sold', 'Reserved') DEFAULT 'Available';
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
 -- Notifications Table (Includes Likes, Comments, Reposts)
-CREATE TABLE `notifications` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `user_id` int(11) NOT NULL,
-    `post_id` int(11) DEFAULT NULL,
-    `marketplace_item_id` int(11) DEFAULT NULL,
-    `type` enum('post','marketplace','system') NOT NULL DEFAULT 'system',
-    `content` text NOT NULL,
-    `is_read` tinyint(1) DEFAULT 0,
-    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-    `report_id` int(11) DEFAULT NULL,
-    `status` enum('active','archived') DEFAULT 'active',
-    PRIMARY KEY (`id`)
+CREATE TABLE Notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    post_id INT DEFAULT NULL,
+    marketplace_item_id INT DEFAULT NULL,
+    type ENUM('post', 'marketplace', 'system', 'report') NOT NULL DEFAULT 'system',
+    content TEXT NOT NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    report_id INT DEFAULT NULL,
+    status ENUM('active', 'archived') DEFAULT 'active',
+    INDEX idx_type_status (type, status),
+    INDEX idx_created_at (created_at)
 );
 
 -- Admins Table
@@ -202,15 +207,28 @@ CREATE TABLE Marketplace_Item_Images (
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE
 );
 
-CREATE TABLE `reports` (
-  `id` int(11) NOT NULL,
-  `post_id` int(11) NOT NULL,
-  `marketplace_item_id` int(11) DEFAULT NULL,
-  `reporter_id` int(11) NOT NULL,
-  `reason` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `status` enum('pending','resolved','dismissed') DEFAULT 'pending'
+CREATE TABLE Reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT DEFAULT NULL,
+    marketplace_item_id INT DEFAULT NULL,
+    reporter_id INT NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('pending', 'resolved', 'dismissed') DEFAULT 'pending',
+    FOREIGN KEY (reporter_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
+    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
+    INDEX idx_post_id (post_id),
+    INDEX idx_marketplace_item_id (marketplace_item_id)
 );
+
+ALTER TABLE Reports
+MODIFY COLUMN post_id INT NULL,
+MODIFY COLUMN marketplace_item_id INT NULL,
+ADD FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
+ADD FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
+ADD INDEX idx_post_id (post_id),
+ADD INDEX idx_marketplace_item_id (marketplace_item_id);
 
 
 -- Conversations Table (Buyer ↔ Seller)
@@ -237,12 +255,14 @@ CREATE TABLE messages (
     FOREIGN KEY (conversation_id) REFERENCES conversations(id),
     FOREIGN KEY (sender_id) REFERENCES users(id)
 );
+-- 4. Update the report trigger to handle both types
+DROP TRIGGER IF EXISTS after_report_insert;
 
---
--- Triggers `reports` Delimter is used to create a notification when a report is inserted
---
 DELIMITER $$
-CREATE TRIGGER `after_report_insert` AFTER INSERT ON `reports` FOR EACH ROW BEGIN
+CREATE TRIGGER after_report_insert
+AFTER INSERT ON reports
+FOR EACH ROW
+BEGIN
     -- Update post or marketplace item report status
     IF NEW.post_id IS NOT NULL THEN
         UPDATE posts SET report = 'reported' WHERE id = NEW.post_id;
@@ -275,8 +295,7 @@ CREATE TRIGGER `after_report_insert` AFTER INSERT ON `reports` FOR EACH ROW BEGI
         NEW.id,
         'active'
     );
-END
-$$
+END$$
 DELIMITER ;
 
 CREATE TRIGGER notify_post_repost

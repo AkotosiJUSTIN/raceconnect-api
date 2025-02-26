@@ -19,16 +19,46 @@ body {
     gap: 24px;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1080px) {
     .main-content {
         grid-template-columns: repeat(2, 1fr);
+        padding: 20px;
+    }
+}
+
+@media (max-width: 800px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        padding: 16px;
     }
 }
 
 @media (max-width: 768px) {
     .main-content {
-        grid-template-columns: 1fr;
-        padding: 16px;
+        margin-left: 0;
+    }
+
+    .product-card {
+        display: flex;
+        width: 60%;
+        margin: 0 auto;
+    }
+
+    .product-interactions {
+        font-size: 16px;
+    }
+
+    .product-interactions span {
+        gap: 6px;
+    }
+
+    .post-actions {
+        gap: 8px;
+    }
+
+    .post-actions button {
+        padding: 4px 8px;
+        font-size: 12px;
     }
 }
 
@@ -37,44 +67,118 @@ body {
     background-color: white;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    padding: 16px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    height: 420px;
+    height: 500px;
     overflow: hidden;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .product-card:hover {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-    transform: translateY(-5px);
+}
+
+.product-card.blurred .scrollable-content {
+    filter: blur(8px);
+    pointer-events: none;
+    user-select: none;
+}
+
+.error-message {
+    height: 85vh;
+    grid-column: 1 / -1;
+    text-align: center;
+    background-color: #f3f4f6;
+    border-radius: 0.5rem;
+    color: #6b7280;
+    font-size: 1.125rem;
+}
+
+/* Product Header - Match post-header */
+.product-title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.seller-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.seller-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: #1f2937;
+}
+
+.post-time {
+    font-size: 12px;
+    color: #6b7280;
 }
 
 /* Product Image */
+.product-image {
+    width: 100%;
+    border-radius: 10px;
+    margin-bottom: 16px;
+}
+
 .product-image img {
     width: 100%;
-    height: 220px;
+    height: 200px;
     object-fit: cover;
     border-radius: 10px;
-    margin-bottom: 12px;
+}
+
+.no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+.product-thumbnails {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+}
+
+.thumbnail {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.thumbnail:hover {
+    border-color: #b91c1c;
 }
 
 /* Product Details */
 .product-details {
-    flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 12px;
 }
 
 .product-title {
     font-weight: 700;
     font-size: 18px;
     color: #333;
-    margin-bottom: 6px;
+    flex-shrink: 0;
 }
 
 .product-price {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: #b91c1c;
     margin-bottom: 8px;
@@ -82,13 +186,9 @@ body {
 
 .product-description {
     font-size: 14px;
-    color: #6b7280;
-    flex: 1;
-    margin-bottom: 12px;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
+    color: #374151;
+    line-height: 1.6;
+    margin-bottom: 16px;
 }
 
 /* Post Interactions (Non-Scrollable) */
@@ -129,34 +229,11 @@ body {
     cursor: pointer;
 }
 
-/* Product Details */
-.product-details {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Add this new class for the title container */
-.product-title-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-/* Update product-title styling */
-.product-title {
-    font-weight: 700;
-    font-size: 18px;
-    color: #333;
-    flex-shrink: 0;
-}
-
-/* Modify post-actions position */
+/* Post Actions - Match posts styling */
 .post-actions {
     display: flex;
     gap: 8px;
-    align-items: center;
+    margin-bottom: 16px;
 }
 
 .post-actions button {
@@ -174,26 +251,14 @@ body {
     outline: none;
 }
 
-/* Edit Button (Green) */
+/* Button colors - Match posts */
 .post-actions button:first-child {
-    background-color: #009934;
+    background-color: #5e6460;
     color: white;
 }
 
 .post-actions button:first-child:hover {
-    background-color: #007a2a;
-    transform: translateY(-2px); /* Slight upward movement on hover */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
-}
-
-/* Share Button (Yellow) */
-.post-actions button:nth-child(2) {
-    background-color: #EFBA00;
-    color: white;
-}
-
-.post-actions button:nth-child(2):hover {
-    background-color: #cfa000;
+    background-color: #747d77;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
@@ -209,9 +274,56 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.post-actions button:focus-visible {
-    outline: 2px solid #0056b3; 
-    outline-offset: 2px; 
+/* Scrollable Content Area */
+.scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    padding-right: 8px;
+}
+
+.scrollable-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+/* Report Info - Match posts */
+.report-info {
+    background-color: #fee2e2;
+    color: #991b1b;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.report-reason {
+    font-weight: 600;
+}
+
+.report-date {
+    font-size: 0.75rem;
+    color: #dc2626;
+}
+
+.unhide-btn {
+    background-color: #059669 !important;
+}
+
+.unhide-btn:hover {
+    background-color: #047857 !important;
 }
 
 /* Buttons */
@@ -240,4 +352,41 @@ body {
         width: 60%;
         margin: 0 auto;
     }
+}
+
+/* Update/Add these styles */
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.post-time {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.post-image {
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.post-image img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
 }

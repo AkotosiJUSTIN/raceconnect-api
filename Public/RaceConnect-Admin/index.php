@@ -28,9 +28,15 @@ $result = $conn->query("SELECT COUNT(*) AS total_users from users");
 $row = $result->fetch_assoc();
 $total_users = $row['total_users'];
 
-$result = $conn->query("SELECT COUNT(*) AS total_posts from posts");
+// Get total reported posts
+$result = $conn->query("SELECT COUNT(*) AS total_posts FROM posts WHERE report = 'reported'");
 $row = $result->fetch_assoc();
-$total_posts = $row['total_posts'];
+$total_reported_posts = $row['total_posts'];
+
+// Get total reported marketplace items
+$result = $conn->query("SELECT COUNT(*) AS total_items FROM marketplace_items WHERE report = 'reported'");
+$row = $result->fetch_assoc();
+$total_reported_items = $row['total_items'];
 ?>
 
 <!DOCTYPE html>
@@ -144,8 +150,15 @@ $total_posts = $row['total_posts'];
                 <div class="stat-card">
                     <box-icon name='upload' color="#b91c1c" class="stat-icon"></box-icon>
                     <div class="stat-text">
-                        <div class="stat-number"><?php echo $total_posts; ?></div>
-                        <div class="stat-label">Total Posts</div>
+                        <div class="stat-number"><?php echo $total_reported_posts; ?></div>
+                        <div class="stat-label">Total Reported Posts</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <box-icon type='solid' name='store-alt' color="#b91c1c" class="stat-icon"></box-icon>
+                    <div class="stat-text">
+                        <div class="stat-number"><?php echo $total_reported_items; ?></div>
+                        <div class="stat-label">Total Reported Items</div>
                     </div>
                 </div>
                 <div class="stat-card">

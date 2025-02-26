@@ -49,6 +49,15 @@ switch ($action) {
     case 'report_marketplace_item':
         reportMarketplaceItem($conn);
         break;
+    case 'hide_marketplace_item':
+        hideMarketplaceItem($conn);
+        break;
+    case 'unhide_marketplace_item':
+        unhideMarketplaceItem($conn);
+        break;
+    case 'archive_marketplace_item':
+        archiveMarketplaceItem($conn);
+        break;
     case 'archive_post':
         archivePost($conn);
         break;
@@ -143,20 +152,28 @@ function reportMarketplaceItem($conn) {
 
         $conn->begin_transaction();
 
-        // Insert report
+        // Insert report with NULL post_id
         $reportQuery = "INSERT INTO reports (
+            post_id,
             marketplace_item_id, 
             reporter_id, 
             reason, 
             created_at, 
             status
-        ) VALUES (?, ?, ?, NOW(), 'pending')";
+        ) VALUES (
+            NULL,
+            ?, 
+            ?, 
+            ?, 
+            NOW(), 
+            'pending'
+        )";
         
         $reportStmt = $conn->prepare($reportQuery);
         $reportStmt->bind_param("iis", $itemId, $reporterId, $reason);
         
         if (!$reportStmt->execute()) {
-            throw new Exception("Failed to create report");
+            throw new Exception("Failed to create report: " . $reportStmt->error);
         }
         
         $reportId = $conn->insert_id;
@@ -168,11 +185,6 @@ function reportMarketplaceItem($conn) {
         
         if (!$itemStmt->execute()) {
             throw new Exception("Failed to update item status");
-        }
-
-        // Create notification
-        if (!createReportNotification($conn, $itemId, $reportId, 'marketplace', $reason)) {
-            throw new Exception("Failed to create notification");
         }
 
         $conn->commit();
@@ -255,13 +267,11 @@ function reportPost($conn) {
 
 function fetchNotifications($conn) {
     try {
-        // Debug log before query execution
-        error_log("Starting fetchNotifications");
-
         $query = "SELECT 
             n.id,
             n.user_id,
             n.post_id,
+            n.marketplace_item_id,
             n.type,
             n.content,
             n.is_read,
@@ -270,17 +280,17 @@ function fetchNotifications($conn) {
             n.status,
             r.reason as report_reason,
             u.username as reporter_username,
-            COALESCE(p.title, 'Untitled Post') as post_title
+            COALESCE(p.title, mi.title, 'Untitled') as title,
+            p.title as post_title,
+            mi.title as marketplace_title
             FROM notifications n
             LEFT JOIN reports r ON n.report_id = r.id
             LEFT JOIN users u ON r.reporter_id = u.id
             LEFT JOIN posts p ON n.post_id = p.id
+            LEFT JOIN marketplace_items mi ON n.marketplace_item_id = mi.id
             WHERE n.type IN ('post', 'report', 'marketplace')
             AND (n.status IS NULL OR n.status != 'archived')
             ORDER BY n.created_at DESC";
-
-        // Debug log the query
-        error_log("Executing query: " . $query);
         
         $result = $conn->query($query);
         
@@ -462,14 +472,228 @@ function fetchUsers($conn) {
 }
 
 function fetchMarketplaceItems($conn) {
-    $queryItems = "SELECT id, seller_id, title, description, price, category, favorite_count, status, created_at, updated_at FROM `marketplace_items`";
-    $resultItems = $conn->query($queryItems);
+    try {
+        // Update reported_at timestamp when items are reported
+        $syncQuery = "UPDATE marketplace_items mi 
+            INNER JOIN (
+                SELECT marketplace_item_id, MIN(created_at) as first_report
+                FROM reports 
+                WHERE status = 'pending'
+                GROUP BY marketplace_item_id
+            ) r ON mi.id = r.marketplace_item_id 
+            SET mi.report = 'reported',
+                mi.reported_at = COALESCE(mi.reported_at, r.first_report)
+            WHERE r.marketplace_item_id IS NOT NULL";
+        
+        $conn->query($syncQuery);
 
-    $items = [];
-    while ($row = $resultItems->fetch_assoc()) {
-        $items[] = $row;
+        // Then fetch items that are either reported or hidden
+        $queryItems = "SELECT 
+            mi.id, 
+            mi.seller_id, 
+            mi.title, 
+            mi.description, 
+            mi.price, 
+            mi.category,
+            mi.status,
+            mi.report,
+            mi.created_at,
+            mi.reported_at,
+            r.reason as report_reason,
+            r.created_at as report_created_at,
+            r.status as report_status,
+            u.username as reporter_username,
+            GROUP_CONCAT(mii.image_url) as image_urls
+            FROM marketplace_items mi
+            LEFT JOIN reports r ON mi.id = r.marketplace_item_id AND r.status = 'pending'
+            LEFT JOIN users u ON r.reporter_id = u.id
+            LEFT JOIN marketplace_item_images mii ON mi.id = mii.marketplace_item_id
+            WHERE (mi.report = 'reported' OR mi.status = 'Hidden')
+            AND mi.status != 'Archived'
+            GROUP BY mi.id
+            ORDER BY 
+                COALESCE(mi.reported_at, mi.created_at) DESC";
+
+        $resultItems = $conn->query($queryItems);
+
+        if (!$resultItems) {
+            throw new Exception($conn->error);
+        }
+
+        $items = [];
+        while ($row = $resultItems->fetch_assoc()) {
+            $row['image_urls'] = $row['image_urls'] ? explode(',', $row['image_urls']) : [];
+            $items[] = $row;
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'items' => $items
+        ]);
+    } catch (Exception $e) {
+        error_log("Error in fetchMarketplaceItems: " . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'error' => 'Failed to fetch items'
+        ]);
     }
-    echo json_encode(['items' => $items]);
+}
+
+function hideMarketplaceItem($conn) {
+    $itemId = $_POST['item_id'] ?? null;
+
+    if (!$itemId) {
+        echo json_encode(["success" => false, "error" => "Missing parameters"]);
+        return;
+    }
+
+    $conn->begin_transaction();
+
+    try {
+        // First get the current status
+        $getCurrentStatus = "SELECT status FROM marketplace_items WHERE id = ?";
+        $statusStmt = $conn->prepare($getCurrentStatus);
+        $statusStmt->bind_param("i", $itemId);
+        $statusStmt->execute();
+        $result = $statusStmt->get_result();
+        $currentStatus = $result->fetch_assoc()['status'];
+
+        // Update item status and store previous status
+        $query = "UPDATE marketplace_items 
+                 SET status = 'Hidden', 
+                     previous_status = ? 
+                 WHERE id = ?";
+        $stmt = $conn->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
+
+        $stmt->bind_param("si", $currentStatus, $itemId);
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update item");
+        }
+
+        // Update report status
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'resolved' WHERE marketplace_item_id = ?");
+        $updateReport->bind_param("i", $itemId);
+        if (!$updateReport->execute()) {
+            throw new Exception("Failed to update report");
+        }
+
+        $conn->commit();
+        echo json_encode(["success" => true]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    }
+}
+
+function unhideMarketplaceItem($conn) {
+    $itemId = $_POST['item_id'] ?? null;
+
+    if (!$itemId) {
+        echo json_encode(["success" => false, "error" => "Missing parameters"]);
+        return;
+    }
+
+    $conn->begin_transaction();
+
+    try {
+        // Get the previous status or default to Available
+        $getStatusQuery = "SELECT previous_status FROM marketplace_items WHERE id = ?";
+        $statusStmt = $conn->prepare($getStatusQuery);
+        $statusStmt->bind_param("i", $itemId);
+        $statusStmt->execute();
+        $result = $statusStmt->get_result();
+        $previousStatus = $result->fetch_assoc()['previous_status'] ?? 'Available';
+
+        // Update item status back to previous status but keep the report status
+        $query = "UPDATE marketplace_items 
+                 SET status = ?, 
+                     previous_status = NULL,
+                     report = CASE 
+                         WHEN EXISTS (
+                             SELECT 1 FROM reports 
+                             WHERE marketplace_item_id = ? 
+                             AND status = 'pending'
+                         ) THEN 'reported'
+                         ELSE report
+                     END
+                 WHERE id = ?";
+        $stmt = $conn->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
+
+        $stmt->bind_param("sii", $previousStatus, $itemId, $itemId);
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update item");
+        }
+
+        // Update report status but keep pending reports
+        $updateReport = $conn->prepare("
+            UPDATE reports 
+            SET status = CASE
+                WHEN status = 'resolved' THEN 'pending'
+                ELSE status
+            END
+            WHERE marketplace_item_id = ?
+        ");
+        $updateReport->bind_param("i", $itemId);
+        if (!$updateReport->execute()) {
+            throw new Exception("Failed to update report");
+        }
+
+        $conn->commit();
+        echo json_encode(["success" => true]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    }
+}
+
+function archiveMarketplaceItem($conn) {
+    $itemId = $_POST['item_id'] ?? null;
+
+    if (!$itemId) {
+        echo json_encode(["success" => false, "error" => "Missing parameters"]);
+        return;
+    }
+
+    $conn->begin_transaction();
+
+    try {
+        // Update item status
+        $query = "UPDATE marketplace_items SET status = 'Archived' WHERE id = ?";
+        $stmt = $conn->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
+
+        $stmt->bind_param("i", $itemId);
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update item");
+        }
+
+        // Update report status
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'resolved' WHERE marketplace_item_id = ?");
+        $updateReport->bind_param("i", $itemId);
+        if (!$updateReport->execute()) {
+            throw new Exception("Failed to update report");
+        }
+
+        $conn->commit();
+        echo json_encode(["success" => true]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    }
 }
 
 function banUser($conn) {

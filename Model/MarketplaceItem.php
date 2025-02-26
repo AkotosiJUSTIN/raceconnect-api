@@ -25,6 +25,9 @@ class MarketplaceItem {
                 'key'    => $_ENV['AWS_ACCESS_KEY'],
                 'secret' => $_ENV['AWS_SECRET_KEY'],
             ],
+            'http'    => [
+                'verify' => false
+            ]
         ]);
     }
 

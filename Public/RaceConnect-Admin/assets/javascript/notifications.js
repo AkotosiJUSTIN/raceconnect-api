@@ -94,18 +94,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
                 <td>
                     <div class="notification-content">
-                        <strong>${escapeHtml(notification.post_title || 'Untitled Post')}</strong><br>
+                        <strong>${escapeHtml(notification.post_title || notification.title || 'Untitled')}</strong><br>
                         <span class="report-reason">${escapeHtml(notification.report_reason || notification.content || 'No reason provided')}</span>
                     </div>
                 </td>
                 <td>${new Date(notification.created_at).toLocaleString()}</td>
                 <td>
                     <div class="actions">
-                        ${notification.post_id ? `
-                            <button class="view-btn" onclick="handleViewPost(${notification.post_id})" title="View Post">
-                                <box-icon type='solid' name='show' color="white"></box-icon>
-                            </button>
-                        ` : ''}
+                        <button class="view-btn" onclick="handleViewPost(${notification.post_id}, ${notification.marketplace_item_id}, '${notification.type}')" title="View Item">
+                            <box-icon type='solid' name='show' color="white"></box-icon>
+                        </button>
                         <button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
                             <box-icon type='solid' name='archive-in' color="white"></box-icon>
                         </button>
@@ -141,9 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, "&#039;");
     }
 
-    // Define global handlers
-    window.handleViewPost = function(postId) {
-        window.location.href = `index_posts.php?post_id=${postId}`;
+    // Update the handleViewPost function
+    window.handleViewPost = function(postId, marketplaceItemId, type) {
+        if (type === 'marketplace') {
+            window.location.href = `index_marketplace.php?item_id=${marketplaceItemId}`;
+        } else {
+            window.location.href = `index_posts.php?post_id=${postId}`;
+        }
     };
 
     window.handleArchiveNotification = function(notificationId) {
