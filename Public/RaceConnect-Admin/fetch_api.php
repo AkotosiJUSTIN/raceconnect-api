@@ -70,6 +70,9 @@ switch ($action) {
     case 'archive_notification':
         archiveNotification($conn);
         break;
+    case 'bulk_archive_notifications':
+        bulkArchiveNotifications($conn);
+    break;
     case 'post_announcement':
         postAnnouncement($conn);
         break;
@@ -905,6 +908,41 @@ function unhidePost($conn) {
         if (isset($stmt)) {
             $stmt->close();
         }
+    }
+}
+
+function bulkArchiveNotifications($conn) {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $notificationIds = $data['notification_ids'] ?? [];
+
+        if (empty($notificationIds)) {
+            throw new Exception("No notifications selected");
+        }
+
+        $ids = array_map('intval', $notificationIds);
+        $placeholders = str_repeat('?,', count($ids) - 1) . '?';
+        
+        $query = "UPDATE notifications SET status = 'archived' WHERE id IN ($placeholders)";
+        $stmt = $conn->prepare($query);
+        
+        if (!$stmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
+
+        $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to archive notifications");
+        }
+
+        echo json_encode(["success" => true]);
+
+    } catch (Exception $e) {
+        echo json_encode([
+            "success" => false,
+            "error" => $e->getMessage()
+        ]);
     }
 }
 

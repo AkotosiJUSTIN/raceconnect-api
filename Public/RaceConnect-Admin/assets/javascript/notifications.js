@@ -5,6 +5,97 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');
     const filterDropdown = document.getElementById('filterDropdown');
     const notificationsList = document.getElementById('notificationTableBody');
+    const selectAll = document.querySelector('.select-all');
+    const bulkArchive = document.getElementById('bulkArchive');
+    
+    if (selectAll) {
+        selectAll.addEventListener('change', toggleSelectAll);
+    }
+
+    if (bulkArchive) {
+        bulkArchive.addEventListener('click', () => performBulkAction('archive'));
+    }
+
+    function toggleSelectAll() {
+        const checkboxes = document.querySelectorAll('.notification-check');
+        checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
+        updateBulkActionButton();
+    }
+
+    function updateBulkActionButton() {
+        const checkboxes = document.querySelectorAll('.notification-check');
+        const selectedCount = document.querySelectorAll('.notification-check:checked').length;
+        
+        // Update bulk archive button state
+        bulkArchive.disabled = selectedCount === 0;
+        
+        // Update select all checkbox state
+        if (selectAll) {
+            // Only check the select all if all checkboxes are checked
+            selectAll.checked = selectedCount > 0 && selectedCount === checkboxes.length;
+            
+            // Add indeterminate state when some but not all are selected
+            selectAll.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
+        }
+    }
+
+    function performBulkAction(action) {
+        const selectedNotifications = Array.from(document.querySelectorAll('.notification-check:checked'))
+            .map(checkbox => checkbox.dataset.id);
+    
+        if (selectedNotifications.length === 0) {
+            return Swal.fire({
+                title: 'No Notifications Selected',
+                text: 'Please select at least one notification to archive.',
+                icon: 'warning'
+            });
+        }
+    
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `You are about to archive ${selectedNotifications.length} notification(s).`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#B91C1C'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('fetch_api.php?action=bulk_archive_notifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        notification_ids: selectedNotifications
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire({
+                            title: 'Archived!',
+                            text: `${selectedNotifications.length} notification(s) have been archived.`,
+                            icon: 'success'
+                        }).then(() => {
+                            fetchNotifications();
+                            if (selectAll) selectAll.checked = false;
+                            updateBulkActionButton();
+                        });
+                    } else {
+                        throw new Error(result.error || 'Failed to archive notifications');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: error.message,
+                        icon: 'error'
+                    });
+                });
+            }
+        });
+    }
 
     // Add event listeners
     if (searchInput && filterDropdown) {
@@ -110,6 +201,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </td>
             `;
+
+            const checkbox = row.querySelector('.notification-check');
+            if (checkbox) {
+                checkbox.addEventListener('change', updateBulkActionButton);
+            }
+
             notificationsList.appendChild(row);
         });
     }
@@ -149,22 +246,46 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.handleArchiveNotification = function(notificationId) {
-        fetch('fetch_api.php?action=archive_notification', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `notification_id=${notificationId}`
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                fetchNotifications();
-            } else {
-                throw new Error(result.error || 'Failed to archive notification');
+        Swal.fire({
+            title: 'Archive Notification',
+            text: 'Are you sure you want to archive this notification?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, archive it',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#B91C1C'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('fetch_api.php?action=archive_notification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `notification_id=${notificationId}`
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire({
+                            title: 'Archived!',
+                            text: 'The notification has been archived.',
+                            icon: 'success'
+                        }).then(() => {
+                            fetchNotifications();
+                        });
+                    } else {
+                        throw new Error(result.error || 'Failed to archive notification');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: error.message,
+                        icon: 'error'
+                    });
+                });
             }
-        })
-        .catch(error => handleError(error));
+        });
     };
 
     // Initial fetch

@@ -33,6 +33,8 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lalezar&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="assets/javascript/navBar.js" defer></script>
     <script src="assets/javascript/logout_script.js" defer></script>
     <script src="assets/javascript/notifications.js" defer></script>
@@ -132,6 +134,11 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                             <option value="unread">Unread</option>
                             <option value="read">Read</option>
                         </select>
+                        <div class="bulk-actions">
+                            <button id="bulkArchive" class="bulk-action-btn" disabled>
+                                Archive Selected
+                            </button>
+                        </div>
                     </div>
                 </div>
 
