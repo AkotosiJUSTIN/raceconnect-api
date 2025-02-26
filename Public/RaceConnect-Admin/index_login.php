@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 // Include the database connection script
 require_once __DIR__ . '/../../db_connect.php';
 
+// Add at the top of the file
+require_once __DIR__ . '/../../includes/security.php';
+
 // Start login session
 session_set_cookie_params([
     'lifetime' => 0,
@@ -25,57 +28,94 @@ if (isset($_SESSION['email']) && !empty($_SESSION['email'])) {
     exit();
 }
 
-// Check if form is submitted
+// Replace the existing login check code
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Get form data
-    $email = $_POST['email'];
+    // Sanitize inputs
+    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'];
-    $remember_me = isset($_POST['remember_me']) ? true : false;
-
-    // Prepare and bind for the admin table
-    $stmt = $conn->prepare("SELECT admin_name, password FROM admins WHERE email = ?");
-    $stmt->bind_param("s", $email);
-
-    // Execute statement
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    // Check if admin exists
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $admin_name = $row['admin_name'];
-        $hashed_password = $row['password'];
-
-        // Verify the password
-        if (password_verify($password, $hashed_password)) {
-            // Set session variables
-            $_SESSION['email'] = $email;
-            $_SESSION['admin_name'] = $admin_name;
-
-            // Handle "Remember Me" functionality
-            if ($remember_me) {
-                // Set cookies for 30 days if "Remember Me" is checked
-                setcookie('email', $email, time() + (86400 * 30), "/", "", true, true); // 30 days
-                setcookie('admin_name', $admin_name, time() + (86400 * 30), "/", "", true, true);
-            } else {
-                // Clear cookies if "Remember Me" is not checked
-                setcookie('email', '', time() - 3600, "/", "", true, true);
-                setcookie('admin_name', '', time() - 3600, "/", "", true, true);
-            }
-
-            // Redirect to the dashboard
-            header("Location: index.php");
-            exit();
-        } else {
-            $error_message = "Invalid email or password";
-        }
+    
+    // Validate email
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error_message = "Invalid email format";
     } else {
-        $error_message = "Invalid email or password";
+        try {
+            // Use prepared statement with additional security
+            $stmt = $conn->prepare("SELECT admin_name, password, failed_attempts, last_attempt FROM admins WHERE email = ? AND active = 1 LIMIT 1");
+            if (!$stmt) {
+                throw new Exception("Database error");
+            }
+            
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                
+                // Check for brute force attempts
+                if ($row['failed_attempts'] >= 5 && time() - strtotime($row['last_attempt']) < 900) {
+                    $error_message = "Account temporarily locked. Please try again in 15 minutes.";
+                } else if (password_verify($password, $row['password'])) {
+                    // Reset failed attempts on successful login
+                    $update = $conn->prepare("UPDATE admins SET failed_attempts = 0, last_attempt = NOW() WHERE email = ?");
+                    $update->bind_param("s", $email);
+                    $update->execute();
+                    
+                    // Generate new session ID
+                    session_regenerate_id(true);
+                    
+                    // Set session variables
+                    $_SESSION['email'] = $email;
+                    $_SESSION['admin_name'] = $row['admin_name'];
+                    $_SESSION['last_activity'] = time();
+                    $_SESSION['ip'] = $_SERVER['REMOTE_ADDR'];
+                    $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+                    
+                    // Handle "Remember Me"
+                    if (isset($_POST['remember_me'])) {
+                        $token = bin2hex(random_bytes(32));
+                        $hashedToken = password_hash($token, PASSWORD_DEFAULT);
+                        
+                        // Store token in database
+                        $tokenStmt = $conn->prepare("UPDATE admins SET remember_token = ? WHERE email = ?");
+                        $tokenStmt->bind_param("ss", $hashedToken, $email);
+                        $tokenStmt->execute();
+                        
+                        // Set secure cookie
+                        setcookie(
+                            'remember_token',
+                            $token,
+                            [
+                                'expires' => time() + (86400 * 30),
+                                'path' => '/',
+                                'secure' => true,
+                                'httponly' => true,
+                                'samesite' => 'Strict'
+                            ]
+                        );
+                    }
+                    
+                    header("Location: index.php");
+                    exit();
+                } else {
+                    // Increment failed attempts
+                    $update = $conn->prepare("UPDATE admins SET failed_attempts = failed_attempts + 1, last_attempt = NOW() WHERE email = ?");
+                    $update->bind_param("s", $email);
+                    $update->execute();
+                    
+                    $error_message = "Invalid email or password";
+                }
+            } else {
+                // Use the same error message to prevent user enumeration
+                $error_message = "Invalid email or password";
+            }
+            
+            $stmt->close();
+        } catch (Exception $e) {
+            error_log("Login error: " . $e->getMessage());
+            $error_message = "An error occurred. Please try again later.";
+        }
     }
-
-    // Close connection
-    $stmt->close();
-    $conn->close();
 }
 
 // Check if the user has logged out successfully
