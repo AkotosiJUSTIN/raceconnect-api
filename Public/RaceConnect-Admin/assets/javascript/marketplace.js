@@ -88,60 +88,135 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add action handlers
     window.hideItem = function(itemId) {
-        fetch('fetch_api.php?action=hide_marketplace_item', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `item_id=${itemId}`
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                fetchMarketplaceItems();
-            } else {
-                console.error('Error:', result.error);
+        Swal.fire({
+            title: 'Hide Item',
+            text: 'Are you sure you want to hide this marketplace item?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#B91C1C'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('fetch_api.php?action=hide_marketplace_item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `item_id=${itemId}`
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire({
+                            title: 'Hidden!',
+                            text: 'The item has been hidden.',
+                            icon: 'success',
+                            timer: 1500
+                        }).then(() => {
+                            fetchMarketplaceItems();
+                        });
+                    } else {
+                        throw new Error(result.error || 'Failed to hide item');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: error.message,
+                        icon: 'error'
+                    });
+                });
             }
-        })
-        .catch(error => console.error('Error:', error));
+        });
     };
-    
+
     window.unhideItem = function(itemId) {
-        fetch('fetch_api.php?action=unhide_marketplace_item', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `item_id=${itemId}`
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                fetchMarketplaceItems();
-            } else {
-                console.error('Error:', result.error);
+        Swal.fire({
+            title: 'Unhide Item',
+            text: 'Are you sure you want to unhide this marketplace item?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#059669'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('fetch_api.php?action=unhide_marketplace_item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `item_id=${itemId}`
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire({
+                            title: 'Unhidden!',
+                            text: 'The item has been unhidden.',
+                            icon: 'success',
+                            timer: 1500
+                        }).then(() => {
+                            fetchMarketplaceItems();
+                        });
+                    } else {
+                        throw new Error(result.error || 'Failed to unhide item');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: error.message,
+                        icon: 'error'
+                    });
+                });
             }
-        })
-        .catch(error => console.error('Error:', error));
+        });
     };
-    
+
     window.archiveItem = function(itemId) {
-        fetch('fetch_api.php?action=archive_marketplace_item', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `item_id=${itemId}`
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                fetchMarketplaceItems();
-            } else {
-                console.error('Error:', result.error);
+        Swal.fire({
+            title: 'Archive Item',
+            text: 'Are you sure you want to archive this marketplace item?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#B91C1C'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('fetch_api.php?action=archive_marketplace_item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `item_id=${itemId}`
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire({
+                            title: 'Archived!',
+                            text: 'The item has been archived.',
+                            icon: 'success',
+                            timer: 1500
+                        }).then(() => {
+                            fetchMarketplaceItems();
+                        });
+                    } else {
+                        throw new Error(result.error || 'Failed to archive item');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: error.message,
+                        icon: 'error'
+                    });
+                });
             }
-        })
-        .catch(error => console.error('Error:', error));
+        });
     };
 
     window.reportMarketplaceItem = function(itemId) {

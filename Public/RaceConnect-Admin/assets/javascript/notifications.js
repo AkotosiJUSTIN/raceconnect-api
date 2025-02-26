@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
             text: 'Are you sure you want to archive this notification?',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Yes, archive it',
+            confirmButtonText: 'Yes',
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#B91C1C'
         }).then((result) => {
