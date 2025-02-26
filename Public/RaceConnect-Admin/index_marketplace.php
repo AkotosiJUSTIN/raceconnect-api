@@ -32,6 +32,8 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lalezar&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="assets/javascript/navBar.js" defer></script>
     <script src="assets/javascript/marketplace.js" defer></script>
     <script src="assets/javascript/logout_script.js" defer></script>
@@ -128,8 +130,8 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
             <h2>Confirm Logout</h2>
             <p>Are you sure you want to log out?</p>
             <div class="dialog-buttons">
-                <button id="cancelLogout" class="dialog-button">No</button>
                 <button id="confirmLogout" class="dialog-button">Yes</button>
+                <button id="cancelLogout" class="dialog-button">No</button>
             </div>
         </div>
     </div>
