@@ -51,6 +51,12 @@ body {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
 }
 
+.post-card.blurred .scrollable-content {
+    filter: blur(8px);
+    pointer-events: none;
+    user-select: none;
+}
+
 /* Post Header */
 .post-header {
     display: flex;
@@ -123,6 +129,37 @@ body {
 .post-actions button:focus-visible {
     outline: 2px solid #0056b3; 
     outline-offset: 2px; 
+}
+
+.error-message {
+    background-color: #fee2e2;
+    color: #991b1b;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem;
+    text-align: center;
+    border: 1px solid #f87171;
+}
+
+.error-details {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    color: #dc2626;
+}
+
+.retry-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #b91c1c;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.retry-btn:hover {
+    background-color: #991b1b;
 }
 
 /* Responsive Design for Buttons */
@@ -203,4 +240,33 @@ body {
     .post-interactions span {
         gap: 6px;
     }
+}
+
+.report-info {
+    background-color: #fee2e2;
+    color: #991b1b;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.report-reason {
+    font-weight: 600;
+}
+
+.report-date {
+    font-size: 0.75rem;
+    color: #dc2626;
+}
+
+.unhide-btn {
+    background-color: #059669 !important;
+}
+
+.unhide-btn:hover {
+    background-color: #047857 !important;
 }

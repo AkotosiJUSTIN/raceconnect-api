@@ -1,7 +1,20 @@
 <?php
 require_once __DIR__ . '/../../db_connect.php';
 
+session_start();
+
+// Check authentication
+if (!isset($_SESSION['email'])) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'Unauthorized access'
+    ]);
+    exit;
+}
+
 header('Content-Type: application/json');
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
 
 $action = $_GET['action'] ?? '';
 
@@ -36,11 +49,18 @@ switch ($action) {
     case 'hide_post':
         hidePost($conn);
         break;
+
+    case 'unhide_post':
+        unhidePost($conn);
+        break;
     case 'post_announcement':
         postAnnouncement($conn);
         break;
     default:
-        echo json_encode(['error' => 'Invalid action']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Invalid action'
+        ]);
         break;
 }
 
@@ -75,34 +95,56 @@ function fetchAnnouncements($conn) {
 }
 
 function fetchPosts($conn) {
-    $query = "
-    SELECT 
-        p.id, 
-        p.user_id, 
-        p.title, 
-        p.content, 
-        p.like_count, 
-        p.comment_count, 
-        p.repost_count, 
-        p.created_at,
-        GROUP_CONCAT(DISTINCT pi.image_url) AS images
-    FROM posts p
-    LEFT JOIN post_images pi ON p.id = pi.post_id
-    WHERE p.status NOT IN ('archived') OR p.status IS NULL
-    GROUP BY p.id
-    ";
-    $result = $conn->query($query);
-    $posts = [];
-    if ($result === false) {
-        echo json_encode(['success' => false, 'error' => $conn->error]);
-        return;
-    } else if ($result->num_rows > 0) {
+    try {
+        $query = "SELECT 
+            p.id, 
+            p.user_id, 
+            COALESCE(p.title, 'Untitled Post') as title,  /* Add COALESCE to handle NULL titles */
+            p.content, 
+            p.created_at,
+            COALESCE(p.status, 'Active') as status, /* Default NULL status to 'Active' */
+            p.report,
+            r.reason as report_reason,
+            r.created_at as reported_at,
+            r.status as report_status,
+            u.username as reporter_username,
+            GROUP_CONCAT(pi.image_url) as images
+            FROM posts p
+            LEFT JOIN reports r ON p.id = r.post_id
+            LEFT JOIN users u ON r.reporter_id = u.id
+            LEFT JOIN post_images pi ON p.id = pi.post_id
+            WHERE (p.report = 'reported' OR p.status = 'Hidden')
+            AND (p.status IS NULL OR p.status != 'Archived') /* Modified WHERE clause */
+            GROUP BY p.id
+            ORDER BY CASE 
+                WHEN p.status = 'Hidden' THEN 1
+                ELSE 0
+            END, r.created_at DESC";
+        
+        $result = $conn->query($query);
+        
+        if (!$result) {
+            throw new Exception($conn->error);
+        }
+        
+        $posts = [];
         while ($row = $result->fetch_assoc()) {
+            // Convert images string to array or empty array if null
             $row['images'] = $row['images'] ? explode(',', $row['images']) : [];
             $posts[] = $row;
         }
+        
+        echo json_encode([
+            'success' => true, 
+            'data' => $posts
+        ]);
+    } catch (Exception $e) {
+        error_log("Error in fetchPosts: " . $e->getMessage());
+        echo json_encode([
+            'success' => false, 
+            'error' => 'Failed to fetch posts'
+        ]);
     }
-    echo json_encode(['success' => true, 'data' => $posts]);
 }
 
 function fetchUsers($conn) {
@@ -253,24 +295,84 @@ function hidePost($conn) {
         return;
     }
 
-    $query = "UPDATE posts SET status = 'Hidden' WHERE id = ?";
-    $stmt = $conn->prepare($query);
+    // Start transaction
+    $conn->begin_transaction();
 
-    if (!$stmt) {
-        echo json_encode(["success" => false, "error" => "Database error: " . $conn->error]);
-        return;
-    }
+    try {
+        // Update only the specific post's status
+        $query = "UPDATE posts SET status = 'Hidden' WHERE id = ?";
+        $stmt = $conn->prepare($query);
 
-    $stmt->bind_param("i", $postId);
-    $executeSuccess = $stmt->execute();
+        if (!$stmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
 
-    $response = ["success" => $executeSuccess];
-    if (!$executeSuccess) {
-        $response["error"] = $stmt->error;
+        $stmt->bind_param("i", $postId);
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update post");
+        }
+
+        // Update only this specific report's status
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'resolved' WHERE post_id = ?");
+        $updateReport->bind_param("i", $postId);
+        if (!$updateReport->execute()) {
+            throw new Exception("Failed to update report");
+        }
+
+        $conn->commit();
+        echo json_encode(["success" => true]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
     }
 
     $stmt->close();
-    echo json_encode($response);
+}
+
+function unhidePost($conn) {
+    $postId = $_POST['post_id'] ?? null;
+
+    if (!$postId) {
+        echo json_encode(["success" => false, "error" => "Missing parameters"]);
+        return;
+    }
+
+    // Start transaction
+    $conn->begin_transaction();
+
+    try {
+        // Update post status to Active and keep report as 'reported'
+        $query = "UPDATE posts SET status = 'Active' WHERE id = ?";
+        $stmt = $conn->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Database error: " . $conn->error);
+        }
+
+        $stmt->bind_param("i", $postId);
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update post");
+        }
+
+        // Update report status to dismissed
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'dismissed' WHERE post_id = ?");
+        $updateReport->bind_param("i", $postId);
+        if (!$updateReport->execute()) {
+            throw new Exception("Failed to update report");
+        }
+
+        $conn->commit();
+        echo json_encode(["success" => true]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    } finally {
+        if (isset($stmt)) {
+            $stmt->close();
+        }
+    }
 }
 
 function postAnnouncement($conn) {
