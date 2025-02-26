@@ -1,5 +1,4 @@
 -- Users Table
-
 CREATE TABLE Users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -16,7 +15,7 @@ CREATE TABLE Users (
     friend_count INT DEFAULT 0,  -- Optional: Cache total friends
     friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public', -- Privacy setting
     last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Last active time
-    status ENUM('Active', 'Banned') DEFAULT 'Active',
+    status ENUM('Active', 'Banned', 'Suspended') DEFAULT 'Active',
     report ENUM ('None', 'Reported') DEFAULT 'None',
     suspension_end_date TIMESTAMP NULL, -- If the user is suspended
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -28,7 +27,7 @@ CREATE TABLE Friends (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     friend_id INT NOT NULL,
-    status ENUM('pending', 'accepted', 'blocked') DEFAULT 'pending',
+    status ENUM('Pending', 'Accepted', 'Blocked') DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (friend_id) REFERENCES Users(id) ON DELETE CASCADE,
@@ -57,9 +56,8 @@ CREATE TABLE Posts (
     category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship' ) DEFAULT 'Formula 1',
     privacy ENUM('Public', 'Only me', 'Friends Only' ) DEFAULT 'Public',
     type ENUM('text', 'image', 'video') DEFAULT 'text',
-    post_type ENUM('announcement', 'normal') DEFAULT 'normal', -- New column for post type
-    report ENUM ('None', 'Reported') DEFAULT 'None',
-    status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active';
+    post_type ENUM('Announcement', 'Normal') DEFAULT 'Normal',
+    status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
@@ -83,16 +81,17 @@ CREATE TABLE Marketplace_Items (
 
 -- Notifications Table (Includes Likes, Comments, Reposts)
 CREATE TABLE `notifications` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `post_id` int(11) DEFAULT NULL,
-  `marketplace_item_id` int(11) DEFAULT NULL,
-  `type` enum('post','marketplace','system') NOT NULL DEFAULT 'system',
-  `content` text NOT NULL,
-  `is_read` tinyint(1) DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `report_id` int(11) DEFAULT NULL,
-  `status` enum('active','archived') DEFAULT 'active'
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `user_id` int(11) NOT NULL,
+    `post_id` int(11) DEFAULT NULL,
+    `marketplace_item_id` int(11) DEFAULT NULL,
+    `type` enum('post','marketplace','system') NOT NULL DEFAULT 'system',
+    `content` text NOT NULL,
+    `is_read` tinyint(1) DEFAULT 0,
+    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    `report_id` int(11) DEFAULT NULL,
+    `status` enum('active','archived') DEFAULT 'active',
+    PRIMARY KEY (`id`)
 );
 
 -- Admins Table
@@ -253,3 +252,31 @@ CREATE TRIGGER `after_report_insert` AFTER INSERT ON `reports` FOR EACH ROW BEGI
 END
 $$
 DELIMITER ;
+
+CREATE TRIGGER notify_post_repost
+AFTER INSERT ON Post_Reposts
+FOR EACH ROW
+INSERT INTO Notifications (user_id, post_id, type, content, created_at)
+VALUES (NEW.owner_id, NEW.post_id, 'repost', 
+                CONCAT('User ', NEW.user_id, ' reposted your post'), NOW());
+
+CREATE TRIGGER notify_post_comment
+AFTER INSERT ON Post_Comments
+FOR EACH ROW
+INSERT INTO Notifications (user_id, post_id, type, content, created_at)
+VALUES (NEW.owner_id, NEW.post_id, 'comment', 
+                CONCAT('User ', NEW.user_id, ' commented on your post'), NOW());
+
+CREATE TRIGGER notify_marketplace_like
+AFTER INSERT ON Marketplace_Item_Likes
+FOR EACH ROW
+INSERT INTO Notifications (user_id, marketplace_item_id, type, content, created_at)
+VALUES (NEW.owner_id, NEW.marketplace_item_id, 'marketplace_like', 
+                CONCAT('User ', NEW.user_id, ' liked your marketplace item'), NOW());
+
+CREATE TRIGGER notify_post_like
+AFTER INSERT ON Post_Likes
+FOR EACH ROW
+INSERT INTO Notifications (user_id, post_id, type, content, created_at)
+VALUES (NEW.owner_id, NEW.post_id, 'like', CONCAT('User ', NEW.user_id, ' liked your post'), NOW());
+

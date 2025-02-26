@@ -20,7 +20,7 @@ class Post {
         $this->pdo = $db;
         $this->s3 = new S3Client([
             'version' => 'latest',
-            'region'  => 'ap-southeast-2', // Replace with your region
+            'region'  => 'ap-southeast-2',
             'credentials' => [
                 'key'    => $_ENV['AWS_ACCESS_KEY'],
                 'secret' => $_ENV['AWS_SECRET_KEY'],
@@ -37,10 +37,14 @@ class Post {
             throw new Exception("Invalid image file.");
         }
 
+        // Generate a unique identifier and append it to the image name
+        $uniqueId = uniqid();
+        $uniqueImageName = $uniqueId . '-' . basename($imageName);
+
         try {
             $result = $this->s3->putObject([
                 'Bucket' => 'raceconnect-images', // Replace with your S3 bucket name
-                'Key'    => 'post-images/' . basename($imageName), // Prevent path traversal
+                'Key'    => 'post-images/' . $uniqueImageName, // Prevent path traversal
                 'Body'   => $imageData
             ]);
             return $result['ObjectURL'];

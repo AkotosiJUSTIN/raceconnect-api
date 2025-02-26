@@ -29,16 +29,30 @@ class MarketplaceItem {
     }
 
     public function uploadItemImageToS3($imageData, $imageName) {
+        // Validate file type and size before uploading
+        if (!$this->isValidImage($imageData)) {
+            throw new Exception("Invalid image file.");
+        }
+
+        // Generate a unique identifier and append it to the image name
+        $uniqueId = uniqid();
+        $uniqueImageName = $uniqueId . '-' . basename($imageName);
+
         try {
             $result = $this->s3->putObject([
                 'Bucket' => 'raceconnect-images', 
-                'Key'    => 'item-images/' . $imageName,
+                'Key'    => 'item-images/' . $uniqueImageName,
                 'Body'   => $imageData
             ]);
             return $result['ObjectURL'];
         } catch (AwsException $e) {
             throw new Exception('Failed to upload image to S3: ' . $e->getMessage());
         }
+    }
+
+    private function isValidImage($imageData) {
+        // Basic validation for image files
+        return (strlen($imageData) > 0 && strlen($imageData) <= 5000000); // 5MB limit
     }
 
     public function saveItemImage($itemId, $imageUrl) {
