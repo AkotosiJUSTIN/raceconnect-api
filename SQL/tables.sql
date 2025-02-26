@@ -212,6 +212,32 @@ CREATE TABLE `reports` (
   `status` enum('pending','resolved','dismissed') DEFAULT 'pending'
 );
 
+
+-- Conversations Table (Buyer ↔ Seller)
+CREATE TABLE conversations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    buyer_id INT NOT NULL,
+    seller_id INT NOT NULL,
+    product_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (buyer_id) REFERENCES Users(id),
+    FOREIGN KEY (seller_id) REFERENCES Users(id),
+    FOREIGN KEY (product_id) REFERENCES Marketplace_Items(id)
+);
+
+
+-- Messages Table
+CREATE TABLE messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    conversation_id INT NOT NULL,
+    sender_id INT NOT NULL,
+    message TEXT NOT NULL,
+    status ENUM('sent', 'delivered', 'read') DEFAULT 'sent',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id),
+    FOREIGN KEY (sender_id) REFERENCES users(id)
+);
+
 --
 -- Triggers `reports` Delimter is used to create a notification when a report is inserted
 --
@@ -280,3 +306,29 @@ FOR EACH ROW
 INSERT INTO Notifications (user_id, post_id, type, content, created_at)
 VALUES (NEW.owner_id, NEW.post_id, 'like', CONCAT('User ', NEW.user_id, ' liked your post'), NOW());
 
+DELIMITER $$
+
+CREATE TRIGGER after_message_insert
+AFTER INSERT ON messages
+FOR EACH ROW
+BEGIN
+    -- Insert a notification for the receiver
+    INSERT INTO notifications (user_id, marketplace_item_id, type, content, is_read, created_at, status)
+    VALUES (
+        (SELECT 
+            CASE 
+                WHEN NEW.sender_id = c.buyer_id THEN c.seller_id 
+                ELSE c.buyer_id 
+            END 
+        FROM conversations c 
+        WHERE c.id = NEW.conversation_id),
+        (SELECT product_id FROM conversations WHERE id = NEW.conversation_id),
+        'marketplace',
+        CONCAT('New message from User ', NEW.sender_id),
+        0, -- Unread notification
+        NOW(),
+        'active'
+    );
+END $$
+
+DELIMITER ;
