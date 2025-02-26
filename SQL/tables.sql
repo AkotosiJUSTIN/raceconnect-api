@@ -104,6 +104,10 @@ CREATE TABLE Admins (
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('content_moderator', 'community_manager',  'marketplace_manager') DEFAULT 'content_moderator',
+    failed_attempts INT DEFAULT 0,
+    last_attempt DATETIME,
+    remember_token VARCHAR(255),
+    active BOOLEAN DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
