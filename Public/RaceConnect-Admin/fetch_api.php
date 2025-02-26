@@ -43,15 +43,23 @@ switch ($action) {
     case 'unban_user':
         unbanUser($conn);
         break;
+    case 'report_post':
+        reportPost($conn);
+        break;
+    case 'report_marketplace_item':
+        reportMarketplaceItem($conn);
+        break;
     case 'archive_post':
         archivePost($conn);
         break;
     case 'hide_post':
         hidePost($conn);
         break;
-
     case 'unhide_post':
         unhidePost($conn);
+        break;
+    case 'archive_notification':
+        archiveNotification($conn);
         break;
     case 'post_announcement':
         postAnnouncement($conn);
@@ -70,16 +78,261 @@ function fetchDashboardData($conn) {
     // Implement fetch dashboard data logic
 }
 
+function createReportNotification($conn, $itemId, $reportId, $type, $reason) {
+    try {
+        // Get admin user ID
+        $adminQuery = "SELECT id FROM admins WHERE role = 'content_moderator' || 'community_manager' || 'marketplace_manager' LIMIT 1";
+        $adminResult = $conn->query($adminQuery);
+        $adminId = $adminResult->fetch_assoc()['id'] ?? 1; // Fallback to ID 1 if no admin found
+
+        $notifQuery = "INSERT INTO notifications (
+            user_id,
+            post_id,
+            marketplace_item_id,
+            type,
+            content,
+            is_read,
+            created_at,
+            report_id,
+            status
+        ) VALUES (
+            ?, -- admin_id
+            CASE WHEN ? = 'post' THEN ? ELSE NULL END,
+            CASE WHEN ? = 'marketplace' THEN ? ELSE NULL END,
+            ?,
+            ?,
+            0,
+            NOW(),
+            ?,
+            'active'
+        )";
+
+        error_log("Creating notification for $type ID: $itemId, Report ID: $reportId"); // Debug log
+
+        $stmt = $conn->prepare($notifQuery);
+        $content = "New report: " . $reason;
+        $stmt->bind_param("isisissi", 
+            $adminId,
+            $type, $itemId,  // For post_id
+            $type, $itemId,  // For marketplace_item_id
+            $type,
+            $content,
+            $reportId
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to create notification: " . $stmt->error);
+        }
+
+        return true;
+    } catch (Exception $e) {
+        error_log("Error creating notification: " . $e->getMessage());
+        throw $e; // Re-throw to handle in calling function
+    }
+}
+
+function reportMarketplaceItem($conn) {
+    try {
+        $itemId = $_POST['item_id'] ?? null;
+        $reporterId = $_POST['reporter_id'] ?? null;
+        $reason = $_POST['reason'] ?? null;
+
+        if (!$itemId || !$reporterId || !$reason) {
+            throw new Exception("Missing required fields");
+        }
+
+        $conn->begin_transaction();
+
+        // Insert report
+        $reportQuery = "INSERT INTO reports (
+            marketplace_item_id, 
+            reporter_id, 
+            reason, 
+            created_at, 
+            status
+        ) VALUES (?, ?, ?, NOW(), 'pending')";
+        
+        $reportStmt = $conn->prepare($reportQuery);
+        $reportStmt->bind_param("iis", $itemId, $reporterId, $reason);
+        
+        if (!$reportStmt->execute()) {
+            throw new Exception("Failed to create report");
+        }
+        
+        $reportId = $conn->insert_id;
+
+        // Update marketplace item status
+        $updateItem = "UPDATE marketplace_items SET report = 'reported' WHERE id = ?";
+        $itemStmt = $conn->prepare($updateItem);
+        $itemStmt->bind_param("i", $itemId);
+        
+        if (!$itemStmt->execute()) {
+            throw new Exception("Failed to update item status");
+        }
+
+        // Create notification
+        if (!createReportNotification($conn, $itemId, $reportId, 'marketplace', $reason)) {
+            throw new Exception("Failed to create notification");
+        }
+
+        $conn->commit();
+        echo json_encode(["success" => true]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        error_log("Error in reportMarketplaceItem: " . $e->getMessage());
+        echo json_encode([
+            "success" => false,
+            "error" => $e->getMessage()
+        ]);
+    }
+}
+
+function reportPost($conn) {
+    try {
+        $postId = $_POST['post_id'] ?? null;
+        $reporterId = $_POST['reporter_id'] ?? null;
+        $reason = $_POST['reason'] ?? null;
+
+        if (!$postId || !$reporterId || !$reason) {
+            throw new Exception("Missing required fields");
+        }
+
+        error_log("Processing report for post ID: $postId"); // Debug log
+
+        $conn->begin_transaction();
+
+        // Insert report
+        $reportQuery = "INSERT INTO reports (
+            post_id, 
+            reporter_id, 
+            reason, 
+            created_at, 
+            status
+        ) VALUES (?, ?, ?, NOW(), 'pending')";
+        
+        $reportStmt = $conn->prepare($reportQuery);
+        $reportStmt->bind_param("iis", $postId, $reporterId, $reason);
+        
+        if (!$reportStmt->execute()) {
+            throw new Exception("Failed to create report: " . $reportStmt->error);
+        }
+        
+        $reportId = $conn->insert_id;
+        error_log("Created report with ID: $reportId"); // Debug log
+
+        // Update post status
+        $updatePost = "UPDATE posts SET report = 'reported' WHERE id = ?";
+        $postStmt = $conn->prepare($updatePost);
+        $postStmt->bind_param("i", $postId);
+        
+        if (!$postStmt->execute()) {
+            throw new Exception("Failed to update post status");
+        }
+
+        // Create notification using the helper function
+        try {
+            createReportNotification($conn, $postId, $reportId, 'post', $reason);
+        } catch (Exception $e) {
+            throw new Exception("Failed to create notification: " . $e->getMessage());
+        }
+
+        $conn->commit();
+        echo json_encode([
+            "success" => true,
+            "message" => "Report created successfully"
+        ]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        error_log("Error in reportPost: " . $e->getMessage());
+        echo json_encode([
+            "success" => false,
+            "error" => $e->getMessage()
+        ]);
+    }
+}
+
 function fetchNotifications($conn) {
-    $query = "SELECT id, user_id, content, is_read, created_at FROM notifications";
-    $result = $conn->query($query);
-    $notifications = [];
-    if ($result->num_rows > 0) {
+    try {
+        // Debug log before query execution
+        error_log("Starting fetchNotifications");
+
+        $query = "SELECT 
+            n.id,
+            n.user_id,
+            n.post_id,
+            n.type,
+            n.content,
+            n.is_read,
+            n.created_at,
+            n.report_id,
+            n.status,
+            r.reason as report_reason,
+            u.username as reporter_username,
+            COALESCE(p.title, 'Untitled Post') as post_title
+            FROM notifications n
+            LEFT JOIN reports r ON n.report_id = r.id
+            LEFT JOIN users u ON r.reporter_id = u.id
+            LEFT JOIN posts p ON n.post_id = p.id
+            WHERE n.type IN ('post', 'report', 'marketplace')
+            AND (n.status IS NULL OR n.status != 'archived')
+            ORDER BY n.created_at DESC";
+
+        // Debug log the query
+        error_log("Executing query: " . $query);
+        
+        $result = $conn->query($query);
+        
+        if (!$result) {
+            throw new Exception("Query failed: " . $conn->error);
+        }
+        
+        $notifications = [];
         while ($row = $result->fetch_assoc()) {
+            // Debug log each notification
+            error_log("Found notification: " . json_encode($row));
             $notifications[] = $row;
         }
+        
+        // Debug log total count
+        error_log("Total notifications found: " . count($notifications));
+        
+        echo json_encode([
+            'success' => true,
+            'data' => $notifications,
+            'count' => count($notifications)
+        ]);
+        
+    } catch (Exception $e) {
+        error_log("Error in fetchNotifications: " . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
     }
-    echo json_encode($notifications);
+}
+
+function archiveNotification($conn) {
+    $notificationId = $_POST['notification_id'] ?? null;
+
+    if (!$notificationId) {
+        echo json_encode(["success" => false, "error" => "Missing notification ID"]);
+        return;
+    }
+
+    try {
+        $stmt = $conn->prepare("UPDATE notifications SET status = 'archived' WHERE id = ?");
+        $stmt->bind_param("i", $notificationId);
+        
+        if ($stmt->execute()) {
+            echo json_encode(["success" => true]);
+        } else {
+            throw new Exception("Failed to archive notification");
+        }
+    } catch (Exception $e) {
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    }
 }
 
 function fetchAnnouncements($conn) {
@@ -96,13 +349,41 @@ function fetchAnnouncements($conn) {
 
 function fetchPosts($conn) {
     try {
+        // First, sync post report status with pending reports
+        $syncQuery = "UPDATE posts p 
+            INNER JOIN (
+                SELECT post_id, COUNT(*) as pending_count 
+                FROM reports 
+                WHERE status = 'pending'
+                GROUP BY post_id
+            ) r ON p.id = r.post_id 
+            SET p.report = 'reported'
+            WHERE r.pending_count > 0";
+        
+        $conn->query($syncQuery);
+
+        // Then clean up posts with no pending reports
+        $cleanupQuery = "UPDATE posts p 
+            LEFT JOIN (
+                SELECT post_id, COUNT(*) as pending_count 
+                FROM reports 
+                WHERE status = 'pending'
+                GROUP BY post_id
+            ) r ON p.id = r.post_id 
+            SET p.report = 'none'
+            WHERE (r.pending_count IS NULL OR r.pending_count = 0)
+            AND p.status != 'Hidden'";
+        
+        $conn->query($cleanupQuery);
+
+        // Then fetch posts that are either reported or hidden
         $query = "SELECT 
             p.id, 
             p.user_id, 
-            COALESCE(p.title, 'Untitled Post') as title,  /* Add COALESCE to handle NULL titles */
+            COALESCE(p.title, 'Untitled Post') as title,
             p.content, 
             p.created_at,
-            COALESCE(p.status, 'Active') as status, /* Default NULL status to 'Active' */
+            COALESCE(p.status, 'Active') as status,
             p.report,
             r.reason as report_reason,
             r.created_at as reported_at,
@@ -110,16 +391,13 @@ function fetchPosts($conn) {
             u.username as reporter_username,
             GROUP_CONCAT(pi.image_url) as images
             FROM posts p
-            LEFT JOIN reports r ON p.id = r.post_id
+            LEFT JOIN reports r ON p.id = r.post_id AND r.status = 'pending'
             LEFT JOIN users u ON r.reporter_id = u.id
             LEFT JOIN post_images pi ON p.id = pi.post_id
             WHERE (p.report = 'reported' OR p.status = 'Hidden')
-            AND (p.status IS NULL OR p.status != 'Archived') /* Modified WHERE clause */
+            AND p.status != 'Archived'
             GROUP BY p.id
-            ORDER BY CASE 
-                WHEN p.status = 'Hidden' THEN 1
-                ELSE 0
-            END, r.created_at DESC";
+            ORDER BY r.created_at DESC";
         
         $result = $conn->query($query);
         
@@ -129,7 +407,6 @@ function fetchPosts($conn) {
         
         $posts = [];
         while ($row = $result->fetch_assoc()) {
-            // Convert images string to array or empty array if null
             $row['images'] = $row['images'] ? explode(',', $row['images']) : [];
             $posts[] = $row;
         }
@@ -295,11 +572,10 @@ function hidePost($conn) {
         return;
     }
 
-    // Start transaction
     $conn->begin_transaction();
 
     try {
-        // Update only the specific post's status
+        // Update post status
         $query = "UPDATE posts SET status = 'Hidden' WHERE id = ?";
         $stmt = $conn->prepare($query);
 
@@ -312,11 +588,27 @@ function hidePost($conn) {
             throw new Exception("Failed to update post");
         }
 
-        // Update only this specific report's status
+        // Update report status
         $updateReport = $conn->prepare("UPDATE reports SET status = 'resolved' WHERE post_id = ?");
         $updateReport->bind_param("i", $postId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
+        }
+
+        // Check if there are any pending reports for this post
+        $checkReports = $conn->prepare("SELECT COUNT(*) as count FROM reports WHERE post_id = ? AND status = 'pending'");
+        $checkReports->bind_param("i", $postId);
+        $checkReports->execute();
+        $result = $checkReports->get_result();
+        $row = $result->fetch_assoc();
+
+        // If no pending reports, update the post's report column to 'none'
+        if ($row['count'] == 0) {
+            $updatePostReport = $conn->prepare("UPDATE posts SET report = 'none' WHERE id = ?");
+            $updatePostReport->bind_param("i", $postId);
+            if (!$updatePostReport->execute()) {
+                throw new Exception("Failed to update post report status");
+            }
         }
 
         $conn->commit();
@@ -325,9 +617,11 @@ function hidePost($conn) {
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    } finally {
+        if (isset($stmt)) {
+            $stmt->close();
+        }
     }
-
-    $stmt->close();
 }
 
 function unhidePost($conn) {
@@ -338,11 +632,10 @@ function unhidePost($conn) {
         return;
     }
 
-    // Start transaction
     $conn->begin_transaction();
 
     try {
-        // Update post status to Active and keep report as 'reported'
+        // Update post status
         $query = "UPDATE posts SET status = 'Active' WHERE id = ?";
         $stmt = $conn->prepare($query);
 
@@ -355,11 +648,27 @@ function unhidePost($conn) {
             throw new Exception("Failed to update post");
         }
 
-        // Update report status to dismissed
+        // Update report status
         $updateReport = $conn->prepare("UPDATE reports SET status = 'dismissed' WHERE post_id = ?");
         $updateReport->bind_param("i", $postId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
+        }
+
+        // Check if there are any pending reports for this post
+        $checkReports = $conn->prepare("SELECT COUNT(*) as count FROM reports WHERE post_id = ? AND status = 'pending'");
+        $checkReports->bind_param("i", $postId);
+        $checkReports->execute();
+        $result = $checkReports->get_result();
+        $row = $result->fetch_assoc();
+
+        // If no pending reports, update the post's report column to 'none'
+        if ($row['count'] == 0) {
+            $updatePostReport = $conn->prepare("UPDATE posts SET report = 'none' WHERE id = ?");
+            $updatePostReport->bind_param("i", $postId);
+            if (!$updatePostReport->execute()) {
+                throw new Exception("Failed to update post report status");
+            }
         }
 
         $conn->commit();

@@ -1,110 +1,178 @@
+let notificationsData = [];
+
 document.addEventListener('DOMContentLoaded', () => {
-    fetchNotifications();
-    const selectAll = document.querySelector('.select-all');
-    const searchInput = document.querySelector('.search-input');
-    const filterDropdown = document.querySelector('.filter-dropdown');
-    let notificationsData = [];
+    // Get DOM elements
+    const searchInput = document.getElementById('searchInput');
+    const filterDropdown = document.getElementById('filterDropdown');
+    const notificationsList = document.getElementById('notificationTableBody');
 
-    // Select All checkbox click handler
-    selectAll.addEventListener('click', function() {
-        const notificationChecks = document.querySelectorAll('.notification-check');
-        if (selectAll.checked) {
-            notificationChecks.forEach(checkbox => checkbox.checked = true);
-        } else {
-            notificationChecks.forEach(checkbox => checkbox.checked = false);
-        }
-    });
-
-    // Search input event listener
-    searchInput.addEventListener('input', function() {
-        filterAndPopulateTable();
-    });
-
-    // Filter dropdown event listener
-    filterDropdown.addEventListener('change', function() {
-        filterAndPopulateTable();
-    });
-
-    // Fetch notifications from the server every 30 secs
-    setInterval(fetchNotifications, 30000);
+    // Add event listeners
+    if (searchInput && filterDropdown) {
+        searchInput.addEventListener('input', filterAndPopulateTable);
+        filterDropdown.addEventListener('change', filterAndPopulateTable);
+    }
 
     function fetchNotifications() {
-        fetch('fetch_api.php?action=fetch_notifications')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+        
+        fetch('fetch_api.php?action=fetch_notifications', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            return response.text(); // Change to text() first to debug
+        })
+        .then(text => {
+            const result = JSON.parse(text);
+            
+            if (result.success) {
+                notificationsData = result.data || [];
+                if (Array.isArray(notificationsData)) {
+                    filterAndPopulateTable();
+                } else {
+                    throw new Error('Invalid notifications data format');
                 }
-                return response.json();
-            })
-            .then(notifications => {
-                notificationsData = notifications;
-                filterAndPopulateTable();
-            })
-            .catch(error => console.error('Error fetching notifications:', error));
+            } else {
+                throw new Error(result.error || 'Failed to fetch notifications');
+            }
+        })
+        .catch(error => {
+            handleError(error);
+        });
     }
 
     function filterAndPopulateTable() {
+        if (!searchInput || !filterDropdown) return;
+
         const searchTerm = searchInput.value.toLowerCase();
         const filterValue = filterDropdown.value;
-    
+
         const filteredNotifications = notificationsData.filter(notification => {
-            const notificationText = notification.content && typeof notification.content === 'string'
-                ? notification.content.toLowerCase()
-                : '';
-    
-            const matchesSearch =
-                (notification.content && notification.content.toLowerCase().includes(searchTerm)) ||
-                (notification.user_id && notification.user_id.toString().toLowerCase().includes(searchTerm)) ||
-                (notification.created_at && notification.created_at.toLowerCase().includes(searchTerm));
-    
-            const status = notification.status && typeof notification.status === 'string'
-                ? notification.status.toLowerCase()
-                : '';
-            const matchesFilter = filterValue === 'all' || status === filterValue;
-    
+            const matchesSearch = 
+                (notification.reporter_username || '').toLowerCase().includes(searchTerm) ||
+                (notification.post_title || '').toLowerCase().includes(searchTerm) ||
+                (notification.report_reason || '').toLowerCase().includes(searchTerm);
+            
+            const matchesFilter = filterValue === 'all' || 
+                                (filterValue === 'unread' && !notification.is_read) ||
+                                (filterValue === 'read' && notification.is_read);
+
             return matchesSearch && matchesFilter;
         });
-    
+
         populateNotifications(filteredNotifications);
     }
 
     function populateNotifications(notifications) {
+        console.log('Populating notifications:', notifications); // Debug log
+
         const notificationsList = document.getElementById('notificationTableBody');
-        notificationsList.innerHTML = ''; // Clear the current notifications
-    
+        if (!notificationsList) {
+            console.error('Notification table body not found');
+            return;
+        }
+
+        notificationsList.innerHTML = '';
+
+        if (!notifications || notifications.length === 0) {
+            notificationsList.innerHTML = `
+                <tr>
+                    <td colspan="5" class="no-data">No notifications found</td>
+                </tr>`;
+            return;
+        }
+
         notifications.forEach(notification => {
-            const notificationRow = document.createElement('tr');
-    
-            notificationRow.innerHTML = `
-                <td><input type="checkbox" class="notification-check" aria-label="${notification.id}"></td>
-                <td>${notification.user_id}</td>
-                <td>${notification.content}</td>
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <input type="checkbox" class="notification-check" data-id="${notification.id}">
+                </td>
+                <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
+                <td>
+                    <div class="notification-content">
+                        <strong>${escapeHtml(notification.post_title || 'Untitled Post')}</strong><br>
+                        <span class="report-reason">${escapeHtml(notification.report_reason || notification.content || 'No reason provided')}</span>
+                    </div>
+                </td>
                 <td>${new Date(notification.created_at).toLocaleString()}</td>
                 <td>
                     <div class="actions">
-                        <button class="actions-item hide-btn" title="Hide Notification" onclick="hideNotification('${notification.id}')">
-                            <box-icon type='solid' name='low-vision' color="white"></box-icon>
-                        </button>
-                        <button class="actions-item delete-btn" title="Archive Notification" onclick="deleteNotification('${notification.id}')">
+                        ${notification.post_id ? `
+                            <button class="view-btn" onclick="handleViewPost(${notification.post_id})" title="View Post">
+                                <box-icon type='solid' name='show' color="white"></box-icon>
+                            </button>
+                        ` : ''}
+                        <button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
                             <box-icon type='solid' name='archive-in' color="white"></box-icon>
                         </button>
                     </div>
                 </td>
             `;
-    
-            notificationsList.appendChild(notificationRow);
+            notificationsList.appendChild(row);
         });
     }
 
-    window.editNotification = function(id) {
-        alert(`Edit notification ${id}`);
+    function handleError(error) {
+        console.error('Error:', error);
+        if (notificationsList) {
+            notificationsList.innerHTML = `
+                <tr>
+                    <td colspan="5" class="error-message">
+                        Failed to load notifications. Please try again later.<br>
+                        Error: ${escapeHtml(error.message)}
+                    </td>
+                </tr>
+            `;
+        }
     }
 
-    window.hideNotification = function(id) {
-        alert(`Hide notification ${id}`);
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
-    window.deleteNotification = function(id) {
-        alert(`Delete notification ${id}`);
-    }
+    // Define global handlers
+    window.handleViewPost = function(postId) {
+        window.location.href = `index_posts.php?post_id=${postId}`;
+    };
+
+    window.handleArchiveNotification = function(notificationId) {
+        fetch('fetch_api.php?action=archive_notification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `notification_id=${notificationId}`
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                fetchNotifications();
+            } else {
+                throw new Error(result.error || 'Failed to archive notification');
+            }
+        })
+        .catch(error => handleError(error));
+    };
+
+    // Initial fetch
+    fetchNotifications();
+    
+    // Refresh every 30 seconds
+    const refreshInterval = setInterval(fetchNotifications, 30000);
+
+    // Clean up on page unload
+    window.addEventListener('unload', () => {
+        clearInterval(refreshInterval);
+    });
 });

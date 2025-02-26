@@ -33,6 +33,33 @@ body {
     padding: 1.5rem;
 }
 
+.notification-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.report-reason {
+    color: #991b1b;
+    font-size: 0.875rem;
+}
+
+.view-btn {
+    background-color: #059669;
+}
+
+.view-btn:hover {
+    background-color: #047857;
+}
+
+.archive-btn {
+    background-color: #6b7280;
+}
+
+.archive-btn:hover {
+    background-color: #4b5563;
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;

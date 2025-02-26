@@ -59,9 +59,9 @@ CREATE TABLE Posts (
     type ENUM('text', 'image', 'video') DEFAULT 'text',
     post_type ENUM('announcement', 'normal') DEFAULT 'normal', -- New column for post type
     report ENUM ('None', 'Reported') DEFAULT 'None',
+    status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active';
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    status VARCHAR(255) DEFAULT 'active',
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
@@ -82,18 +82,17 @@ CREATE TABLE Marketplace_Items (
 );
 
 -- Notifications Table (Includes Likes, Comments, Reposts)
-CREATE TABLE Notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    post_id INT NULL,
-    marketplace_item_id INT NULL,
-    type ENUM('like', 'comment', 'repost') NOT NULL,
-    content TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
-    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `post_id` int(11) DEFAULT NULL,
+  `marketplace_item_id` int(11) DEFAULT NULL,
+  `type` enum('post','marketplace','system') NOT NULL DEFAULT 'system',
+  `content` text NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `report_id` int(11) DEFAULT NULL,
+  `status` enum('active','archived') DEFAULT 'active'
 );
 
 -- Admins Table
@@ -203,3 +202,54 @@ CREATE TABLE Marketplace_Item_Images (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE
 );
+
+CREATE TABLE `reports` (
+  `id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `marketplace_item_id` int(11) DEFAULT NULL,
+  `reporter_id` int(11) NOT NULL,
+  `reason` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('pending','resolved','dismissed') DEFAULT 'pending'
+);
+
+--
+-- Triggers `reports` Delimter is used to create a notification when a report is inserted
+--
+DELIMITER $$
+CREATE TRIGGER `after_report_insert` AFTER INSERT ON `reports` FOR EACH ROW BEGIN
+    -- Update post or marketplace item report status
+    IF NEW.post_id IS NOT NULL THEN
+        UPDATE posts SET report = 'reported' WHERE id = NEW.post_id;
+    ELSEIF NEW.marketplace_item_id IS NOT NULL THEN
+        UPDATE marketplace_items SET report = 'reported' WHERE id = NEW.marketplace_item_id;
+    END IF;
+
+    -- Create notification for admin
+    INSERT INTO notifications (
+        user_id,
+        post_id,
+        marketplace_item_id,
+        type,
+        content,
+        is_read,
+        created_at,
+        report_id,
+        status
+    ) VALUES (
+        1, -- admin user_id
+        NEW.post_id,
+        NEW.marketplace_item_id,
+        CASE 
+            WHEN NEW.post_id IS NOT NULL THEN 'post'
+            ELSE 'marketplace'
+        END,
+        CONCAT('New report: ', NEW.reason),
+        0,
+        NOW(),
+        NEW.id,
+        'active'
+    );
+END
+$$
+DELIMITER ;
