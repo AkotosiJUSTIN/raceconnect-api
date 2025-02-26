@@ -97,10 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     ${imagesHtml ? `<div class="post-image">${imagesHtml}</div>` : ''}
                 </div>
-                <div class="post-interactions">
-                    <box-icon name='comment-detail'></box-icon>
-                    <span class="comments">${post.comment_count || 0}</span>
-                </div>
             `;
     
             // Add event listeners

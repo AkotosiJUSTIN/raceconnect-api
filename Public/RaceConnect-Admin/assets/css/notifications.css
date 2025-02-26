@@ -45,19 +45,50 @@ body {
 }
 
 .view-btn {
-    background-color: #059669;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    outline: none;
+    background-color: #5e6460;
+    color: white;
 }
 
 .view-btn:hover {
-    background-color: #047857;
+    background-color: #747d77;
+    transform: translateY(-2px); /* Slight upward movement on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
 }
 
 .archive-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    outline: none;
     background-color: #6b7280;
+    background-color: #D00000;
+    color: white;
 }
 
 .archive-btn:hover {
-    background-color: #4b5563;
+    background-color: #a30000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .section-header {
@@ -288,45 +319,6 @@ tr:nth-child(even) {
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     outline: none;
-}
-
-.actions button:first-child {
-    background-color: #009934;
-    color: white;
-}
-
-.actions button:first-child:hover {
-    background-color: #007a2a;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Share Button (Yellow) */
-.actions button:nth-child(2) {
-    background-color: #EFBA00;
-    color: white;
-}
-
-.actions button:nth-child(2):hover {
-    background-color: #cfa000;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.actions button:last-child {
-    background-color: #D00000;
-    color: white;
-}
-
-.actions button:last-child:hover {
-    background-color: #a30000;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.actions button:focus-visible {
-    outline: 2px solid #0056b3; 
-    outline-offset: 2px; 
 }
 
 @media (max-width: 768px) {
