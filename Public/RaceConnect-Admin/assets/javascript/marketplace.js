@@ -39,11 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
         items.forEach(item => {
             const productCard = document.createElement('div');
-            productCard.className = 'product-card';
+            productCard.className = `product-card ${item.status === 'Hidden' ? 'blurred' : ''}`;
             productCard.dataset.itemId = item.id;
             productCard.dataset.status = item.status;
-
-            const contentClass = item.status === 'Hidden' ? 'blurred' : '';
             
             const imagesHtml = item.image_urls && item.image_urls.length > 0
                 ? createCarousel(item.image_urls, `item-${item.id}`)
@@ -86,6 +84,19 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
     
             mainContent.appendChild(productCard);
+
+            // Add blur class to specific elements if status is Hidden
+            if (item.status === 'Hidden') {
+                const scrollableContent = productCard.querySelector('.scrollable-content');
+                const carousel = productCard.querySelector('.carousel');
+                
+                if (scrollableContent) {
+                    scrollableContent.classList.add('blurred');
+                }
+                if (carousel) {
+                    carousel.classList.add('blurred');
+                }
+            }
 
             if (item.image_urls && item.image_urls.length > 0) {
                 initCarousel(`item-${item.id}`);
@@ -193,6 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         }).then(() => {
                             const productCard = document.querySelector(`[data-item-id="${itemId}"]`);
                             if (productCard) {
+                                productCard.classList.add('blurred');
+                                productCard.dataset.status = 'Hidden';
+                                
                                 const scrollableContent = productCard.querySelector('.scrollable-content');
                                 const carousel = productCard.querySelector('.carousel');
                                 
