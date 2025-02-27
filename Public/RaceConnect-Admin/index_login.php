@@ -233,6 +233,9 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
                     <div class="input-wrapper">
                         <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
                         <input type="password" id="new_password" name="new_password" required class="text-input">
+                        <button type="button" class="toggle-password" data-target="new_password">
+                            <box-icon name='show' color="dc2626"></box-icon>
+                        </button>
                     </div>
                 </div>
                 <div class="form-group">
