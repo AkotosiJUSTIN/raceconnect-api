@@ -578,7 +578,7 @@ function hideMarketplaceItem($conn) {
         }
 
         // Update report status
-        $updateReport = $conn->prepare("UPDATE reports SET status = 'resolved' WHERE marketplace_item_id = ?");
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'Hidden' WHERE marketplace_item_id = ?");
         $updateReport->bind_param("i", $itemId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
@@ -816,7 +816,7 @@ function hidePost($conn) {
         }
 
         // Update report status
-        $updateReport = $conn->prepare("UPDATE reports SET status = 'resolved' WHERE post_id = ?");
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'Hidden' WHERE post_id = ?");
         $updateReport->bind_param("i", $postId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
@@ -876,7 +876,7 @@ function unhidePost($conn) {
         }
 
         // Update report status
-        $updateReport = $conn->prepare("UPDATE reports SET status = 'dismissed' WHERE post_id = ?");
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'pending' WHERE post_id = ?");
         $updateReport->bind_param("i", $postId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");

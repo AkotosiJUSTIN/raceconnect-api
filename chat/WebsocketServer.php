@@ -1,8 +1,9 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';  // Composer dependencies
+error_reporting(E_ALL & ~E_DEPRECATED);
+ini_set('display_errors', 0);
+require_once __DIR__ . '/../vendor/autoload.php';  // Composer dependencies
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
-use PDO;
 
 class ChatServer implements MessageComponentInterface {
     protected $clients;

@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showCancelButton: true,
             confirmButtonText: 'Yes',
             cancelButtonText: 'Cancel',
-            confirmButtonColor: '#059669'
+            confirmButtonColor: '#B91C1C'
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch('fetch_api.php?action=unhide_post', {

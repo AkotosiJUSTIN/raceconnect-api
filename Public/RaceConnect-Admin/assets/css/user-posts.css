@@ -177,7 +177,8 @@ body {
 /* Scrollable Content Area */
 .scrollable-content {
     flex: 1;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     margin-bottom: 16px;
 }
 
@@ -186,13 +187,35 @@ body {
     color: #374151;
     line-height: 1.5;
     margin-bottom: 16px;
+    /* Remove from scrollable area */
+    flex-shrink: 0;
+}
+
+.post-image {
+    height: 200px; /* Fixed height for image container */
+    white-space: nowrap; /* Keep images in a single line */
+    scrollbar-width: thin; /* For Firefox */
+    -ms-overflow-style: none; /* For Internet Explorer and Edge */
+    overflow-y: hidden;
+    overflow-x: auto;
+}
+
+.post-image::-webkit-scrollbar {
+    height: 6px; /* Thin scrollbar */
+}
+
+.post-image::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
 }
 
 .post-image img {
-    width: 100%;
+    height: 100%;
+    width: auto;
     border-radius: 10px;
-    margin-bottom: 16px;
-    object-fit: cover; /* Ensure images maintain aspect ratio */
+    margin-right: 8px;
+    object-fit: cover;
+    display: inline-block;
 }
 
 /* Post Interactions (Non-Scrollable) */
