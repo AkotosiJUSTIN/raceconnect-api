@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Verify OTP
-        $stmt = $conn->prepare("SELECT * FROM password_resets 
+        $stmt = $conn->prepare("SELECT * FROM password_resets_admin
                               WHERE email = ? AND otp = ? 
                               AND created_at >= NOW() - INTERVAL 15 MINUTE");
         $stmt->bind_param("ss", $email, $otp);
