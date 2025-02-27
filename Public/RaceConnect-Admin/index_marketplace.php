@@ -25,6 +25,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
     <title>RaceConnect Admin Dashboard</title>
     <link rel="stylesheet" href="assets/css/styles.css">
     <link rel="stylesheet" href="assets/css/marketplace.css">
+    <link rel="stylesheet" href="assets/css/carousel.css">
     <link rel="icon" href="./assets/RaceConnectLogo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -217,49 +217,55 @@ function reportPost($conn) {
 
         $conn->begin_transaction();
 
-        // Insert report
-        $reportQuery = "INSERT INTO reports (
-            post_id, 
-            reporter_id, 
-            reason, 
-            created_at, 
-            status
-        ) VALUES (?, ?, ?, NOW(), 'pending')";
-        
-        $reportStmt = $conn->prepare($reportQuery);
-        $reportStmt->bind_param("iis", $postId, $reporterId, $reason);
-        
-        if (!$reportStmt->execute()) {
-            throw new Exception("Failed to create report: " . $reportStmt->error);
-        }
-        
-        $reportId = $conn->insert_id;
-        error_log("Created report with ID: $reportId"); // Debug log
-
-        // Update post status
-        $updatePost = "UPDATE posts SET report = 'reported' WHERE id = ?";
-        $postStmt = $conn->prepare($updatePost);
-        $postStmt->bind_param("i", $postId);
-        
-        if (!$postStmt->execute()) {
-            throw new Exception("Failed to update post status");
-        }
-
-        // Create notification using the helper function
         try {
-            createReportNotification($conn, $postId, $reportId, 'post', $reason);
-        } catch (Exception $e) {
-            throw new Exception("Failed to create notification: " . $e->getMessage());
-        }
+            // Insert report with explicit status
+            $reportQuery = "INSERT INTO reports (
+                post_id,
+                marketplace_item_id, 
+                reporter_id, 
+                reason, 
+                created_at, 
+                status
+            ) VALUES (?, ?, ?, NOW(), 'pending')";  // Explicitly set status to 'pending'
+            
+            $reportStmt = $conn->prepare($reportQuery);
+            $reportStmt->bind_param("iis", $postId, $reporterId, $reason);
+            
+            if (!$reportStmt->execute()) {
+                throw new Exception("Failed to create report: " . $reportStmt->error);
+            }
+            
+            $reportId = $conn->insert_id;
+            error_log("Created report with ID: $reportId"); // Debug log
 
-        $conn->commit();
-        echo json_encode([
-            "success" => true,
-            "message" => "Report created successfully"
-        ]);
+            // Update post status
+            $updatePost = "UPDATE posts SET report = 'reported' WHERE id = ?";
+            $postStmt = $conn->prepare($updatePost);
+            $postStmt->bind_param("i", $postId);
+            
+            if (!$postStmt->execute()) {
+                throw new Exception("Failed to update post status");
+            }
+
+            // Create notification using the helper function
+            try {
+                createReportNotification($conn, $postId, $reportId, 'post', $reason);
+            } catch (Exception $e) {
+                throw new Exception("Failed to create notification: " . $e->getMessage());
+            }
+
+            $conn->commit();
+            echo json_encode([
+                "success" => true,
+                "message" => "Report created successfully"
+            ]);
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            throw $e;
+        }
 
     } catch (Exception $e) {
-        $conn->rollback();
         error_log("Error in reportPost: " . $e->getMessage());
         echo json_encode([
             "success" => false,
@@ -364,30 +370,22 @@ function fetchPosts($conn) {
     try {
         // First, sync post report status with pending reports
         $syncQuery = "UPDATE posts p 
-            INNER JOIN (
-                SELECT post_id, COUNT(*) as pending_count 
-                FROM reports 
-                WHERE status = 'pending'
-                GROUP BY post_id
-            ) r ON p.id = r.post_id 
-            SET p.report = 'reported'
-            WHERE r.pending_count > 0";
-        
-        $conn->query($syncQuery);
-
-        // Then clean up posts with no pending reports
-        $cleanupQuery = "UPDATE posts p 
             LEFT JOIN (
                 SELECT post_id, COUNT(*) as pending_count 
                 FROM reports 
                 WHERE status = 'pending'
                 GROUP BY post_id
             ) r ON p.id = r.post_id 
-            SET p.report = 'none'
-            WHERE (r.pending_count IS NULL OR r.pending_count = 0)
-            AND p.status != 'Hidden'";
+            SET p.report = CASE
+                WHEN r.pending_count > 0 THEN 'reported'
+                WHEN r.pending_count IS NULL OR r.pending_count = 0 THEN 'none'
+                ELSE p.report
+            END
+            WHERE p.status != 'Hidden'";
         
-        $conn->query($cleanupQuery);
+        if (!$conn->query($syncQuery)) {
+            throw new Exception("Failed to sync report status: " . $conn->error);
+        }
 
         // Then fetch posts that are either reported or hidden
         $query = "SELECT 
@@ -432,7 +430,7 @@ function fetchPosts($conn) {
         error_log("Error in fetchPosts: " . $e->getMessage());
         echo json_encode([
             'success' => false, 
-            'error' => 'Failed to fetch posts'
+            'error' => 'Failed to fetch posts: ' . $e->getMessage()
         ]);
     }
 }

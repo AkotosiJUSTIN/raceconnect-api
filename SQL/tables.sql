@@ -224,7 +224,7 @@ CREATE TABLE Reports (
     reporter_id INT NOT NULL,
     reason VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('Pending', 'Dismissed', 'Resolved', 'Hidden') DEFAULT 'Pending',
+    status ENUM('Pending', 'Dismissed', 'Resolved', 'Hidden') NOT NULL DEFAULT 'Pending',
     FOREIGN KEY (reporter_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
