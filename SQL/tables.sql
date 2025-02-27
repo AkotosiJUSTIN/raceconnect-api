@@ -183,6 +183,16 @@ CREATE TABLE Password_Resets (
     FOREIGN KEY (email) REFERENCES Users(email) ON DELETE CASCADE
 );
 
+-- Create the password_resets table with correct foreign key
+CREATE TABLE password_resets_admin (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    otp VARCHAR(6) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (email) REFERENCES admins(email) ON DELETE CASCADE
+);
+
 CREATE TABLE User_Profile_Pictures (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,

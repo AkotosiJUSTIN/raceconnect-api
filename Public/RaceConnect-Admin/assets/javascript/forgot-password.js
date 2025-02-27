@@ -51,28 +51,34 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+        .then(response => response.text())  // Use text() to see the raw output
+        .then(text => {
+            console.log('Raw Response:', text);
+            try {
+                const data = JSON.parse(text);
+                if (data.success) {
+                    modalMessage.innerHTML = `
+                        <div class="message success-message">${data.message}</div>
+                    `;
+                    setTimeout(() => {
+                        forgotPasswordModal.style.display = 'none';
+                        resetPasswordModal.style.display = 'block';
+                    }, 2000);
+                } else {
+                    modalMessage.innerHTML = `
+                        <div class="message error-message">${data.message}</div>
+                    `;
+                    if (data.error) {
+                        console.error('Error:', data.error);
+                    }
+                }
+            } catch (error) {
+                console.error('JSON Parse Error:', error);
                 modalMessage.innerHTML = `
-                    <div class="message success-message">${data.message}</div>
-                `;
-                setTimeout(() => {
-                    forgotPasswordModal.style.display = 'none';
-                    resetPasswordModal.style.display = 'block';
-                }, 2000);
-            } else {
-                modalMessage.innerHTML = `
-                    <div class="message error-message">${data.message}</div>
+                    <div class="message error-message">An error occurred. Please try again.</div>
                 `;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            modalMessage.innerHTML = `
-                <div class="message error-message">An error occurred. Please try again.</div>
-            `;
-        });
+        })       
     });
 
     // Handle reset password form submission
@@ -98,6 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 resetModalMessage.innerHTML = `
                     <div class="message error-message">${data.message}</div>
                 `;
+                if (data.error) {
+                    console.error('Error:', data.error);
+                }
             }
         })
         .catch(error => {

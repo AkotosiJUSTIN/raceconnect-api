@@ -198,8 +198,8 @@ $total_reported_items = $row['total_items'];
             <h2>Confirm Logout</h2>
             <p>Are you sure you want to log out?</p>
             <div class="dialog-buttons">
-                <button id="cancelLogout" class="dialog-button">No</button>
                 <button id="confirmLogout" class="dialog-button">Yes</button>
+                <button id="cancelLogout" class="dialog-button">No</button>
             </div>
         </div>
     </div>
