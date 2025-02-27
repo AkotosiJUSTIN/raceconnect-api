@@ -1,54 +1,33 @@
 document.addEventListener('DOMContentLoaded', () => {
-    function fetchPosts() {
-        fetch('fetch_api.php?action=fetch_posts', {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Cache-Control': 'no-cache'
-            },
-            credentials: 'same-origin' // Important for session cookies
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new TypeError("Expected JSON response");
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                if (Array.isArray(result.data)) {
-                    populatePosts(result.data);
-                } else {
-                    throw new Error('Invalid data format received');
-                }
-            } else {
-                throw new Error(result.error || 'Unknown error occurred');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching posts:', error);
-            const mainContent = document.getElementById('mainContent');
-            mainContent.innerHTML = `
-                <div class="error-message">
-                    <p>Failed to load posts. Please try again later.</p>
-                    <p class="error-details">${error.message}</p>
-                    <button onclick="fetchPosts()" class="retry-btn">Retry</button>
-                </div>
-            `;
-        });
-    }
-    
     fetchPosts();
+
+    function fetchPosts() {
+        fetch('fetch_api.php?action=fetch_posts')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Fetched posts:', data);
+                populatePosts(data.data);
+            })
+            .catch(error => {
+                console.error('Error posts:', error);
+            });
+    }
 
     function populatePosts(posts) {
         const mainContent = document.getElementById('mainContent');
+        if (!mainContent) {
+            console.error('Error: #mainContent element not found.');
+            return;
+        }
+    
         mainContent.innerHTML = '';
     
-        if (posts.length === 0) {
+        if (!posts || posts.length === 0) {
             mainContent.innerHTML = `
                 <div class="error-message">
                     <p>No reported posts found.</p>
@@ -59,14 +38,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
         posts.forEach(post => {
             const postCard = document.createElement('div');
-            postCard.className = `post-card ${post.status === 'Hidden' ? 'blurred' : ''}`;
+            postCard.className = 'post-card';
             postCard.dataset.postId = post.id;
             postCard.dataset.status = post.status;
-    
-            const imagesHtml = Array.isArray(post.images) && post.images.length > 0
-                ? post.images.map(image => `<img src="${image}" alt="Post Image">`).join('')
+
+            // Add blurred class if status is Hidden
+            if (post.status === 'Hidden') {
+                postCard.classList.add('blurred');
+            }
+
+            const imagesHtml = post.images && post.images.length > 0
+                ? createCarousel(post.images, `post-${post.id}`)
                 : '';
-    
+
             postCard.innerHTML = `
                 <div class="post-header">
                     <div class="user-info">
@@ -75,14 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="post-actions">
                         ${post.status === 'Hidden' 
-                            ? `<button class="unhide-btn" title="Unhide Post">
+                            ? `<button onclick="unhidePost('${post.id}')" class="unhide-btn" title="Unhide Post">
                                  <box-icon type='solid' name='show' color="white"></box-icon>
                                </button>`
-                            : `<button class="hide-btn" title="Hide Post">
+                            : `<button onclick="hidePost('${post.id}')" class="hide-btn" title="Hide Post">
                                  <box-icon type='solid' name='hide' color="white"></box-icon>
                                </button>`
                         }
-                        <button class="archive-btn" title="Archive Post">
+                        <button onclick="archivePost('${post.id}')" class="archive-btn" title="Archive Post">
                             <box-icon type='solid' name='archive-in' color="white"></box-icon>
                         </button>
                     </div>
@@ -92,165 +76,109 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="report-date">on ${post.reported_at ? new Date(post.reported_at).toLocaleString() : 'Unknown date'}</span>
                 </div>
                 <div class="scrollable-content ${post.status === 'Hidden' ? 'blurred' : ''}">
-                    <div class="post-caption">
-                        ${post.content || 'No content'}
+                    <div class="product-details">
+                        <div class="post-caption">
+                            ${post.content || 'No content'}
+                        </div>
                     </div>
-                    ${imagesHtml ? `<div class="post-image">${imagesHtml}</div>` : ''}
                 </div>
+                ${imagesHtml}
             `;
-    
-            // Add event listeners
-            const hideBtn = postCard.querySelector('.hide-btn');
-            const unhideBtn = postCard.querySelector('.unhide-btn');
-            const archiveBtn = postCard.querySelector('.archive-btn');
-    
-            if (hideBtn) {
-                hideBtn.addEventListener('click', () => hidePost(post.id, postCard));
-            }
-            if (unhideBtn) {
-                unhideBtn.addEventListener('click', () => unhidePost(post.id, postCard));
-            }
-            if (archiveBtn) {
-                archiveBtn.addEventListener('click', () => archivePost(post.id, postCard));
-            }
-    
+
             mainContent.appendChild(postCard);
-        });
-    }
-    
-    function hidePost(postId, postCard) {
-        Swal.fire({
-            title: 'Hide Post',
-            text: 'Are you sure you want to hide this post?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#B91C1C'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch('fetch_api.php?action=hide_post', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `post_id=${encodeURIComponent(postId)}`
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        Swal.fire({
-                            title: 'Hidden!',
-                            text: 'The post has been hidden.',
-                            icon: 'success',
-                            timer: 1500
-                        }).then(() => {
-                            postCard.classList.add('blurred');
-                            postCard.dataset.status = 'Hidden';
-                            updatePostActions(postCard);
-                        });
-                    } else {
-                        throw new Error(result.error || 'Failed to hide post');
-                    }
-                })
-                .catch(error => {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: error.message,
-                        icon: 'error'
-                    });
-                });
+
+            if (post.images && post.images.length > 0) {
+                initCarousel(`post-${post.id}`);
             }
         });
-    }
-    
-    function unhidePost(postId, postCard) {
-        Swal.fire({
-            title: 'Unhide Post',
-            text: 'Are you sure you want to unhide this post?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#B91C1C'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch('fetch_api.php?action=unhide_post', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `post_id=${encodeURIComponent(postId)}`
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        Swal.fire({
-                            title: 'Unhidden!',
-                            text: 'The post has been unhidden.',
-                            icon: 'success',
-                            timer: 1500
-                        }).then(() => {
-                            postCard.classList.remove('blurred');
-                            postCard.dataset.status = 'Active';
-                            const scrollableContent = postCard.querySelector('.scrollable-content');
-                            if (scrollableContent) {
-                                scrollableContent.classList.remove('blurred');
-                            }
-                            updatePostActions(postCard);
-                        });
-                    } else {
-                        throw new Error(result.error || 'Failed to unhide post');
-                    }
-                })
-                .catch(error => {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: error.message,
-                        icon: 'error'
-                    });
-                });
-            }
-        });
-    }
-    
-    function updatePostActions(postCard) {
-        const actionsDiv = postCard.querySelector('.post-actions');
-        const isHidden = postCard.dataset.status === 'Hidden';
-        
-        actionsDiv.innerHTML = `
-            ${isHidden 
-                ? `<button class="unhide-btn" title="Unhide Post">
-                     <box-icon type='solid' name='show' color="white"></box-icon>
-                   </button>`
-                : `<button class="hide-btn" title="Hide Post">
-                     <box-icon type='solid' name='hide' color="white"></box-icon>
-                   </button>`
-            }
-            <button class="archive-btn" title="Archive Post">
-                <box-icon type='solid' name='archive-in' color="white"></box-icon>
-            </button>
-        `;
-    
-        // Reattach event listeners
-        if (isHidden) {
-            const unhideBtn = actionsDiv.querySelector('.unhide-btn');
-            if (unhideBtn) {
-                unhideBtn.addEventListener('click', () => unhidePost(postCard.dataset.postId, postCard));
-            }
-        } else {
-            const hideBtn = actionsDiv.querySelector('.hide-btn');
-            if (hideBtn) {
-                hideBtn.addEventListener('click', () => hidePost(postCard.dataset.postId, postCard));
-            }
-        }
-    
-        const archiveBtn = actionsDiv.querySelector('.archive-btn');
-        if (archiveBtn) {
-            archiveBtn.addEventListener('click', () => archivePost(postCard.dataset.postId, postCard));
-        }
     }
 
-    function archivePost(postId, postCard) {
+    function createCarousel(images, containerId) {
+        if (!images || images.length === 0) return '';
+        
+        const carouselHtml = `
+            <div class="carousel" id="carousel-${containerId}">
+                <div class="carousel-inner">
+                    ${images.map((img, index) => `
+                        <div class="carousel-item ${index === 0 ? 'active' : ''}" data-index="${index}">
+                            <img src="${img}" alt="Image ${index + 1}">
+                        </div>
+                    `).join('')}
+                </div>
+                ${images.length > 1 ? `
+                    <button class="carousel-control carousel-prev">
+                        <box-icon name='chevron-left' color="white"></box-icon>
+                    </button>
+                    <button class="carousel-control carousel-next">
+                        <box-icon name='chevron-right' color="white"></box-icon>
+                    </button>
+                    <div class="carousel-indicators">
+                        ${images.map((_, index) => `
+                            <div class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        return carouselHtml;
+    }
+
+    function initCarousel(containerId) {
+        const carousel = document.querySelector(`#carousel-${containerId}`);
+        if (!carousel) return;
+
+        const items = carousel.querySelectorAll('.carousel-item');
+        const prevBtn = carousel.querySelector('.carousel-prev');
+        const nextBtn = carousel.querySelector('.carousel-next');
+        const indicators = carousel.querySelectorAll('.carousel-indicator');
+        let currentIndex = 0;
+
+        function showItem(index) {
+            items.forEach(item => item.classList.remove('active'));
+            indicators.forEach(indicator => indicator.classList.remove('active'));
+            
+            items[index].classList.add('active');
+            indicators[index].classList.add('active');
+            currentIndex = index;
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                const newIndex = (currentIndex - 1 + items.length) % items.length;
+                showItem(newIndex);
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const newIndex = (currentIndex + 1) % items.length;
+                showItem(newIndex);
+            });
+        }
+
+        indicators.forEach((indicator, index) => {
+            indicator.addEventListener('click', () => showItem(index));
+        });
+    }
+
+    // Make functions globally available
+    window.hidePost = function(postId) {
+        handlePostAction(postId, 'hide_post', 'Hide Post', 'Hidden!', 'The post has been hidden.');
+    };
+
+    window.unhidePost = function(postId) {
+        handlePostAction(postId, 'unhide_post', 'Unhide Post', 'Unhidden!', 'The post has been unhidden.');
+    };
+
+    window.archivePost = function(postId) {
+        handlePostAction(postId, 'archive_post', 'Archive Post', 'Archived!', 'The post has been archived.');
+    };
+
+    function handlePostAction(postId, action, confirmTitle, successTitle, successMessage) {
         Swal.fire({
-            title: 'Archive Post',
-            text: 'Are you sure you want to archive this post?',
+            title: confirmTitle,
+            text: `Are you sure you want to ${confirmTitle.toLowerCase()}?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Yes',
@@ -258,29 +186,42 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmButtonColor: '#B91C1C'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch('fetch_api.php?action=archive_post', {
+                fetch(`fetch_api.php?action=${action}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: `post_id=${encodeURIComponent(postId)}`
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(result => {
                     if (result.success) {
                         Swal.fire({
-                            title: 'Archived!',
-                            text: 'The post has been archived.',
+                            title: successTitle,
+                            text: successMessage,
                             icon: 'success',
                             timer: 1500
                         }).then(() => {
-                            postCard.style.display = 'none';
+                            const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+                            if (postCard) {
+                                if (action === 'archive_post') {
+                                    postCard.style.display = 'none';
+                                } else {
+                                    postCard.classList.toggle('blurred');
+                                    const scrollableContent = postCard.querySelector('.scrollable-content');
+                                    const carousel = postCard.querySelector('.carousel');
+                                    
+                                    if (scrollableContent) {
+                                        scrollableContent.classList.toggle('blurred');
+                                    }
+                                    if (carousel) {
+                                        carousel.classList.toggle('blurred');
+                                    }
+                                    // Only update status without full refresh
+                                    postCard.dataset.status = action === 'hide_post' ? 'Hidden' : 'Active';
+                                }
+                            }
                         });
                     } else {
-                        throw new Error(result.error || 'Failed to archive post');
+                        throw new Error(result.error || `Failed to ${confirmTitle.toLowerCase()}`);
                     }
                 })
                 .catch(error => {

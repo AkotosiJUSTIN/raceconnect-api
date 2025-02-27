@@ -1,3 +1,4 @@
+// Marketplace.js
 document.addEventListener('DOMContentLoaded', () => {
     fetchMarketplaceItems();
 
@@ -38,10 +39,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
         items.forEach(item => {
             const productCard = document.createElement('div');
-            productCard.className = `product-card ${item.status === 'Hidden' ? 'blurred' : ''}`;
+            productCard.className = 'product-card';
             productCard.dataset.itemId = item.id;
             productCard.dataset.status = item.status;
+
+            const contentClass = item.status === 'Hidden' ? 'blurred' : '';
             
+            const imagesHtml = item.image_urls && item.image_urls.length > 0
+                ? createCarousel(item.image_urls, `item-${item.id}`)
+                : '';
+
             productCard.innerHTML = `
                 <div class="post-header">
                     <div class="user-info">
@@ -73,16 +80,86 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="product-details">
                         <div class="product-price">₱${parseFloat(item.price).toFixed(2)}</div>
                         <div class="product-description">${item.description}</div>
-                        ${item.image_urls && item.image_urls.length > 0 ? `
-                            <div class="post-image">
-                                <img src="${item.image_urls[0]}" alt="${item.title}">
-                            </div>
-                        ` : ''}
                     </div>
                 </div>
+                ${imagesHtml}
             `;
     
             mainContent.appendChild(productCard);
+
+            if (item.image_urls && item.image_urls.length > 0) {
+                initCarousel(`item-${item.id}`);
+            }
+        });
+    }
+
+    // Add this function to both marketplace.js and user-posts.js
+    function createCarousel(images, containerId) {
+        if (!images || images.length === 0) return '';
+        
+        const carouselHtml = `
+            <div class="carousel" id="carousel-${containerId}">
+                <div class="carousel-inner">
+                    ${images.map((img, index) => `
+                        <div class="carousel-item ${index === 0 ? 'active' : ''}" data-index="${index}">
+                            <img src="${img}" alt="Image ${index + 1}">
+                        </div>
+                    `).join('')}
+                </div>
+                ${images.length > 1 ? `
+                    <button class="carousel-control carousel-prev">
+                        <box-icon name='chevron-left' color="white"></box-icon>
+                    </button>
+                    <button class="carousel-control carousel-next">
+                        <box-icon name='chevron-right' color="white"></box-icon>
+                    </button>
+                    <div class="carousel-indicators">
+                        ${images.map((_, index) => `
+                            <div class="carousel-indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        return carouselHtml;
+    }
+
+    function initCarousel(containerId) {
+        const carousel = document.querySelector(`#carousel-${containerId}`);
+        if (!carousel) return;
+
+        const items = carousel.querySelectorAll('.carousel-item');
+        const prevBtn = carousel.querySelector('.carousel-prev');
+        const nextBtn = carousel.querySelector('.carousel-next');
+        const indicators = carousel.querySelectorAll('.carousel-indicator');
+        let currentIndex = 0;
+
+        function showItem(index) {
+            items.forEach(item => item.classList.remove('active'));
+            indicators.forEach(indicator => indicator.classList.remove('active'));
+            
+            items[index].classList.add('active');
+            indicators[index].classList.add('active');
+            currentIndex = index;
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                const newIndex = (currentIndex - 1 + items.length) % items.length;
+                showItem(newIndex);
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const newIndex = (currentIndex + 1) % items.length;
+                showItem(newIndex);
+            });
+        }
+
+        indicators.forEach((indicator, index) => {
+            indicator.addEventListener('click', () => showItem(index));
         });
     }
     
@@ -114,9 +191,21 @@ document.addEventListener('DOMContentLoaded', () => {
                             icon: 'success',
                             timer: 1500
                         }).then(() => {
+                            const productCard = document.querySelector(`[data-item-id="${itemId}"]`);
+                            if (productCard) {
+                                const scrollableContent = productCard.querySelector('.scrollable-content');
+                                const carousel = productCard.querySelector('.carousel');
+                                
+                                if (scrollableContent) {
+                                    scrollableContent.classList.add('blurred');
+                                }
+                                if (carousel) {
+                                    carousel.classList.add('blurred');
+                                }
+                            }
                             fetchMarketplaceItems();
                         });
-                    } else {
+                    }else {
                         throw new Error(result.error || 'Failed to hide item');
                     }
                 })
@@ -158,6 +247,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             icon: 'success',
                             timer: 1500
                         }).then(() => {
+                            const productCard = document.querySelector(`[data-item-id="${itemId}"]`);
+                            if (productCard) {
+                                const scrollableContent = productCard.querySelector('.scrollable-content');
+                                const carousel = productCard.querySelector('.carousel');
+                                
+                                if (scrollableContent) {
+                                    scrollableContent.classList.remove('blurred');
+                                }
+                                if (carousel) {
+                                    carousel.classList.remove('blurred');
+                                }
+                            }
                             fetchMarketplaceItems();
                         });
                     } else {

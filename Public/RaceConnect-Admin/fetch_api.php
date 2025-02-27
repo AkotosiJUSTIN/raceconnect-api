@@ -610,18 +610,10 @@ function unhideMarketplaceItem($conn) {
         $result = $statusStmt->get_result();
         $previousStatus = $result->fetch_assoc()['previous_status'] ?? 'Available';
 
-        // Update item status back to previous status but keep the report status
+        // Update item status but maintain the report information
         $query = "UPDATE marketplace_items 
                  SET status = ?, 
-                     previous_status = NULL,
-                     report = CASE 
-                         WHEN EXISTS (
-                             SELECT 1 FROM reports 
-                             WHERE marketplace_item_id = ? 
-                             AND status = 'pending'
-                         ) THEN 'reported'
-                         ELSE report
-                     END
+                     previous_status = NULL
                  WHERE id = ?";
         $stmt = $conn->prepare($query);
 
@@ -629,19 +621,17 @@ function unhideMarketplaceItem($conn) {
             throw new Exception("Database error: " . $conn->error);
         }
 
-        $stmt->bind_param("sii", $previousStatus, $itemId, $itemId);
+        $stmt->bind_param("si", $previousStatus, $itemId);
         if (!$stmt->execute()) {
             throw new Exception("Failed to update item");
         }
 
-        // Update report status but keep pending reports
+        // Update report status to pending instead of changing it
         $updateReport = $conn->prepare("
             UPDATE reports 
-            SET status = CASE
-                WHEN status = 'resolved' THEN 'pending'
-                ELSE status
-            END
-            WHERE marketplace_item_id = ?
+            SET status = 'pending'
+            WHERE marketplace_item_id = ? 
+            AND status = 'Hidden'
         ");
         $updateReport->bind_param("i", $itemId);
         if (!$updateReport->execute()) {
