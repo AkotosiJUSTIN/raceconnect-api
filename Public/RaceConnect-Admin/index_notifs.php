@@ -76,13 +76,13 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     <li>
                         <a href="index_marketplace.php" class="nav-item">
                             <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
-                            <span>Marketplace</span>
+                            <span>Reported Listings</span>
                         </a>
                     </li>
                     <li>
                         <a href="index_posts.php" class="nav-item">
                             <box-icon name='pin' type='solid' color='rgb(185 28 28)'></box-icon>
-                            <span>Posts</span>
+                            <span>Reported Posts</span>
                         </a>
                     </li>
                     <li>
