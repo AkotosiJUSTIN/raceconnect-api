@@ -12,15 +12,22 @@ CREATE TABLE Users (
     bio TEXT,
     favorite_categories JSON,
     favorite_marketplace_items JSON,
-    friend_count INT DEFAULT 0,  -- Optional: Cache total friends
-    friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public', -- Privacy setting
-    last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, -- Last active time
+    friend_count INT DEFAULT 0,  
+    friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public',
+    last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     status ENUM('Active', 'Banned', 'Suspended') DEFAULT 'Active',
     report ENUM ('None', 'Reported') DEFAULT 'None',
-    suspension_end_date TIMESTAMP NULL, -- If the user is suspended
+    suspension_end_date TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+ALTER TABLE Users
+ADD CONSTRAINT chk_favorite_categories CHECK (JSON_VALID(favorite_categories)),
+ADD CONSTRAINT chk_favorite_marketplace_items CHECK (JSON_VALID(favorite_marketplace_items));
+
+CREATE UNIQUE INDEX idx_username ON Users(username);
+CREATE UNIQUE INDEX idx_email ON Users(email);
 
 -- Table Friends
 CREATE TABLE Friends (
@@ -31,8 +38,10 @@ CREATE TABLE Friends (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (friend_id) REFERENCES Users(id) ON DELETE CASCADE,
-    UNIQUE (user_id, friend_id)  -- Prevents duplicate friend requests
+    UNIQUE (user_id, friend_id)
 );
+
+CREATE INDEX idx_status ON Friends(status);
 
 -- User Tokens Table
 CREATE TABLE user_tokens (
@@ -53,15 +62,15 @@ CREATE TABLE Posts (
     like_count INT DEFAULT 0,
     comment_count INT DEFAULT 0,
     repost_count INT DEFAULT 0,
-    category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship' ) DEFAULT 'Formula 1',
-    privacy ENUM('Public', 'Only me', 'Friends Only' ) DEFAULT 'Public',
+    category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship') DEFAULT 'Formula 1',
+    privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public',
     type ENUM('text', 'image', 'video') DEFAULT 'text',
     post_type ENUM('Announcement', 'Normal') DEFAULT 'Normal',
     status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    `report` ENUM('none', 'reported') DEFAULT 'none'
+    report ENUM('none', 'reported') DEFAULT 'none',
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
 -- Marketplace Items Table
@@ -71,17 +80,20 @@ CREATE TABLE Marketplace_Items (
     title VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
-    category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship' ) DEFAULT 'Formula 1',
+    category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship') DEFAULT 'Formula 1',
     favorite_count INT DEFAULT 0,
     status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
     report ENUM ('None', 'Reported') DEFAULT 'None',
     reported_at TIMESTAMP NULL,
     previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL,
-    listing_status ENUM('Available', 'Sold', 'Reserved') DEFAULT 'Available';
+    listing_status ENUM('Available', 'Sold', 'Reserved') DEFAULT 'Available',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_seller_id ON Marketplace_Items(seller_id);
+CREATE INDEX idx_status ON Marketplace_Items(status);
 
 -- Notifications Table (Includes Likes, Comments, Reposts)
 CREATE TABLE Notifications (
