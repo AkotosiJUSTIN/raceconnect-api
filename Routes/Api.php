@@ -78,7 +78,18 @@ class Api {
                     $data = $this->getJsonInput();
                     $controller->forgotPassword($data);
                     break;
-    
+
+                case 'verify-otp':
+                    if ($method !== 'POST') {
+                        http_response_code(405);
+                        echo json_encode(['message' => 'Method Not Allowed: Use POST for verify OTP']);
+                        exit;
+                    }
+                    $controller = new AuthController($this->conn);
+                    $data = $this->getJsonInput();
+                    $controller->verifyOtp($data);
+                    break;
+
                 case 'reset-password':
                     if ($method !== 'PUT') { // Ensure this is PUT
                         http_response_code(405);

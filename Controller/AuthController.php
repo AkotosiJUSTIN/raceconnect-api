@@ -68,17 +68,17 @@ class AuthController {
             if (empty($data['email'])) {
                 $this->handleError(400, 'Email is required');
             }
-
+    
             $user = $this->user->getUserByEmail($data['email']);
             if (!$user) {
                 $this->handleError(404, 'Email not found');
             }
-
+    
             $otp = rand(100000, 999999);
             if (!$this->user->storeOtp($data['email'], $otp)) {
                 $this->handleError(500, 'Failed to generate OTP');
             }
-
+    
             $mail = new PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -88,13 +88,13 @@ class AuthController {
                 $mail->Password = $_ENV['SMTP_PASS'];
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port = 587;
-
+    
                 $mail->setFrom('RaceConnect@gmail.com', 'RaceConnect');
                 $mail->addAddress($data['email']);
                 $mail->isHTML(true);
                 $mail->Subject = 'Password Reset OTP';
                 $mail->Body = "Your OTP for password reset is: <strong>$otp</strong>";
-
+    
                 $mail->send();
                 http_response_code(200);
                 echo json_encode(['message' => 'OTP sent to email']);
@@ -105,19 +105,32 @@ class AuthController {
             $this->handleError(500, 'An error occurred while processing your request');
         }
     }
-
-    public function resetPassword($data) {
-        try {
-            if (empty($data['email']) || empty($data['otp']) || empty($data['new_password']) || empty($data['confirm_password'])) {
-                $this->handleError(400, 'All fields are required');
-            }
     
-            if ($data['new_password'] !== $data['confirm_password']) {
-                $this->handleError(400, 'Passwords do not match');
+    public function verifyOtp($data) {
+        try {
+            if (empty($data['email']) || empty($data['otp'])) {
+                $this->handleError(400, 'Email and OTP are required');
             }
     
             if (!$this->user->verifyOtp($data['email'], $data['otp'])) {
                 $this->handleError(400, 'Invalid or expired OTP');
+            }
+    
+            http_response_code(200);
+            echo json_encode(['message' => 'OTP verified. Proceed to reset password.']);
+        } catch (Exception $e) {
+            $this->handleError(500, 'An error occurred while verifying OTP');
+        }
+    }
+    
+    public function resetPassword($data) {
+        try {
+            if (empty($data['email']) || empty($data['new_password']) || empty($data['confirm_password'])) {
+                $this->handleError(400, 'Email, new password, and confirmation are required');
+            }
+    
+            if ($data['new_password'] !== $data['confirm_password']) {
+                $this->handleError(400, 'Passwords do not match');
             }
     
             if ($this->user->resetPassword($data['email'], $data['new_password'])) {
