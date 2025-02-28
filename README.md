@@ -32,6 +32,12 @@ To run the WebSocket server, follow these steps:
     php WebsocketServer.php
     ```
 
+You can access the WebSocket server at:
+
+```
+ws://localhost:8000
+```
+
 Make sure you have the WebSocket server script (`WebsocketServer.php`) in your project directory.
 
 ## Credentials for AWS S3

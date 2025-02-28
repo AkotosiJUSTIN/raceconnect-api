@@ -253,30 +253,35 @@ ADD INDEX idx_post_id (post_id),
 ADD INDEX idx_marketplace_item_id (marketplace_item_id);
 
 
--- Conversations Table (Buyer ↔ Seller)
+-- Conversations 
 CREATE TABLE conversations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     buyer_id INT NOT NULL,
     seller_id INT NOT NULL,
     product_id INT NOT NULL,
+    last_message TEXT NULL,
+    last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (buyer_id) REFERENCES Users(id),
-    FOREIGN KEY (seller_id) REFERENCES Users(id),
-    FOREIGN KEY (product_id) REFERENCES Marketplace_Items(id)
+    UNIQUE (buyer_id, seller_id, product_id),
+    FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES marketplace_items(id) ON DELETE CASCADE
 );
 
-
--- Messages Table
+-- Messages Table 
 CREATE TABLE messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     conversation_id INT NOT NULL,
     sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
     message TEXT NOT NULL,
     status ENUM('sent', 'delivered', 'read') DEFAULT 'sent',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (conversation_id) REFERENCES conversations(id),
-    FOREIGN KEY (sender_id) REFERENCES users(id)
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
 -- 4. Update the report trigger to handle both types
 DROP TRIGGER IF EXISTS after_report_insert;
 
