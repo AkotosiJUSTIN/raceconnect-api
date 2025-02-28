@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalMessage = document.getElementById('modalMessage');
     const resetModalMessage = document.getElementById('resetModalMessage');
     const toggleButtons = document.querySelectorAll('.toggle-password');
+    const verifyOtpButton = document.getElementById('verifyOtpButton');
 
     // Show forgot password modal
     forgotPasswordLink.addEventListener('click', function(e) {
@@ -26,6 +27,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 resetModalMessage.innerHTML = '';
                 resetPasswordForm.reset();
+                document.getElementById('passwordSection').style.display = 'none';
+                document.getElementById('otp').disabled = false;
+                verifyOtpButton.disabled = false;
             }
         });
     });
@@ -56,6 +60,9 @@ document.addEventListener('DOMContentLoaded', function() {
             resetPasswordModal.style.display = 'none';
             resetModalMessage.innerHTML = '';
             resetPasswordForm.reset();
+            document.getElementById('passwordSection').style.display = 'none';
+            document.getElementById('otp').disabled = false;
+            verifyOtpButton.disabled = false;
         }
     });
 
@@ -78,34 +85,27 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.text())  // Use text() to see the raw output
-        .then(text => {
-            console.log('Raw Response:', text);
-            try {
-                const data = JSON.parse(text);
-                if (data.success) {
-                    modalMessage.innerHTML = `
-                        <div class="message success-message">${data.message}</div>
-                    `;
-                    setTimeout(() => {
-                        forgotPasswordModal.style.display = 'none';
-                        resetPasswordModal.style.display = 'block';
-                    }, 2000);
-                } else {
-                    modalMessage.innerHTML = `
-                        <div class="message error-message">${data.message}</div>
-                    `;
-                    if (data.error) {
-                        console.error('Error:', data.error);
-                    }
-                }
-            } catch (error) {
-                console.error('JSON Parse Error:', error);
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
                 modalMessage.innerHTML = `
-                    <div class="message error-message">An error occurred. Please try again.</div>
+                    <div class="message success-message">${data.message}</div>
+                `;
+                setTimeout(() => {
+                    forgotPasswordModal.style.display = 'none';
+                    resetPasswordModal.style.display = 'block';
+                    resetPasswordForm.reset();
+                    document.getElementById('passwordSection').style.display = 'none';
+                    document.getElementById('otp').disabled = false;
+                    verifyOtpButton.disabled = false;
+                    resetModalMessage.innerHTML = '';
+                }, 2000);
+            } else {
+                modalMessage.innerHTML = `
+                    <div class="message error-message">${data.message}</div>
                 `;
             }
-        })   
+        })
         .catch(error => {
             console.error('Error:', error);
             modalMessage.innerHTML = `
@@ -113,17 +113,74 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         })
         .finally(() => {
-            // Reset button state
             submitButton.disabled = false;
             submitButton.classList.remove('loading');
             submitButton.innerHTML = originalButtonText;
-        });    
+        });
+    });
+
+    document.getElementById('verifyOtpButton').addEventListener('click', function() {
+        const otp = document.getElementById('otp').value;
+        const formData = new FormData();
+        formData.append('otp', otp);
+    
+        fetch('verify_otp.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Hide OTP section and show password section
+                document.getElementById('otpSection').style.display = 'none';
+                document.getElementById('passwordSection').style.display = 'block';
+                document.getElementById('otp').disabled = true;
+                document.getElementById('verifyOtpButton').disabled = true;
+            } else {
+                alert(data.message); // e.g., "Invalid or expired OTP"
+            }
+        });
+    });
+
+    // Handle OTP verification
+    verifyOtpButton.addEventListener('click', function() {
+        const otp = document.getElementById('otp').value;
+        const formData = new FormData();
+        formData.append('otp', otp);
+
+        fetch('verify_otp.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resetModalMessage.innerHTML = `
+                    <div class="message success-message">${data.message}</div>
+                `;
+                document.getElementById('passwordSection').style.display = 'block';
+                document.getElementById('otp').disabled = true;
+                verifyOtpButton.disabled = true;
+            } else {
+                resetModalMessage.innerHTML = `
+                    <div class="message error-message">${data.message}</div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            resetModalMessage.innerHTML = `
+                <div class="message error-message">An error occurred</div>
+            `;
+        });
     });
 
     // Handle reset password form submission
     resetPasswordForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        const formData = new FormData(resetPasswordForm);
+        const formData = new FormData();
+        formData.append('new_password', document.getElementById('new_password').value);
+        formData.append('confirm_password', document.getElementById('confirm_password').value);
 
         fetch('handle_reset_password.php', {
             method: 'POST',

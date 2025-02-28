@@ -217,35 +217,42 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
     <!-- Reset Password Modal -->
     <div id="resetPasswordModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <span class="close" data-modal="resetPasswordModal">&times;</span>
+            <span class="close" data-modal="resetPasswordModal">×</span>
             <h2 class="form-title">Reset Password</h2>
             <div id="resetModalMessage"></div>
             <form id="resetPasswordForm">
-                <div class="form-group">
-                    <label for="otp" class="input-label">OTP</label>
-                    <div class="input-wrapper">
-                        <box-icon type='solid' name='key' color="#dc2626" class="input-icon"></box-icon>
-                        <input type="text" id="otp" name="otp" required class="text-input" autofocus>
+                <!-- OTP Verification Section -->
+                <div id="otpSection">
+                    <div class="form-group">
+                        <label for="otp" class="input-label">OTP</label>
+                        <div class="input-wrapper">
+                            <box-icon type='solid' name='key' color="#dc2626" class="input-icon"></box-icon>
+                            <input type="text" id="otp" name="otp" required class="text-input" autofocus>
+                        </div>
                     </div>
+                    <button type="button" id="verifyOtpButton" class="submit-button">Verify OTP</button>
                 </div>
-                <div class="form-group">
-                    <label for="new_password" class="input-label">New Password</label>
-                    <div class="input-wrapper">
-                        <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
-                        <input type="password" id="new_password" name="new_password" required class="text-input">
-                        <button type="button" class="toggle-password" data-target="new_password">
-                            <box-icon name='show' color="dc2626"></box-icon>
-                        </button>
+                <!-- Password Reset Section (hidden initially) -->
+                <div id="passwordSection" style="display: none;">
+                    <div class="form-group">
+                        <label for="new_password" class="input-label">New Password</label>
+                        <div class="input-wrapper">
+                            <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
+                            <input type="password" id="new_password" name="new_password" required class="text-input">
+                            <button type="button" class="toggle-password" data-target="new_password">
+                                <box-icon name='show' color="#dc2626"></box-icon>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="confirm_password" class="input-label">Confirm Password</label>
-                    <div class="input-wrapper">
-                        <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
-                        <input type="password" id="confirm_password" name="confirm_password" required class="text-input">
+                    <div class="form-group">
+                        <label for="confirm_password" class="input-label">Confirm Password</label>
+                        <div class="input-wrapper">
+                            <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
+                            <input type="password" id="confirm_password" name="confirm_password" required class="text-input">
+                        </div>
                     </div>
+                    <button type="submit" class="submit-button">Reset Password</button>
                 </div>
-                <button type="submit" class="submit-button">Reset Password</button>
             </form>
         </div>
     </div>
