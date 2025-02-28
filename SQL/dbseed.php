@@ -1,8 +1,30 @@
 <?php
 
-require_once '../Config/database.php';
+require_once __DIR__ . '/../vendor/autoload.php'; // Load Composer dependencies
+
+use Dotenv\Dotenv;
+
+// Load .env file
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
+
+// Establish database connection using environment variables
+try {
+    $conn = new PDO(
+        "mysql:host=" . $_ENV['DB_HOST'] . ";dbname=" . $_ENV['DB_NAME'],
+        $_ENV['DB_USER'],
+        $_ENV['DB_PASS']
+    );
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
 
 try {
+    // Disable foreign key checks so that child rows can be inserted regardless of order
+    $conn->exec("SET FOREIGN_KEY_CHECKS=0");
+
+    // Begin a transaction
     $conn->beginTransaction();
 
     // Insert sample users
@@ -13,13 +35,13 @@ try {
 
     // Insert sample friends
     $conn->exec("INSERT INTO Friends (user_id, friend_id, status) VALUES
-        (1, 2, 'accepted')
+        (1, 2, 'Accepted')
     ");
 
     // Insert sample posts
     $conn->exec("INSERT INTO Posts (user_id, title, content, category, privacy, type, post_type) VALUES
-        (1, 'First Post', 'This is the content of the first post', 'Formula 1', 'Public', 'image', 'normal'),
-        (2, 'Second Post', 'This is the content of the second post', 'NASCAR', 'Friends Only', 'image', 'normal')
+        (1, 'First Post', 'This is the content of the first post', 'Formula 1', 'Public', 'image', 'Normal'),
+        (2, 'Second Post', 'This is the content of the second post', 'NASCAR', 'Friends Only', 'image', 'Normal')
     ");
 
     // Insert sample post images
@@ -30,8 +52,8 @@ try {
 
     // Insert sample marketplace items
     $conn->exec("INSERT INTO Marketplace_Items (seller_id, title, description, price, category, status) VALUES
-        (1, 'Item 1', 'Description of item 1', 10.00, 'Formula 1', 'available'),
-        (2, 'Item 2', 'Description of item 2', 20.00, 'NASCAR', 'available')
+        (1, 'Item 1', 'Description of item 1', 10.00, 'Formula 1', 'Available'),
+        (2, 'Item 2', 'Description of item 2', 20.00, 'NASCAR', 'Available')
     ");
 
     // Insert sample marketplace item images
@@ -80,7 +102,12 @@ try {
         (2, 2, 2)
     ");
 
+    // Commit the transaction
     $conn->commit();
+
+    // Re-enable foreign key checks
+    $conn->exec("SET FOREIGN_KEY_CHECKS=1");
+
     echo "Database seeded successfully!";
 } catch (Exception $e) {
     $conn->rollBack();
