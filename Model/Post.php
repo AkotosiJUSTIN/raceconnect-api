@@ -66,6 +66,13 @@ class Post {
         ]);
     }
 
+    public function getPostImages($postId) {
+        $stmt = $this->pdo->prepare("SELECT * FROM Post_Images WHERE post_id = :post_id");
+        $stmt->bindParam(':post_id', $postId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getAllPosts($limit = 10, $offset = 0) {
         $stmt = $this->pdo->prepare("SELECT * FROM posts LIMIT :limit OFFSET :offset");
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);

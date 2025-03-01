@@ -14,27 +14,31 @@ class PostController {
         $this->post = new Post($db);
     }
 
-    public function processRequest($method, $id = null) {
+    public function processRequest($method, $id = null, $action = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true) ?? [];
-
+    
             switch ($method) {
                 case 'POST':
                     $this->handlePostRequest();
                     break;
-
+    
                 case 'GET':
-                    $this->handleGetRequest($id);
+                    if ($action === 'images' && $id) {
+                        $this->handleGetPostImagesRequest($id);
+                    } else {
+                        $this->handleGetRequest($id);
+                    }
                     break;
-
+    
                 case 'PUT':
                     $this->handlePutRequest($id, $data);
                     break;
-
+    
                 case 'DELETE':
                     $this->handleDeleteRequest($id);
                     break;
-
+    
                 default:
                     http_response_code(405);
                     echo json_encode(['message' => 'Unsupported HTTP method']);
@@ -60,8 +64,6 @@ class PostController {
                 throw new Exception('Failed to create post.');
             }
             error_log("Generated Post ID: " . $postId); // Debugging: Check if the ID is valid
-
-
 
             // Add a short delay to ensure database consistency (if needed)
             usleep(500000); // 500ms delay
@@ -211,5 +213,21 @@ class PostController {
         $message = $errorMessages[$errorCode] ?? 'Unknown upload error.';
         http_response_code(400);
         echo json_encode(['message' => 'File upload error', 'error' => $message]);
+    }
+
+    private function handleGetPostImagesRequest($postId) {
+        try {
+            $images = $this->post->getPostImages($postId);
+            if ($images) {
+                http_response_code(200);
+                echo json_encode($images);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'No images found for this post']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to retrieve post images', 'error' => $e->getMessage()]);
+        }
     }
 }

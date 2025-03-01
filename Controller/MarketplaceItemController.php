@@ -14,13 +14,17 @@ class MarketplaceItemController {
         $this->item = new MarketplaceItem($db);
     }
 
-    public function processRequest($method, $id = null) {
+    public function processRequest($method, $id = null, $action = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true) ?? [];
-
+    
             switch ($method) {
                 case 'GET':
-                    $this->handleGetRequest($id);
+                    if ($action === 'images' && $id) {
+                        $this->handleGetItemImagesRequest($id);
+                    } else {
+                        $this->handleGetRequest($id);
+                    }
                     break;
                 case 'POST':
                     $this->handlePostRequest();
@@ -180,5 +184,21 @@ class MarketplaceItemController {
         }
 
         return $imageUrls;
+    }
+
+    private function handleGetItemImagesRequest($itemId) {
+        try {
+            $images = $this->item->getItemImages($itemId);
+            if ($images) {
+                http_response_code(200);
+                echo json_encode($images);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'No images found for this item']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to retrieve item images', 'error' => $e->getMessage()]);
+        }
     }
 }

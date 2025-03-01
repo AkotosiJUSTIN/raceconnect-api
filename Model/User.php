@@ -56,7 +56,6 @@ class User {
         return (strlen($imageData) > 0 && strlen($imageData) <= 5000000); // 5MB limit
     }
 
-    // Save profile picture URL to database
     public function saveProfilePicture($userId, $imageUrl) {
         try {
             $stmt = $this->pdo->prepare("INSERT INTO User_Profile_Pictures (user_id, image_url) VALUES (:user_id, :image_url)");
@@ -64,6 +63,7 @@ class User {
                 ':user_id' => intval($userId),
                 ':image_url' => filter_var($imageUrl, FILTER_SANITIZE_URL)
             ]);
+            return true;
         } catch (Exception $e) {
             throw new Exception('Failed to save profile picture: ' . $e->getMessage());
         }
@@ -112,6 +112,14 @@ class User {
             ':password' => password_hash($data['password'], PASSWORD_BCRYPT)
         ]);
     }
+
+    public function getUserProfileImages($userId) {
+        $stmt = $this->pdo->prepare("SELECT * FROM User_Profile_Pictures WHERE user_id = :user_id");
+        $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 
     // Update user details
     public function updateUser($id, $data) {

@@ -66,6 +66,13 @@ class MarketplaceItem {
         ]);
     }
 
+    public function getItemImages($itemId) {
+        $stmt = $this->pdo->prepare("SELECT * FROM Marketplace_Item_Images WHERE marketplace_item_id = :marketplace_item_id");
+        $stmt->bindParam(':marketplace_item_id', $itemId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getAllItems($limit = 10, $offset = 0) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} LIMIT :limit OFFSET :offset");
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);

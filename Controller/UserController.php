@@ -15,19 +15,23 @@ class UserController {
         $this->user = new User($db);
     }
 
-    public function processRequest($method, $id = null) {
+    public function processRequest($method, $id = null, $action = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true);
-
+    
             switch ($method) {
                 case 'GET':
-                    $this->handleGetRequest($id);
+                    if ($action === 'images' && $id) {
+                        $this->handleGetUserProfileImagesRequest($id);
+                    } else {
+                        $this->handleGetRequest($id);
+                    }
                     break;
-
+    
                 case 'POST':
                     $this->createUser($data);
                     break;
-
+    
                 case 'PUT':
                     if (!$id) {
                         $this->sendErrorResponse(400, 'User ID is required for updating.');
@@ -35,7 +39,7 @@ class UserController {
                     }
                     $this->updateUser($id, $data);
                     break;
-
+    
                 case 'DELETE':
                     if (!$id) {
                         $this->sendErrorResponse(400, 'User ID is required for deletion.');
@@ -43,7 +47,7 @@ class UserController {
                     }
                     $this->deleteUser($id);
                     break;
-
+    
                 default:
                     $this->sendErrorResponse(405, 'Unsupported HTTP method.');
             }
@@ -155,7 +159,7 @@ class UserController {
             $imageUrl = $this->user->uploadProfilePictureToS3($imageData, $imageName);
 
             // Save to database
-            if ($this->user->saveProfilePicture($userId, $imageUrl)) {
+            if ($this->user->saveProfilePicture($userId, $imageUrl) && $this->user->updateUserProfilePicture($userId, $imageUrl)) {
                 $this->sendSuccessResponse(200, ['message' => 'Profile picture uploaded successfully.', 'image_url' => $imageUrl]);
             } else {
                 $this->sendErrorResponse(500, 'Failed to save profile picture.');
@@ -180,6 +184,22 @@ class UserController {
         }
 
         echo json_encode($errorResponse);
+    }
+
+    private function handleGetUserProfileImagesRequest($userId) {
+        try {
+            $images = $this->user->getUserProfileImages($userId);
+            if ($images) {
+                http_response_code(200);
+                echo json_encode($images);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'No images found for this user']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to retrieve user images', 'error' => $e->getMessage()]);
+        }
     }
 }
 

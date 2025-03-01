@@ -44,7 +44,11 @@ class Api {
         try {
             switch ($resource) {
                 case 'users':
-                    $this->handleRequest(new UserController($this->conn), $method, $id);
+                    if (isset($path[2]) && $path[2] === 'images') {
+                        $this->handleRequest(new UserController($this->conn), $method, $id, 'images');
+                    } else {
+                        $this->handleRequest(new UserController($this->conn), $method, $id);
+                    }
                     break;
 
                 case 'login':
@@ -102,11 +106,19 @@ class Api {
                     break;
 
                 case 'posts':
-                    $this->handleRequest(new PostController($this->conn), $method, $id);
+                    if (isset($path[2]) && $path[2] === 'images') {
+                        $this->handleRequest(new PostController($this->conn), $method, $id, 'images');
+                    } else {
+                        $this->handleRequest(new PostController($this->conn), $method, $id);
+                    }
                     break;
 
                 case 'marketplace-items':
-                    $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
+                    if (isset($path[2]) && $path[2] === 'images') {
+                        $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');
+                    } else {
+                        $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
+                    }
                     break;
 
                 case 'notifications':
@@ -187,14 +199,14 @@ class Api {
     /**
      * Handles request for controllers with CRUD operations
      */
-    private function handleRequest($controller, $method, $id) {
+    private function handleRequest($controller, $method, $id, $action = null) {
         if (!method_exists($controller, 'processRequest')) {
             http_response_code(500);
             echo json_encode(['message' => 'Internal Server Error: Controller method not found']);
             exit;
         }
 
-        $controller->processRequest($method, $id);
+        $controller->processRequest($method, $id, $action);
     }
 }
 ?>
