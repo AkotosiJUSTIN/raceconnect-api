@@ -18,12 +18,9 @@ if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
     }
 }
 
-
 // Get the logged-in user's email and admin_name
 $email = $_SESSION['email'];
 $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest';
-
-$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-behavior: smooth;">

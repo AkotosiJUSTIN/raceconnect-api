@@ -13,28 +13,37 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'POST',
             body: formData
         })
-        .then(response => {
+        .then(async response => {
+            const result = await response.json();
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(result.error || 'Failed to post announcement');
             }
-            return response.json();
+            return result;
         })
         .then(result => {
             if (result.success) {
                 // Clear the form
                 announcementForm.reset();
-                // Show the floating message
-                showFloatingMessage();
+                // Show success message
+                showFloatingMessage('Announcement posted successfully!', 'success');
             } else {
-                alert(result.error || 'Failed to post announcement');
+                showFloatingMessage(result.error || 'Failed to post announcement', 'error');
             }
         })
-        .catch(error => console.error('Error posting announcement:', error));
+        .catch(error => {
+            console.error('Error posting announcement:', error);
+            showFloatingMessage(error.message || 'An error occurred while posting the announcement', 'error');
+        });
     });
 
     // Function to show the floating message
-    function showFloatingMessage() {
+    function showFloatingMessage(message, type = 'success') {
         const container = document.querySelector('.floating-message-container');
+        const messageElement = document.getElementById('floatingMessage');
+        
+        // Set message and style based on type
+        messageElement.textContent = message;
+        container.className = `floating-message-container ${type}`;
         
         // Reset any existing animations
         container.style.display = 'block';
