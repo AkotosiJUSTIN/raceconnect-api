@@ -55,7 +55,7 @@ class MarketplaceItem {
 
     private function isValidImage($imageData) {
         // Basic validation for image files
-        return (strlen($imageData) > 0 && strlen($imageData) <= 5000000); // 5MB limit
+        return (strlen($imageData) > 0 && strlen($imageData) <= 25000000); // 25MB limit
     }
 
     public function saveItemImage($itemId, $imageUrl) {
