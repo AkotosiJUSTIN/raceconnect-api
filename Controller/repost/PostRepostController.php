@@ -47,9 +47,9 @@ class PostRepostController {
                 case 'POST':
                     $data = json_decode(file_get_contents("php://input"), true);
                     
-                    if (empty($data) || !isset($data['user_id'], $data['post_id'], $data['owner_id'])) {
+                    if (empty($data) || !isset($data['user_id'], $data['post_id'])) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data. Required: user_id, post_id, owner_id']);
+                        echo json_encode(['message' => 'Invalid input data. Required: user_id, post_id']);
                         return;
                     }
 

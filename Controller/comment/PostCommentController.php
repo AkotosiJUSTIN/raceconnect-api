@@ -122,9 +122,8 @@ class PostCommentController {
 
     // Validate input data
     private function isValidCommentData($data) {
-        return isset($data['user_id'], $data['post_id'], $data['owner_id'], $data['comment']) && 
-               !empty($data['user_id']) && !empty($data['post_id']) && 
-               !empty($data['owner_id']) && !empty($data['comment']);
+        return isset($data['user_id'], $data['post_id'], $data['comment']) && 
+               !empty($data['user_id']) && !empty($data['post_id']) && !empty($data['comment']);
     }
 }
 

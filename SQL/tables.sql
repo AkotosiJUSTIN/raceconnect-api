@@ -116,6 +116,9 @@ CREATE TABLE Notifications (
     status ENUM('active', 'archived') DEFAULT 'active',
     INDEX idx_type_status (type, status),
     INDEX idx_created_at (created_at)
+    repost_id INT DEFAULT NULL,
+    like_id INT DEFAULT NULL,
+    comment_id INT DEFAULT NULL
 );
 
 -- Admins Table
