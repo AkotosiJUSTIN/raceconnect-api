@@ -38,9 +38,9 @@ class PostLikeController {
                 case 'POST':
                     $data = json_decode(file_get_contents("php://input"), true);
                     
-                    if (empty($data['user_id']) || empty($data['post_id']) || empty($data['owner_id'])) {
+                    if (empty($data['user_id']) || empty($data['post_id'])) {
                         http_response_code(400);
-                        echo json_encode(['message' => 'Missing required fields (user_id, post_id, owner_id)']);
+                        echo json_encode(['message' => 'Missing required fields (user_id, post_id)']);
                         return;
                     }
 
