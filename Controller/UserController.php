@@ -1,6 +1,7 @@
 <?php
 
 namespace Controller;
+
 use Model\User;
 use Exception;
 use PDOException;
@@ -18,7 +19,7 @@ class UserController {
     public function processRequest($method, $id = null, $action = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true);
-    
+
             switch ($method) {
                 case 'GET':
                     if ($action === 'images' && $id) {
@@ -27,11 +28,11 @@ class UserController {
                         $this->handleGetRequest($id);
                     }
                     break;
-    
+
                 case 'POST':
                     $this->createUser($data);
                     break;
-    
+
                 case 'PUT':
                     if (!$id) {
                         $this->sendErrorResponse(400, 'User ID is required for updating.');
@@ -39,7 +40,7 @@ class UserController {
                     }
                     $this->updateUser($id, $data);
                     break;
-    
+
                 case 'DELETE':
                     if (!$id) {
                         $this->sendErrorResponse(400, 'User ID is required for deletion.');
@@ -47,7 +48,7 @@ class UserController {
                     }
                     $this->deleteUser($id);
                     break;
-    
+
                 default:
                     $this->sendErrorResponse(405, 'Unsupported HTTP method.');
             }

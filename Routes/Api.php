@@ -11,6 +11,7 @@ use Controller\Like\MarketplaceItemLikeController;
 use Controller\Comment\PostCommentController;
 use Controller\Repost\PostRepostController;
 use Controller\AuthController;
+use Controller\FriendsController;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -103,6 +104,10 @@ class Api {
                     $controller = new AuthController($this->conn);
                     $data = $this->getJsonInput();
                     $controller->resetPassword($data);
+                    break;
+
+                case 'friends':
+                    $this->handleRequest(new FriendsController($this->conn), $method, $id);
                     break;
 
                 case 'posts':

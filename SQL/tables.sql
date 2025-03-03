@@ -12,7 +12,7 @@ CREATE TABLE Users (
     bio TEXT,
     favorite_categories JSON,
     favorite_marketplace_items JSON,
-    friend_count INT DEFAULT 0,  
+    friends_list JSON DEFAULT NULL,  -- Added friends_list column
     friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public',
     last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     status ENUM('Active', 'Banned', 'Suspended') DEFAULT 'Active',
@@ -24,7 +24,8 @@ CREATE TABLE Users (
 
 ALTER TABLE Users
 ADD CONSTRAINT chk_favorite_categories CHECK (JSON_VALID(favorite_categories)),
-ADD CONSTRAINT chk_favorite_marketplace_items CHECK (JSON_VALID(favorite_marketplace_items));
+ADD CONSTRAINT chk_favorite_marketplace_items CHECK (JSON_VALID(favorite_marketplace_items)),
+ADD CONSTRAINT chk_friends_list CHECK (JSON_VALID(friends_list));  -- Added constraint for friends_list
 
 CREATE UNIQUE INDEX idx_username ON Users(username);
 CREATE UNIQUE INDEX idx_email ON Users(email);
@@ -114,11 +115,11 @@ CREATE TABLE Notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     report_id INT DEFAULT NULL,
     status ENUM('active', 'archived') DEFAULT 'active',
-    INDEX idx_type_status (type, status),
-    INDEX idx_created_at (created_at)
     repost_id INT DEFAULT NULL,
     like_id INT DEFAULT NULL,
-    comment_id INT DEFAULT NULL
+    comment_id INT DEFAULT NULL,
+    INDEX idx_type_status (type, status),
+    INDEX idx_created_at (created_at)
 );
 
 -- Admins Table
@@ -261,7 +262,6 @@ ADD FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
 ADD FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
 ADD INDEX idx_post_id (post_id),
 ADD INDEX idx_marketplace_item_id (marketplace_item_id);
-
 
 -- Conversations 
 CREATE TABLE conversations (
