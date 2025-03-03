@@ -238,10 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update the handleViewPost function
     window.handleViewPost = function(postId, marketplaceItemId, type) {
-        if (type === 'marketplace') {
-            window.location.href = `index_marketplace.php?item_id=${marketplaceItemId}`;
-        } else {
-            window.location.href = `index_posts.php?post_id=${postId}`;
+        // Determine the correct URL based on the notification type
+        let redirectUrl;
+        if (type === 'marketplace_report') {
+            redirectUrl = `index_marketplace.php?item_id=${marketplaceItemId}&highlight=true`;
+        } else if (type === 'post_report') {
+            redirectUrl = `index_posts.php?post_id=${postId}&highlight=true`;
+        }
+
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
         }
     };
 

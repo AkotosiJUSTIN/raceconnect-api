@@ -38,13 +38,24 @@ document.addEventListener('DOMContentLoaded', () => {
     
         posts.forEach(post => {
             const postCard = document.createElement('div');
-            postCard.className = 'post-card';
-            postCard.dataset.postId = post.id;
-            postCard.dataset.status = post.status;
+            const urlParams = new URLSearchParams(window.location.search);
+            const highlightId = urlParams.get('post_id');
+            
+            // Set data attribute for the post ID
+            postCard.setAttribute('data-post-id', post.id);
+            
+            // Check if this post should be highlighted
+            const shouldHighlight = highlightId === post.id.toString();
+            
+            // Add classes including highlight if needed
+            postCard.className = `post-card ${post.status === 'Hidden' ? 'blurred' : ''} ${shouldHighlight ? 'highlighted' : ''}`;
 
-            // Add blurred class if status is Hidden
-            if (post.status === 'Hidden') {
-                postCard.classList.add('blurred');
+            // If this is the highlighted post, scroll to it
+            if (shouldHighlight) {
+                setTimeout(() => {
+                    postCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    console.log('Highlighting post:', post.id); // Debug log
+                }, 100);
             }
 
             const imagesHtml = post.images && post.images.length > 0
@@ -91,6 +102,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 initCarousel(`post-${post.id}`);
             }
         });
+
+        // Call removeHighlightAfterDelay after populating
+        removeHighlightAfterDelay();
+    }
+    
+    function removeHighlightAfterDelay() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('post_id');
+        
+        if (postId) {
+            const highlightedElement = document.querySelector(`[data-post-id="${postId}"]`);
+            if (highlightedElement) {
+                console.log('Found highlighted element'); // Debug log
+                
+                // Remove highlight after delay
+                setTimeout(() => {
+                    highlightedElement.classList.remove('highlighted');
+                    
+                    // Update URL without the highlight parameter
+                    const newUrl = window.location.pathname;
+                    window.history.replaceState({}, '', newUrl);
+                    
+                    console.log('Removed highlight'); // Debug log
+                }, 5000);
+            }
+        }
     }
 
     function createCarousel(images, containerId) {

@@ -293,9 +293,36 @@ CREATE TABLE messages (
     FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 4. Update the report trigger to handle both types
-DROP TRIGGER IF EXISTS after_report_insert;
+-- Admin Notifications Table
+CREATE TABLE admin_notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    reporter_id INT NOT NULL,
+    post_id INT DEFAULT NULL,
+    marketplace_item_id INT DEFAULT NULL,
+    type ENUM('post_report', 'marketplace_report', 'system_alert', 'user_report') NOT NULL,
+    content TEXT NOT NULL,
+    severity ENUM('low', 'medium', 'high') DEFAULT 'medium',
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    report_id INT DEFAULT NULL,
+    status ENUM('pending', 'in_review', 'resolved', 'archived') DEFAULT 'pending',
+    action_taken TEXT DEFAULT NULL,
+    resolved_by INT DEFAULT NULL,
+    resolved_at TIMESTAMP NULL,
+    FOREIGN KEY (admin_id) REFERENCES Admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (reporter_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
+    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
+    FOREIGN KEY (report_id) REFERENCES Reports(id) ON DELETE SET NULL,
+    FOREIGN KEY (resolved_by) REFERENCES Admins(id) ON DELETE SET NULL,
+    INDEX idx_type_status (type, status),
+    INDEX idx_created_at (created_at),
+    INDEX idx_severity (severity)
+);
 
+-- Updated trigger for admin notifications
 DELIMITER $$
 CREATE TRIGGER after_report_insert
 AFTER INSERT ON reports
@@ -309,29 +336,46 @@ BEGIN
     END IF;
 
     -- Create notification for admin
-    INSERT INTO notifications (
-        user_id,
+    INSERT INTO admin_notifications (
+        admin_id,
+        reporter_id,
         post_id,
         marketplace_item_id,
         type,
         content,
+        severity,
         is_read,
         created_at,
         report_id,
         status
-    ) VALUES (
-        1, -- admin user_id
+    ) 
+    SELECT 
+        a.id, -- Get the appropriate admin based on role
+        NEW.reporter_id,
         NEW.post_id,
         NEW.marketplace_item_id,
         CASE 
-            WHEN NEW.post_id IS NOT NULL THEN 'post'
-            ELSE 'marketplace'
+            WHEN NEW.post_id IS NOT NULL THEN 'post_report'
+            WHEN NEW.marketplace_item_id IS NOT NULL THEN 'marketplace_report'
+            ELSE 'user_report'
         END,
-        CONCAT('New report: ', NEW.reason),
+        CONCAT(
+            'New report from User #', NEW.reporter_id, ': ',
+            NEW.reason
+        ),
+        'medium',
         0,
         NOW(),
         NEW.id,
-        'active'
+        'pending'
+    FROM Admins a
+    WHERE (
+        (NEW.post_id IS NOT NULL AND a.role = 'content_moderator')
+        OR
+        (NEW.marketplace_item_id IS NOT NULL AND a.role IN ('marketplace_manager', 'content_moderator'))
+        OR
+        (NEW.post_id IS NULL AND NEW.marketplace_item_id IS NULL AND a.role = 'community_manager')
     );
+    LIMIT 1;
 END$$
 DELIMITER ;

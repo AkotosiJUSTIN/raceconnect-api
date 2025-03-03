@@ -43,6 +43,31 @@
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
 }
 
+.post-card.highlighted, .product-card.highlighted {
+    position: relative;
+    border: 2px solid #B91C1C !important; /* Golden yellow border */
+    box-shadow: 0 0 10px rgba(232, 4, 4, 0.2) !important; /* Softer shadow */
+    transform: scale(1.01); /* Subtler scaling */
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+.post-card.highlighted::before, .product-card.highlighted::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 2px solid #B91C1C; /* Matching golden border */
+    border-radius: inherit;
+    opacity: 0.3;
+    animation: glow 3s infinite; /* Gentle glow animation */
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 5px #B91C1C; }
+    50% { box-shadow: 0 0 15px #B91C1C; }
+    100% { box-shadow: 0 0 5px #B91C1C; }
+}
+
 /* Header Section */
 .post-header {
     padding: 16px;

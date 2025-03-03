@@ -92,42 +92,53 @@ function fetchDashboardData($conn) {
 
 function createReportNotification($conn, $itemId, $reportId, $type, $reason) {
     try {
-        // Get admin user ID
-        $adminQuery = "SELECT id FROM admins WHERE role = 'content_moderator' || 'community_manager' || 'marketplace_manager' LIMIT 1";
+        // Get appropriate admin based on report type
+        $roleCondition = match($type) {
+            'post' => "'content_moderator'",
+            'marketplace' => "'marketplace_manager'",
+            default => "'community_manager'"
+        };
+        
+        $adminQuery = "SELECT id FROM admins WHERE role = $roleCondition LIMIT 1";
         $adminResult = $conn->query($adminQuery);
-        $adminId = $adminResult->fetch_assoc()['id'] ?? 1; // Fallback to ID 1 if no admin found
+        $adminId = $adminResult->fetch_assoc()['id'] ?? 1;
 
-        $notifQuery = "INSERT INTO notifications (
-            user_id,
+        $notifQuery = "INSERT INTO admin_notifications (
+            admin_id,
+            reporter_id,
             post_id,
             marketplace_item_id,
             type,
             content,
+            severity,
             is_read,
             created_at,
             report_id,
             status
         ) VALUES (
             ?, -- admin_id
+            ?, -- reporter_id
             CASE WHEN ? = 'post' THEN ? ELSE NULL END,
             CASE WHEN ? = 'marketplace' THEN ? ELSE NULL END,
             ?,
             ?,
+            'medium',
             0,
             NOW(),
             ?,
-            'active'
+            'pending'
         )";
 
-        error_log("Creating notification for $type ID: $itemId, Report ID: $reportId"); // Debug log
-
         $stmt = $conn->prepare($notifQuery);
+        $reportType = $type . '_report';
         $content = "New report: " . $reason;
-        $stmt->bind_param("isisissi", 
+        
+        $stmt->bind_param("iiisissi", 
             $adminId,
-            $type, $itemId,  // For post_id
-            $type, $itemId,  // For marketplace_item_id
-            $type,
+            $_SESSION['user_id'],
+            $type, $itemId,
+            $type, $itemId,
+            $reportType,
             $content,
             $reportId
         );
@@ -139,7 +150,7 @@ function createReportNotification($conn, $itemId, $reportId, $type, $reason) {
         return true;
     } catch (Exception $e) {
         error_log("Error creating notification: " . $e->getMessage());
-        throw $e; // Re-throw to handle in calling function
+        throw $e;
     }
 }
 
@@ -277,29 +288,39 @@ function reportPost($conn) {
 function fetchNotifications($conn) {
     try {
         $query = "SELECT 
-            n.id,
-            n.user_id,
-            n.post_id,
-            n.marketplace_item_id,
-            n.type,
-            n.content,
-            n.is_read,
-            n.created_at,
-            n.report_id,
-            n.status,
+            an.id,
+            an.admin_id,
+            an.reporter_id,
+            an.post_id,
+            an.marketplace_item_id,
+            an.type,
+            an.content,
+            an.severity,
+            an.is_read,
+            an.created_at,
+            an.report_id,
+            an.status,
+            an.action_taken,
+            an.resolved_by,
+            an.resolved_at,
             r.reason as report_reason,
             u.username as reporter_username,
             COALESCE(p.title, mi.title, 'Untitled') as title,
             p.title as post_title,
             mi.title as marketplace_title
-            FROM notifications n
-            LEFT JOIN reports r ON n.report_id = r.id
-            LEFT JOIN users u ON r.reporter_id = u.id
-            LEFT JOIN posts p ON n.post_id = p.id
-            LEFT JOIN marketplace_items mi ON n.marketplace_item_id = mi.id
-            WHERE n.type IN ('post', 'report', 'marketplace')
-            AND (n.status IS NULL OR n.status != 'archived')
-            ORDER BY n.created_at DESC";
+            FROM admin_notifications an
+            LEFT JOIN reports r ON an.report_id = r.id
+            LEFT JOIN users u ON an.reporter_id = u.id
+            LEFT JOIN posts p ON an.post_id = p.id
+            LEFT JOIN marketplace_items mi ON an.marketplace_item_id = mi.id
+            WHERE an.status != 'archived'
+            ORDER BY 
+                CASE an.severity
+                    WHEN 'high' THEN 1
+                    WHEN 'medium' THEN 2
+                    WHEN 'low' THEN 3
+                END,
+                an.created_at DESC";
         
         $result = $conn->query($query);
         
@@ -309,13 +330,8 @@ function fetchNotifications($conn) {
         
         $notifications = [];
         while ($row = $result->fetch_assoc()) {
-            // Debug log each notification
-            error_log("Found notification: " . json_encode($row));
             $notifications[] = $row;
         }
-        
-        // Debug log total count
-        error_log("Total notifications found: " . count($notifications));
         
         echo json_encode([
             'success' => true,
@@ -341,8 +357,15 @@ function archiveNotification($conn) {
     }
 
     try {
-        $stmt = $conn->prepare("UPDATE notifications SET status = 'archived' WHERE id = ?");
-        $stmt->bind_param("i", $notificationId);
+        $stmt = $conn->prepare("
+            UPDATE admin_notifications 
+            SET status = 'archived',
+                resolved_at = NOW(),
+                resolved_by = ?
+            WHERE id = ?");
+        
+        $adminId = $_SESSION['admin_id'] ?? 1; // Get the current admin's ID
+        $stmt->bind_param("ii", $adminId, $notificationId);
         
         if ($stmt->execute()) {
             echo json_encode(["success" => true]);
@@ -911,14 +934,23 @@ function bulkArchiveNotifications($conn) {
         $ids = array_map('intval', $notificationIds);
         $placeholders = str_repeat('?,', count($ids) - 1) . '?';
         
-        $query = "UPDATE notifications SET status = 'archived' WHERE id IN ($placeholders)";
+        $query = "UPDATE admin_notifications 
+                 SET status = 'archived',
+                     resolved_at = NOW(),
+                     resolved_by = ?
+                 WHERE id IN ($placeholders)";
+        
         $stmt = $conn->prepare($query);
         
         if (!$stmt) {
             throw new Exception("Database error: " . $conn->error);
         }
 
-        $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
+        $adminId = $_SESSION['admin_id'] ?? 1; // Get the current admin's ID
+        $types = "i" . str_repeat('i', count($ids));
+        $params = array_merge([$adminId], $ids);
+        
+        $stmt->bind_param($types, ...$params);
         
         if (!$stmt->execute()) {
             throw new Exception("Failed to archive notifications");

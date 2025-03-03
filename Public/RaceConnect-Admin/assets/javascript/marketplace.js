@@ -31,23 +31,35 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!items || items.length === 0) {
             mainContent.innerHTML = `
                 <div class="error-message">
-                    <p>No reported posts found.</p>
+                    <p>No reported items found.</p>
                 </div>
             `;
             return;
         }
     
         items.forEach(item => {
-            const productCard = document.createElement('div');
-            productCard.className = `product-card ${item.status === 'Hidden' ? 'blurred' : ''}`;
-            productCard.dataset.itemId = item.id;
-            productCard.dataset.status = item.status;
+            const itemCard = document.createElement('div');
+            // Add data attribute for item ID
+            itemCard.setAttribute('data-item-id', item.id);
             
-            const imagesHtml = item.image_urls && item.image_urls.length > 0
-                ? createCarousel(item.image_urls, `item-${item.id}`)
-                : '';
-
-            productCard.innerHTML = `
+            // Check if this item should be highlighted
+            const urlParams = new URLSearchParams(window.location.search);
+            const highlightId = urlParams.get('item_id');
+            const shouldHighlight = highlightId === item.id.toString();
+            
+            // Add classes including highlight if needed
+            itemCard.className = `product-card ${item.status === 'Hidden' ? 'blurred' : ''} ${shouldHighlight ? 'highlighted' : ''}`;
+    
+            // If this is the highlighted item, scroll to it
+            if (shouldHighlight) {
+                setTimeout(() => {
+                    itemCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    console.log('Highlighting item:', item.id); // Debug log
+                }, 100);
+            }
+    
+            // Rest of your existing item card HTML
+            itemCard.innerHTML = `
                 <div class="post-header">
                     <div class="user-info">
                         <span class="user-name">${item.title || 'Untitled Item'}</span>
@@ -80,15 +92,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="product-description">${item.description}</div>
                     </div>
                 </div>
-                ${imagesHtml}
+                ${item.image_urls && item.image_urls.length > 0
+                    ? createCarousel(item.image_urls, `item-${item.id}`)
+                    : ''}
             `;
     
-            mainContent.appendChild(productCard);
-
+            mainContent.appendChild(itemCard);
+    
             // Add blur class to specific elements if status is Hidden
             if (item.status === 'Hidden') {
-                const scrollableContent = productCard.querySelector('.scrollable-content');
-                const carousel = productCard.querySelector('.carousel');
+                const scrollableContent = itemCard.querySelector('.scrollable-content');
+                const carousel = itemCard.querySelector('.carousel');
                 
                 if (scrollableContent) {
                     scrollableContent.classList.add('blurred');
@@ -97,12 +111,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     carousel.classList.add('blurred');
                 }
             }
-
+    
             if (item.image_urls && item.image_urls.length > 0) {
                 initCarousel(`item-${item.id}`);
             }
         });
+    
+        // Call removeHighlightAfterDelay after populating
+        removeHighlightAfterDelay();
     }
+
+    function removeHighlightAfterDelay() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const itemId = urlParams.get('item_id');
+        
+        if (itemId) {
+            const highlightedElement = document.querySelector(`[data-item-id="${itemId}"]`);
+            if (highlightedElement) {
+                console.log('Found highlighted element'); // Debug log
+                
+                // Remove highlight after delay
+                setTimeout(() => {
+                    highlightedElement.classList.remove('highlighted');
+                    
+                    // Update URL without the highlight parameter
+                    const newUrl = window.location.pathname;
+                    window.history.replaceState({}, '', newUrl);
+                    
+                    console.log('Removed highlight'); // Debug log
+                }, 5000);
+            }
+        }
+    }
+
+    // Add this to the DOMContentLoaded event listener
+    document.addEventListener('DOMContentLoaded', () => {
+        // ... existing code ...
+        removeHighlightAfterDelay();
+    });
 
     // Add this function to both marketplace.js and user-posts.js
     function createCarousel(images, containerId) {
