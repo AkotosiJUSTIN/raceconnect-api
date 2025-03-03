@@ -259,14 +259,6 @@ body {
   transform: translateX(100%);
 }
 
-.floating-message-container.success {
-    background-color: #10B981;
-}
-
-.floating-message-container.error {
-    background-color: #EF4444;
-}
-
 .floating-message-container.error .progress {
     background-color: #f44336;
 }
