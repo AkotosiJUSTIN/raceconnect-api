@@ -118,17 +118,42 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
         <!-- Main Content -->
         <div class="main-content" id="mainContent">
             <!-- Announcement Form -->
+            <!-- Replace existing announcement form with this -->
             <div class="announcement-form-container">
                 <h2>Create Announcement</h2>
-                <form id="announcementForm">
-                    <label for="announcementTitle">Title:</label>
-                    <input type="text" id="announcementTitle" name="announcementTitle" placeholder="Enter announcement title" required>
+                <form id="announcementForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="announcementTitle">Title</label>
+                        <input type="text" id="announcementTitle" name="announcementTitle" required>
+                    </div>
 
-                    <label for="announcementContent">Content:</label>
-                    <textarea id="announcementContent" name="announcementContent" rows="5" placeholder="Enter announcement content" required></textarea>
+                    <div class="form-group">
+                        <label for="announcementContent">Content</label>
+                        <textarea id="announcementContent" name="announcementContent" required maxlength="5000"></textarea>
+                    </div>
 
-                    <button type="submit" class="submit-btn">Post Announcement</button>
-                </form>
+                    <div class="form-bottom">
+                        <div class="submit-btn-container">
+                            <button type="submit" class="submit-btn">
+                                <span class="btn-text">Post Announcement</span>
+                                <div class="loading-spinner" style="display: none;"></div>
+                            </button>
+                        </div>
+                        
+                        <div class="file-upload-container">
+                            <label for="announcementImage">
+                                Upload Image
+                            </label>
+                            <input type="file" id="announcementImage" name="announcementImage" accept="image/*">
+                            <div class="preview-container" style="display: none;">
+                                <div class="file-info">
+                                    <box-icon name='file' type='solid' size="sm" color="#374151"></box-icon>
+                                    <span id="fileName">No file selected</span>
+                                    <button type="button" id="removeImage" title="Remove file">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
             </div>
 
             <!-- Announcement Section -->
@@ -138,14 +163,14 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
         </div>
     </div>
     <!-- Floating Message -->
-     <div class="floating-message-container">
+    <div class="floating-message-container">
         <div class="floating-message">
-            <span id="floatingMessage">Announcement posted!</span>
+            <span id="floatingMessage"></span>
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
         </div>
-        <div class="progress-bar">
-            <div class="progress"></div>
-        </div>
-     </div>
+    </div>
     <!-- Logout Dialog -->
     <div id="logoutDialog" class="dialog-overlay">
         <div class="dialog">

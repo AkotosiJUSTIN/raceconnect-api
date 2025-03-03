@@ -75,7 +75,6 @@ body {
     font-weight: 600;
     color: #374151;
     display: block;
-    margin-bottom: 8px;
     letter-spacing: 0.01em;
 }
 
@@ -127,7 +126,6 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin-top: 20px;
     width: auto;
     min-width: 150px;
     white-space: nowrap;
@@ -142,6 +140,102 @@ body {
 .submit-btn:active {
     transform: translateY(0);
     box-shadow: none;
+}
+
+.file-upload-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0;
+}
+
+.file-upload-container input[type="file"] {
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+}
+
+.file-upload-container label[for="announcementImage"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 12px 24px;
+    background-color: #f3f4f6;
+    border: 2px dashed #d1d5db;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #374151;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-width: 140px;
+}
+
+.file-upload-container label[for="announcementImage"]:hover {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+.preview-container {
+    margin: 0;
+    padding: 0;
+    background: none;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #374151;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#imagePreview {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 8px;
+}
+
+#removeImage {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #ffffff;
+    border-top: 3px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .floating-message-container {
@@ -171,6 +265,10 @@ body {
 
 .floating-message-container.error {
     background-color: #EF4444;
+}
+
+.floating-message-container.error .progress {
+    background-color: #f44336;
 }
 
 .floating-message {
@@ -224,7 +322,7 @@ body {
     }
 
     .announcement-form-container textarea {
-        min-height: 200px;
+        min-height: 150px;
     }
 }
 
@@ -234,6 +332,7 @@ body {
         border-radius: 12px;
         max-width: 95%;
         margin: 0 auto 24px;
+        overflow: auto;
     }
     .announcement-form-container h2 {
         font-size: 20px; 
@@ -243,10 +342,37 @@ body {
     }
     .submit-btn {
         width: 100%;
-        margin-top: 16px;
     }
     .form-group {
         margin-bottom: 20px;
+    }
+    .form-bottom {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .file-upload-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .file-upload-container label[for="announcementImage"] {
+        width: 100%;
+    }
+
+    .preview-container {
+        margin-top: 8px;
+    }
+
+    .file-info {
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .submit-btn,
+    .submit-btn-container {
+        width: 100%;
     }
 }
 
@@ -266,7 +392,6 @@ body {
     }
     .announcement-form-container input, .announcement-form-container textarea {
         padding: 12px 14px;
-        width: 90%;
         margin: 0 auto;
         font-size: 14px;
     }
@@ -285,4 +410,17 @@ body {
         border-radius: 0;
         box-shadow: none;
     }
+}
+
+/* Form bottom section layout */
+.form-bottom {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+/* Submit button container */
+.submit-btn-container {
+    flex: 0 0 auto;
 }

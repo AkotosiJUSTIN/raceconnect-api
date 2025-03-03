@@ -935,31 +935,95 @@ function bulkArchiveNotifications($conn) {
 }
 
 function postAnnouncement($conn) {
-    $title = $_POST['announcementTitle'] ?? null;
-    $content = $_POST['announcementContent'] ?? null;
+    try {
+        require_once __DIR__ . '/../../vendor/autoload.php';
+        $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
+        $dotenv->load();
 
-    if (!$title || !$content) {
-        echo json_encode(["success" => false, "error" => "Missing parameters"]);
-        return;
+        // Initialize S3 client
+        $s3 = new Aws\S3\S3Client([
+            'version' => 'latest',
+            'region'  => $_ENV['AWS_REGION'],
+            'credentials' => [
+                'key'    => $_ENV['AWS_ACCESS_KEY'],
+                'secret' => $_ENV['AWS_SECRET_KEY'],
+            ],
+            'http'    => [
+                'verify' => false
+            ]
+        ]);
+
+        // Validate input
+        $title = $_POST['announcementTitle'] ?? null;
+        $content = $_POST['announcementContent'] ?? null;
+        $imageUrl = null;
+
+        if (!$title || !$content) {
+            throw new Exception('Title and content are required');
+        }
+
+        // Handle image upload if present
+        if (isset($_FILES['announcementImage']) && $_FILES['announcementImage']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['announcementImage'];
+            $imageData = file_get_contents($file['tmp_name']);
+            
+            if (!isValidImage($imageData)) {
+                throw new Exception('Invalid image file or size exceeds 5MB limit.');
+            }
+
+            // Generate unique filename
+            $uniqueId = uniqid();
+            $filename = $uniqueId . '-' . basename($file['name']); // Use $file['name'] instead of $imageName
+
+            try {
+                // Upload to S3 with public-read ACL
+                $result = $s3->putObject([
+                    'Bucket' => $_ENV['AWS_S3_BUCKET'],
+                    'Key'    => 'announcement-images/' . $filename,
+                    'Body'   => $imageData,
+                    'ContentType' => $file['type'],
+                ]);
+            
+                // Construct the URL manually to ensure proper format
+                $imageUrl = 'https://' . $_ENV['AWS_S3_BUCKET'] . '.s3.' . $_ENV['AWS_REGION'] . '.amazonaws.com/announcement-images/' . $filename;
+            } catch (Aws\Exception\AwsException $e) {
+                error_log('S3 Upload Error: ' . $e->getMessage());
+                throw new Exception('Failed to upload image to S3: ' . $e->getMessage());
+            }
+        }
+
+        // Insert announcement into database
+        $query = "INSERT INTO announcements (title, content, image_url) VALUES (?, ?, ?)";
+        $stmt = $conn->prepare($query);
+        
+        if (!$stmt) {
+            throw new Exception('Database prepare failed: ' . $conn->error);
+        }
+
+        $stmt->bind_param("sss", $title, $content, $imageUrl);
+        
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to insert announcement: ' . $stmt->error);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Announcement created successfully',
+            'image_url' => $imageUrl
+        ]);
+
+    } catch (Exception $e) {
+        error_log('Announcement Error: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
     }
+}
 
-    $query = "INSERT INTO announcements (title, content, created_at) VALUES (?, ?, NOW())";
-    $stmt = $conn->prepare($query);
-
-    if (!$stmt) {
-        echo json_encode(["success" => false, "error" => "Database error: " . $conn->error]);
-        return;
-    }
-
-    $stmt->bind_param("ss", $title, $content);
-    $executeSuccess = $stmt->execute();
-
-    $response = ["success" => $executeSuccess];
-    if (!$executeSuccess) {
-        $response["error"] = $stmt->error;
-    }
-
-    $stmt->close();
-    echo json_encode($response);
+// Add the same validation function as Post.php
+function isValidImage($imageData) {
+    return (strlen($imageData) > 0 && strlen($imageData) <= 5000000); // 5MB limit
 }
 ?>
