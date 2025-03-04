@@ -30,7 +30,7 @@ ADD CONSTRAINT chk_friends_list CHECK (JSON_VALID(friends_list));  -- Added cons
 CREATE UNIQUE INDEX idx_username ON Users(username);
 CREATE UNIQUE INDEX idx_email ON Users(email);
 
--- Table Friends
+-- Friends Table
 CREATE TABLE Friends (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -74,13 +74,15 @@ CREATE TABLE Posts (
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
+-- Announcements Table
 CREATE TABLE IF NOT EXISTS announcements (
     id INT AUTO_INCREMENT PRIMARY KEY, 
     title VARCHAR(255) NOT NULL, 
     content TEXT NOT NULL, 
     image_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
-    status ENUM('active', 'archived') DEFAULT 'active');
+    status ENUM('active', 'archived') DEFAULT 'active'
+);
 
 -- Marketplace Items Table
 CREATE TABLE Marketplace_Items (
@@ -94,8 +96,6 @@ CREATE TABLE Marketplace_Items (
     status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
     report ENUM ('None', 'Reported') DEFAULT 'None',
     reported_at TIMESTAMP NULL,
-    previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL,
-    listing_status ENUM('Available', 'Sold', 'Reserved') DEFAULT 'Available',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE
@@ -150,6 +150,7 @@ CREATE TABLE Admin_Analytics (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Post Likes Table
 CREATE TABLE Post_Likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,  -- User who liked
@@ -161,6 +162,7 @@ CREATE TABLE Post_Likes (
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
+-- Marketplace Item Likes Table
 CREATE TABLE Marketplace_Item_Likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,  -- User who liked
@@ -175,9 +177,9 @@ CREATE TABLE Marketplace_Item_Likes (
 -- Post Comments Table (Updated)
 CREATE TABLE Post_Comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL, -- User who commented
-    post_id INT NOT NULL, -- Post being commented on
-    owner_id INT NOT NULL, -- Owner of the post
+    user_id INT NOT NULL, 
+    post_id INT NOT NULL, 
+    owner_id INT NOT NULL, 
     comment TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
@@ -188,9 +190,9 @@ CREATE TABLE Post_Comments (
 -- Post Reposts Table (Updated)
 CREATE TABLE Post_Reposts (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL, -- User who reposted
-    post_id INT NOT NULL, -- Post being reposted
-    owner_id INT NOT NULL, -- Owner of the post
+    user_id INT NOT NULL, 
+    post_id INT NOT NULL, 
+    owner_id INT NOT NULL, 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
@@ -207,7 +209,7 @@ CREATE TABLE Password_Resets (
     FOREIGN KEY (email) REFERENCES Users(email) ON DELETE CASCADE
 );
 
--- Create the password_resets table with correct foreign key
+-- Create the password_resets_admin table with correct foreign key
 CREATE TABLE password_resets_admin (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(100) NOT NULL,
@@ -217,6 +219,7 @@ CREATE TABLE password_resets_admin (
     FOREIGN KEY (email) REFERENCES admins(email) ON DELETE CASCADE
 );
 
+-- User Profile Pictures Table
 CREATE TABLE User_Profile_Pictures (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -225,6 +228,7 @@ CREATE TABLE User_Profile_Pictures (
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
+-- Post Images Table
 CREATE TABLE Post_Images (
     id INT AUTO_INCREMENT PRIMARY KEY,
     post_id INT NOT NULL,
@@ -233,6 +237,7 @@ CREATE TABLE Post_Images (
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE
 );
 
+-- Marketplace Item Images Table
 CREATE TABLE Marketplace_Item_Images (
     id INT AUTO_INCREMENT PRIMARY KEY,
     marketplace_item_id INT NOT NULL,
@@ -241,6 +246,7 @@ CREATE TABLE Marketplace_Item_Images (
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE
 );
 
+-- Reports Table
 CREATE TABLE Reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     post_id INT DEFAULT NULL,
