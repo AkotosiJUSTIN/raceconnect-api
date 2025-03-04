@@ -77,7 +77,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     <li>
                         <a href="index_marketplace.php" class="nav-item">
                             <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
-                            <span>Reported Listings</span>
+                            <span>Reported Items</span>
                         </a>
                     </li>
                     <li>
@@ -130,6 +130,10 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     <div class="form-group">
                         <label for="announcementContent">Content</label>
                         <textarea id="announcementContent" name="announcementContent" required maxlength="5000"></textarea>
+                        <div class="char-counter">
+                            <span id="charCount">0</span>
+                            <span>/5000 characters</span>
+                        </div>
                     </div>
 
                     <div class="form-bottom">
@@ -149,7 +153,10 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                                 <div class="file-info">
                                     <box-icon name='file' type='solid' size="sm" color="#374151"></box-icon>
                                     <span id="fileName">No file selected</span>
-                                    <button type="button" id="removeImage" title="Remove file">×</button>
+                                </div>
+                                <div class="image-preview-wrapper">
+                                    <button type="button" id="removeImage" title="Remove image">×</button>
+                                    <img id="imagePreview" src="" alt="Preview" style="display: none;">
                                 </div>
                             </div>
                         </div>

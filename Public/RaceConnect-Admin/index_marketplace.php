@@ -75,7 +75,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     <li>
                         <a href="#top" class="nav-item active">
                             <box-icon name='store' type='solid' color='white'></box-icon>
-                            <span>Reported Listings</span>
+                            <span>Reported Items</span>
                         </a>
                     </li>
                     <li>

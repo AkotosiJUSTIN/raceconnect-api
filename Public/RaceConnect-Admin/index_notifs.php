@@ -76,7 +76,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     <li>
                         <a href="index_marketplace.php" class="nav-item">
                             <box-icon name='store' type='solid' color='rgb(185 28 28)'></box-icon>
-                            <span>Reported Listings</span>
+                            <span>Reported Items</span>
                         </a>
                     </li>
                     <li>
