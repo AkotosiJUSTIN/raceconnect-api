@@ -111,13 +111,19 @@ class Api {
                     break;
 
                 case 'posts':
-                    if (isset($path[2]) && $path[2] === 'images') {
-                        $this->handleRequest(new PostController($this->conn), $method, $id, 'images');
+                    if (isset($path[2])) {
+                        if ($path[2] === 'images') {
+                            $this->handleRequest(new PostController($this->conn), $method, $id, 'images');
+                        } elseif ($path[2] === 'category' && isset($path[3])) {
+                            $this->handleRequest(new PostController($this->conn), $method, $path[3], 'category');
+                        } else {
+                            $this->handleRequest(new PostController($this->conn), $method, $id);
+                        }
                     } else {
                         $this->handleRequest(new PostController($this->conn), $method, $id);
                     }
                     break;
-
+                        
                 case 'marketplace-items':
                     if (isset($path[2]) && $path[2] === 'images') {
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');

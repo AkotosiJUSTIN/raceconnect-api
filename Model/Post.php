@@ -162,5 +162,83 @@ class Post {
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         return $stmt->execute();
     }
+
+    public function getPostsByCategoryAndPrivacy($userId, $categories, $limit = 10, $offset = 0) {
+        // Map abbreviations to full category names
+        $categoryMap = [
+            'F1'  => 'Formula 1',
+            'LEM' => '24 Hours of Lemans',
+            'WRC' => 'World Rally Championship',
+            'NAS' => 'NASCAR',
+            'FD'  => 'Formula Drift',
+            'GT'  => 'GT Championship'
+        ];
+    
+        // Validate and convert abbreviations to full names
+        $fullCategories = [];
+        foreach ($categories as $abbr) {
+            $abbrUpper = strtoupper($abbr);
+            if (!isset($categoryMap[$abbrUpper])) {
+                throw new Exception("Invalid category abbreviation: $abbr");
+            }
+            $fullCategories[] = $categoryMap[$abbrUpper];
+        }
+    
+        // Build IN clause placeholders
+        $placeholders = implode(', ', array_map(
+            fn($key) => ":category$key", 
+            array_keys($fullCategories)
+        ));
+    
+        $query = "
+            SELECT p.* 
+            FROM Posts p
+            WHERE 
+                p.category IN ($placeholders)
+                AND p.status = 'Active' 
+                AND (
+                    p.privacy = 'Public' 
+                    OR (
+                        p.privacy = 'Friends Only' 
+                        AND EXISTS (
+                            SELECT 1 
+                            FROM Friends 
+                            WHERE 
+                                (
+                                    (user_id = :user_id AND friend_id = p.user_id) 
+                                    OR 
+                                    (user_id = p.user_id AND friend_id = :user_id)
+                                ) 
+                                AND status = 'accepted'
+                        )
+                    )
+                )
+            ORDER BY p.created_at DESC
+            LIMIT :limit OFFSET :offset
+        ";
+    
+        $stmt = $this->pdo->prepare($query);
+        
+        // Bind category values
+        foreach ($fullCategories as $key => $category) {
+            $stmt->bindValue(":category$key", $category);
+        }
+    
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+    
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getPostsByUserId($userId, $limit = 10, $offset = 0) {
+        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE user_id = :user_id LIMIT :limit OFFSET :offset");
+        $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>
