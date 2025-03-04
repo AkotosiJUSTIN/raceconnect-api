@@ -322,8 +322,8 @@ CREATE TABLE admin_notifications (
     INDEX idx_severity (severity)
 );
 
--- Updated trigger for admin notifications
 DELIMITER $$
+
 CREATE TRIGGER after_report_insert
 AFTER INSERT ON reports
 FOR EACH ROW
@@ -375,7 +375,10 @@ BEGIN
         (NEW.marketplace_item_id IS NOT NULL AND a.role IN ('marketplace_manager', 'content_moderator'))
         OR
         (NEW.post_id IS NULL AND NEW.marketplace_item_id IS NULL AND a.role = 'community_manager')
-    );
+    )
+    ORDER BY a.id -- Ensures only one admin is selected
     LIMIT 1;
+
 END$$
+
 DELIMITER ;
