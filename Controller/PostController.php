@@ -26,6 +26,8 @@ class PostController {
                 case 'GET':
                     if ($action === 'images' && $id) {
                         $this->handleGetPostImagesRequest($id);
+                    } elseif (isset($_GET['user_id'])) {
+                        $this->handleGetPostsByUserIdRequest((int)$_GET['user_id']);
                     } else {
                         $this->handleGetRequest($id);
                     }
@@ -93,6 +95,7 @@ class PostController {
     private function handleGetRequest($id) {
         try {
             if ($id) {
+                // Existing single post handling
                 $post = $this->post->getPostById($id);
                 if ($post) {
                     http_response_code(200);
@@ -104,13 +107,31 @@ class PostController {
             } else {
                 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
                 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
-                $posts = $this->post->getAllPosts($limit, $offset);
-                http_response_code(200);
-                echo json_encode($posts);
+                
+                if (isset($_GET['category']) && isset($_GET['user_id'])) {
+                    $rawCategories = urldecode($_GET['category']);
+                    $categoryAbbreviations = explode(',', $rawCategories);
+                    $categoryAbbreviations = array_map('strtoupper', $categoryAbbreviations);
+                    $userId = (int)$_GET['user_id'];
+                    
+                    $posts = $this->post->getPostsByCategoryAndPrivacy(
+                        $userId, 
+                        $categoryAbbreviations,
+                        $limit,
+                        $offset
+                    );
+                    http_response_code(200);
+                    echo json_encode($posts);
+                } else {
+                    // Default to all posts
+                    $posts = $this->post->getAllPosts($limit, $offset);
+                    http_response_code(200);
+                    echo json_encode($posts);
+                }
             }
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to retrieve posts', 'error' => $e->getMessage()]);
+            http_response_code(400);
+            echo json_encode(['message' => $e->getMessage()]);
         }
     }
 
@@ -228,6 +249,19 @@ class PostController {
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['message' => 'Failed to retrieve post images', 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function handleGetPostsByUserIdRequest($userId) {
+        try {
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+            $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+            $posts = $this->post->getPostsByUserId($userId, $limit, $offset);
+            http_response_code(200);
+            echo json_encode($posts);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to retrieve posts', 'error' => $e->getMessage()]);
         }
     }
 }

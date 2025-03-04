@@ -28,9 +28,9 @@ try {
     $conn->beginTransaction();
 
     // Insert sample users
-    $conn->exec("INSERT INTO Users (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items, friend_count, friend_privacy, status) VALUES
-        ('john_doe', 'john@example.com', 'password123', '1990-01-01', '1234567890', '123 Main St', 30, 'profile1.jpg', 'Bio of John Doe', '[]', '[]', 5, 'Public', 'Active'),
-        ('jane_doe', 'jane@example.com', 'password123', '1992-02-02', '0987654321', '456 Main St', 28, 'profile2.jpg', 'Bio of Jane Doe', '[]', '[]', 10, 'Friends Only', 'Active')
+    $conn->exec("INSERT INTO Users (username, email, password, birthdate, number, address, age, profile_picture, bio, favorite_categories, favorite_marketplace_items, friends_list, friend_privacy, status) VALUES
+        ('john_doe', 'john@example.com', 'password123', '1990-01-01', '1234567890', '123 Main St', 30, 'profile1.jpg', 'Bio of John Doe', '[]', '[]', '[]', 'Public', 'Active'),
+        ('jane_doe', 'jane@example.com', 'password123', '1992-02-02', '0987654321', '456 Main St', 28, 'profile2.jpg', 'Bio of Jane Doe', '[]', '[]', '[]', 'Friends Only', 'Active')
     ");
 
     // Insert sample friends
@@ -64,8 +64,8 @@ try {
 
     // Insert sample notifications
     $conn->exec("INSERT INTO Notifications (user_id, post_id, marketplace_item_id, type, content) VALUES
-        (1, 1, NULL, 'like', 'User 2 liked your post'),
-        (2, NULL, 2, 'comment', 'User 1 commented on your marketplace item')
+        (1, 1, NULL, 'post', 'User 2 liked your post'),
+        (2, NULL, 2, 'marketplace', 'User 1 commented on your marketplace item')
     ");
 
     // Insert sample admins
