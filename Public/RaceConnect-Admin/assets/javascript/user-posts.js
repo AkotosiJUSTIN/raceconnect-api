@@ -199,6 +199,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // First, add this CSS to style the eye icon button
+    const style = document.createElement('style');
+    style.textContent = `
+        .swal2-input-group {
+            position: relative;
+        }
+        .toggle-password-btn {
+            position: absolute;
+            right: 30px;
+            top: 60%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toggle-password-btn:hover {
+            opacity: 0.8;
+        }
+    `;
+    document.head.appendChild(style);
+
     // Make functions globally available
     window.hidePost = function(postId) {
         handlePostAction(postId, 'hide_post', 'Hide Post', 'Hidden!', 'The post has been hidden.');
@@ -209,7 +234,81 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.archivePost = function(postId) {
-        handlePostAction(postId, 'archive_post', 'Archive Post', 'Archived!', 'The post has been archived.');
+        Swal.fire({
+            title: 'Archive Post',
+            text: 'Please enter your password to confirm this action',
+            html: `
+                <div class="swal2-input-group">
+                    <input type="password" id="swal-password" class="swal2-input" placeholder="Enter your password">
+                    <button type="button" class="toggle-password-btn" onclick="toggleSwalPassword()">
+                        <box-icon name='show' color="#374151"></box-icon>
+                    </button>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Confirm Archive',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#B91C1C',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                const password = document.getElementById('swal-password').value;
+                if (!password) {
+                    Swal.showValidationMessage('Password is required');
+                    return false;
+                }
+                
+                return fetch('fetch_api.php?action=archive_post', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        post_id: postId,
+                        password: password
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to archive post');
+                    }
+                    return result;
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(error.message);
+                    throw error;
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Archived!',
+                    text: 'The post has been archived.',
+                    icon: 'success',
+                    timer: 1500
+                }).then(() => {
+                    fetchPosts();
+                    if (Math.random() < 0.1) {
+                        checkCleanup();
+                    }
+                });
+            }
+        });
+    };
+    
+    // Add the toggle password function
+    window.toggleSwalPassword = function() {
+        const passwordInput = document.getElementById('swal-password');
+        const toggleBtn = document.querySelector('.toggle-password-btn box-icon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleBtn.setAttribute('name', 'hide');
+        } else {
+            passwordInput.type = 'password';
+            toggleBtn.setAttribute('name', 'show');
+        }
     };
 
     function handlePostAction(postId, action, confirmTitle, successTitle, successMessage) {

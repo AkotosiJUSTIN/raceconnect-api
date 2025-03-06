@@ -328,6 +328,18 @@ CREATE TABLE admin_notifications (
     INDEX idx_severity (severity)
 );
 
+ALTER TABLE admin_notifications
+ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
+ADD INDEX idx_cleanup (status, archived_at);
+
+ALTER TABLE posts
+ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
+ADD INDEX idx_cleanup (status, archived_at);
+
+ALTER TABLE marketplace_items
+ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
+ADD INDEX idx_cleanup (status, archived_at);
+
 DELIMITER $$
 
 CREATE TRIGGER after_report_insert

@@ -336,49 +336,123 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const style = document.createElement('style');
+    style.textContent = `
+        .swal2-input-group {
+            position: relative;
+        }
+        .toggle-password-btn {
+            position: absolute;
+            right: 30px;
+            top: 60%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .toggle-password-btn:hover {
+            opacity: 0.8;
+        }
+    `;
+    document.head.appendChild(style);
+
     window.archiveItem = function(itemId) {
         Swal.fire({
             title: 'Archive Item',
-            text: 'Are you sure you want to archive this marketplace item?',
-            icon: 'warning',
+            text: 'Please enter your password to confirm this action',
+            html: `
+                <div class="swal2-input-group">
+                    <input type="password" id="swal-password" class="swal2-input" placeholder="Enter your password">
+                    <button type="button" class="toggle-password-btn" onclick="toggleSwalPassword()">
+                        <box-icon name='show' color="#374151"></box-icon>
+                    </button>
+                </div>
+            `,
             showCancelButton: true,
-            confirmButtonText: 'Yes',
+            confirmButtonText: 'Confirm Archive',
             cancelButtonText: 'Cancel',
-            confirmButtonColor: '#B91C1C'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch('fetch_api.php?action=archive_marketplace_item', {
+            confirmButtonColor: '#B91C1C',
+            showLoaderOnConfirm: true,
+            preConfirm: (password) => {
+                if (!password) {
+                    Swal.showValidationMessage('Password is required');
+                    return false;
+                }
+                
+                return fetch('fetch_api.php?action=archive_marketplace_item', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
                     },
-                    body: `item_id=${itemId}`
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        password: password
+                    })
                 })
                 .then(response => response.json())
                 .then(result => {
-                    if (result.success) {
-                        Swal.fire({
-                            title: 'Archived!',
-                            text: 'The item has been archived.',
-                            icon: 'success',
-                            timer: 1500
-                        }).then(() => {
-                            fetchMarketplaceItems();
-                        });
-                    } else {
+                    if (!result.success) {
                         throw new Error(result.error || 'Failed to archive item');
                     }
+                    return result;
                 })
                 .catch(error => {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: error.message,
-                        icon: 'error'
-                    });
+                    Swal.showValidationMessage(error.message);
+                    throw error;
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Archived!',
+                    text: 'The item has been archived.',
+                    icon: 'success',
+                    timer: 1500
+                }).then(() => {
+                    fetchMarketplaceItems();
+                    if (Math.random() < 0.1) { // 10% chance to trigger cleanup
+                        checkCleanup();
+                    }
                 });
             }
         });
     };
+
+    window.toggleSwalPassword = function() {
+        const passwordInput = document.getElementById('swal-password');
+        const toggleBtn = document.querySelector('.toggle-password-btn box-icon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleBtn.setAttribute('name', 'hide');
+        } else {
+            passwordInput.type = 'password';
+            toggleBtn.setAttribute('name', 'show');
+        }
+    };
+
+    // Add the cleanup check function if not already present
+    function checkCleanup() {
+        fetch('fetch_api.php?action=check_cleanup', {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.warn('Cleanup check failed:', data.error);
+            }
+        })
+        .catch(error => console.error('Cleanup check error:', error));
+    }
 
     window.reportMarketplaceItem = function(itemId) {
         const data = new FormData();

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../db_connect.php';
+require_once __DIR__ . '/cleanupArchived.php';
 
 session_start();
 
@@ -19,6 +20,19 @@ ini_set('display_errors', 0);
 $action = $_GET['action'] ?? '';
 
 switch ($action) {
+    case 'check_cleanup':
+        try {
+            if (rand(1, 10) === 1) {
+                $cleanup = new CleanupService($conn);
+                $result = $cleanup->cleanupArchivedData();
+                echo json_encode(['success' => $result]);
+            } else {
+                echo json_encode(['success' => true, 'message' => 'Cleanup check skipped']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        break;
     case 'fetch_dashboard_data':
         fetchDashboardData($conn);
         break;
@@ -348,32 +362,70 @@ function fetchNotifications($conn) {
     }
 }
 
-function archiveNotification($conn) {
-    $notificationId = $_POST['notification_id'] ?? null;
 
-    if (!$notificationId) {
-        echo json_encode(["success" => false, "error" => "Missing notification ID"]);
+
+// Add this function to verify admin password
+function verifyAdminPassword($conn, $email, $password) {
+    $stmt = $conn->prepare("SELECT password FROM admins WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return password_verify($password, $row['password']);
+    }
+    return false;
+}
+
+// Modify the existing archive_notification function
+function archiveNotification($conn) {
+    // Parse JSON input
+    $data = json_decode(file_get_contents('php://input'), true);
+    $notificationId = $data['notification_id'] ?? null;
+    $password = $data['password'] ?? null;
+
+    if (!$notificationId || !$password) {
+        echo json_encode(['success' => false, 'error' => 'Invalid input']);
+        return;
+    }
+
+    // Verify admin password
+    if (!verifyAdminPassword($conn, $_SESSION['email'], $password)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid password']);
         return;
     }
 
     try {
+        // Start transaction
+        $conn->begin_transaction();
+
+        if (rand(1, 10) === 1) {
+            $cleanup = new CleanupService($conn);
+            $cleanup->cleanupArchivedData();
+        }
+
+        // Update notification status and set archived_at timestamp
         $stmt = $conn->prepare("
             UPDATE admin_notifications 
             SET status = 'archived',
-                resolved_at = NOW(),
-                resolved_by = ?
-            WHERE id = ?");
-        
-        $adminId = $_SESSION['admin_id'] ?? 1; // Get the current admin's ID
-        $stmt->bind_param("ii", $adminId, $notificationId);
-        
-        if ($stmt->execute()) {
-            echo json_encode(["success" => true]);
-        } else {
-            throw new Exception("Failed to archive notification");
+                archived_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+        $stmt->bind_param("i", $notificationId);
+        $stmt->execute();
+
+        if ($stmt->affected_rows === 0) {
+            throw new Exception("Notification not found or already archived");
         }
+
+        // Commit transaction
+        $conn->commit();
+        
+        echo json_encode(['success' => true]);
     } catch (Exception $e) {
-        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        // Rollback on error
+        $conn->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
 
@@ -598,11 +650,35 @@ function hideMarketplaceItem($conn) {
             throw new Exception("Failed to update item");
         }
 
-        // Update report status
-        $updateReport = $conn->prepare("UPDATE reports SET status = 'Hidden' WHERE marketplace_item_id = ?");
-        $updateReport->bind_param("i", $itemId);
+        // Update only the report status to Hidden while preserving the reason
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'Hidden' WHERE marketplace_item_id = ? AND status = 'pending'");
+        $updateReport->bind_param("i", $postId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
+        }
+
+        // Check if there are any pending reports for this item
+        $checkReports = $conn->prepare("
+            SELECT COUNT(*) as count 
+            FROM reports 
+            WHERE marketplace_item_id = ? AND status = 'pending'
+        ");
+        $checkReports->bind_param("i", $itemId);
+        $checkReports->execute();
+        $result = $checkReports->get_result();
+        $row = $result->fetch_assoc();
+
+        // If no pending reports, update the item's report column to 'none'
+        if ($row['count'] == 0) {
+            $updateItemReport = $conn->prepare("
+                UPDATE marketplace_items 
+                SET report = 'none' 
+                WHERE id = ?
+            ");
+            $updateItemReport->bind_param("i", $itemId);
+            if (!$updateItemReport->execute()) {
+                throw new Exception("Failed to update item report status");
+            }
         }
 
         $conn->commit();
@@ -656,46 +732,6 @@ function unhideMarketplaceItem($conn) {
             WHERE marketplace_item_id = ? 
             AND status = 'Hidden'
         ");
-        $updateReport->bind_param("i", $itemId);
-        if (!$updateReport->execute()) {
-            throw new Exception("Failed to update report");
-        }
-
-        $conn->commit();
-        echo json_encode(["success" => true]);
-
-    } catch (Exception $e) {
-        $conn->rollback();
-        echo json_encode(["success" => false, "error" => $e->getMessage()]);
-    }
-}
-
-function archiveMarketplaceItem($conn) {
-    $itemId = $_POST['item_id'] ?? null;
-
-    if (!$itemId) {
-        echo json_encode(["success" => false, "error" => "Missing parameters"]);
-        return;
-    }
-
-    $conn->begin_transaction();
-
-    try {
-        // Update item status
-        $query = "UPDATE marketplace_items SET status = 'Archived' WHERE id = ?";
-        $stmt = $conn->prepare($query);
-
-        if (!$stmt) {
-            throw new Exception("Database error: " . $conn->error);
-        }
-
-        $stmt->bind_param("i", $itemId);
-        if (!$stmt->execute()) {
-            throw new Exception("Failed to update item");
-        }
-
-        // Update report status
-        $updateReport = $conn->prepare("UPDATE reports SET status = 'resolved' WHERE marketplace_item_id = ?");
         $updateReport->bind_param("i", $itemId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
@@ -775,31 +811,112 @@ function unbanUser($conn) {
 }
 
 function archivePost($conn) {
-    $postId = $_POST['post_id'] ?? null;
+    // Parse JSON input
+    $data = json_decode(file_get_contents('php://input'), true);
+    $postId = $data['post_id'] ?? null;
+    $password = $data['password'] ?? null;
 
-    if (!$postId) {
-        echo json_encode(["success" => false, "error" => "Missing parameters"]);
+    if (!$postId || !$password) {
+        echo json_encode(['success' => false, 'error' => 'Invalid input']);
         return;
     }
 
-    $query = "UPDATE posts SET status = 'Archived' WHERE id = ?";
-    $stmt = $conn->prepare($query);
-
-    if (!$stmt) {
-        echo json_encode(["success" => false, "error" => "Database error: " . $conn->error]);
+    // Verify admin password
+    if (!verifyAdminPassword($conn, $_SESSION['email'], $password)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid password']);
         return;
     }
 
-    $stmt->bind_param("i", $postId);
-    $executeSuccess = $stmt->execute();
+    try {
+        // Start transaction
+        $conn->begin_transaction();
 
-    $response = ["success" => $executeSuccess];
-    if (!$executeSuccess) {
-        $response["error"] = $stmt->error;
+        if (rand(1, 10) === 1) {
+            $cleanup = new CleanupService($conn);
+            $cleanup->cleanupArchivedData();
+        }
+
+        // Update post status and set archived_at timestamp
+        $stmt = $conn->prepare("
+            UPDATE posts 
+            SET status = 'Archived',
+                archived_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+        $stmt->bind_param("i", $postId);
+        $stmt->execute();
+
+        if ($stmt->affected_rows === 0) {
+            throw new Exception("Post not found or already archived");
+        }
+
+        // Commit transaction
+        $conn->commit();
+        
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+}
+
+function archiveMarketplaceItem($conn) {
+    // Parse JSON input
+    $data = json_decode(file_get_contents('php://input'), true);
+    $itemId = $data['item_id'] ?? null;
+    $password = $data['password'] ?? null;
+
+    if (!$itemId || !$password) {
+        echo json_encode(['success' => false, 'error' => 'Invalid input']);
+        return;
     }
 
-    $stmt->close();
-    echo json_encode($response);
+    // Verify admin password
+    if (!verifyAdminPassword($conn, $_SESSION['email'], $password)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid password']);
+        return;
+    }
+
+    try {
+        // Start transaction
+        $conn->begin_transaction();
+
+        if (rand(1, 10) === 1) {
+            $cleanup = new CleanupService($conn);
+            $cleanup->cleanupArchivedData();
+        }
+
+        // Update item status and set archived_at timestamp
+        $stmt = $conn->prepare("
+            UPDATE marketplace_items 
+            SET status = 'Archived',
+                archived_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+        $stmt->bind_param("i", $itemId);
+        $stmt->execute();
+
+        if ($stmt->affected_rows === 0) {
+            throw new Exception("Item not found or already archived");
+        }
+
+        // Update associated reports
+        $updateReport = $conn->prepare("
+            UPDATE reports 
+            SET status = 'resolved' 
+            WHERE marketplace_item_id = ?
+        ");
+        $updateReport->bind_param("i", $itemId);
+        $updateReport->execute();
+
+        // Commit transaction
+        $conn->commit();
+        
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
 }
 
 function hidePost($conn) {
