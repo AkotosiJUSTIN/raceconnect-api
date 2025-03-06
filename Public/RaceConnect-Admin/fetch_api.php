@@ -366,15 +366,35 @@ function fetchNotifications($conn) {
 
 // Add this function to verify admin password
 function verifyAdminPassword($conn, $email, $password) {
-    $stmt = $conn->prepare("SELECT password FROM admins WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($row = $result->fetch_assoc()) {
-        return password_verify($password, $row['password']);
+    try {
+        // Add error logging
+        error_log("Verifying password for email: " . $email);
+        
+        $stmt = $conn->prepare("SELECT password FROM admins WHERE email = ?");
+        if (!$stmt) {
+            error_log("Prepare failed: " . $conn->error);
+            return false;
+        }
+        
+        $stmt->bind_param("s", $email);
+        if (!$stmt->execute()) {
+            error_log("Execute failed: " . $stmt->error);
+            return false;
+        }
+        
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $verified = password_verify($password, $row['password']);
+            error_log("Password verification result: " . ($verified ? 'true' : 'false'));
+            return $verified;
+        }
+        
+        error_log("No admin found with email: " . $email);
+        return false;
+    } catch (Exception $e) {
+        error_log("Error in verifyAdminPassword: " . $e->getMessage());
+        return false;
     }
-    return false;
 }
 
 // Modify the existing archive_notification function
@@ -861,38 +881,38 @@ function archivePost($conn) {
 }
 
 function archiveMarketplaceItem($conn) {
-    // Parse JSON input
-    $data = json_decode(file_get_contents('php://input'), true);
-    $itemId = $data['item_id'] ?? null;
-    $password = $data['password'] ?? null;
-
-    if (!$itemId || !$password) {
-        echo json_encode(['success' => false, 'error' => 'Invalid input']);
-        return;
-    }
-
-    // Verify admin password
-    if (!verifyAdminPassword($conn, $_SESSION['email'], $password)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid password']);
-        return;
-    }
-
     try {
+        // Parse JSON input
+        $inputData = file_get_contents('php://input');
+        error_log("Received data: " . $inputData); // Debug log
+        
+        $data = json_decode($inputData, true);
+        $itemId = $data['item_id'] ?? null;
+        $password = $data['password'] ?? null;
+
+        // Validate input
+        if (!$itemId || !$password) {
+            echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+            return;
+        }
+
+        // Verify admin password
+        if (!verifyAdminPassword($conn, $_SESSION['email'], $password)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid password']);
+            return;
+        }
+
         // Start transaction
         $conn->begin_transaction();
 
-        if (rand(1, 10) === 1) {
-            $cleanup = new CleanupService($conn);
-            $cleanup->cleanupArchivedData();
-        }
-
-        // Update item status and set archived_at timestamp
+        // Archive the item
         $stmt = $conn->prepare("
             UPDATE marketplace_items 
             SET status = 'Archived',
-                archived_at = CURRENT_TIMESTAMP
+                archived_at = CURRENT_TIMESTAMP 
             WHERE id = ?
         ");
+        
         $stmt->bind_param("i", $itemId);
         $stmt->execute();
 
@@ -900,21 +920,16 @@ function archiveMarketplaceItem($conn) {
             throw new Exception("Item not found or already archived");
         }
 
-        // Update associated reports
-        $updateReport = $conn->prepare("
-            UPDATE reports 
-            SET status = 'resolved' 
-            WHERE marketplace_item_id = ?
-        ");
-        $updateReport->bind_param("i", $itemId);
-        $updateReport->execute();
-
-        // Commit transaction
+        // Commit the transaction
         $conn->commit();
         
         echo json_encode(['success' => true]);
+        
     } catch (Exception $e) {
-        $conn->rollback();
+        if ($conn->inTransaction()) {
+            $conn->rollback();
+        }
+        error_log("Error in archiveMarketplaceItem: " . $e->getMessage());
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }

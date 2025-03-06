@@ -377,45 +377,46 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#B91C1C',
             showLoaderOnConfirm: true,
-            preConfirm: (password) => {
-                if (!password) {
-                    Swal.showValidationMessage('Password is required');
-                    return false;
-                }
-                
-                return fetch('fetch_api.php?action=archive_marketplace_item', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        item_id: itemId,
-                        password: password
-                    })
-                })
-                .then(response => response.json())
-                .then(result => {
+            preConfirm: async () => {
+                try {
+                    const password = document.getElementById('swal-password').value;
+                    if (!password) {
+                        Swal.showValidationMessage('Password is required');
+                        return false;
+                    }
+                    
+                    const response = await fetch('fetch_api.php?action=archive_marketplace_item', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            item_id: itemId,
+                            password: password
+                        })
+                    });
+
+                    const result = await response.json();
                     if (!result.success) {
-                        throw new Error(result.error || 'Failed to archive item');
+                        Swal.showValidationMessage(result.error || 'Failed to archive item');
+                        return false;
                     }
                     return result;
-                })
-                .catch(error => {
+                } catch (error) {
                     Swal.showValidationMessage(error.message);
-                    throw error;
-                });
-            },
-            allowOutsideClick: () => !Swal.isLoading()
+                    return false;
+                }
+            }
         }).then((result) => {
             if (result.isConfirmed) {
                 Swal.fire({
-                    title: 'Archived!',
-                    text: 'The item has been archived.',
+                    title: 'Success',
+                    text: 'Item has been archived',
                     icon: 'success',
                     timer: 1500
                 }).then(() => {
                     fetchMarketplaceItems();
-                    if (Math.random() < 0.1) { // 10% chance to trigger cleanup
+                    if (Math.random() < 0.1) {
                         checkCleanup();
                     }
                 });

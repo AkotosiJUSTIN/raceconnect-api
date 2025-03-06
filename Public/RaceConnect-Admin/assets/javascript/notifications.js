@@ -42,19 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function performBulkAction(action) {
-        const selectedNotifications = Array.from(document.querySelectorAll('.notification-check:checked'))
-            .map(checkbox => checkbox.dataset.id);
-    
-        if (selectedNotifications.length === 0) {
-            return Swal.fire({
-                title: 'No Notifications Selected',
-                text: 'Please select at least one notification to archive.',
-                icon: 'warning'
-            });
-        }
-
-        const style = document.createElement('style');
+    const style = document.createElement('style');
     style.textContent = `
         .swal2-input-group {
             position: relative;
@@ -77,9 +65,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     `;
     document.head.appendChild(style);
+
+    function performBulkAction(action) {
+        const selectedNotifications = Array.from(document.querySelectorAll('.notification-check:checked'))
+            .map(checkbox => checkbox.dataset.id);
+    
+        if (selectedNotifications.length === 0) {
+            return Swal.fire({
+                title: 'No Notifications Selected',
+                text: 'Please select at least one notification to archive.',
+                icon: 'warning'
+            });
+        }
     
         Swal.fire({
-            title: 'Archive Confirmation',
+            title: 'Archive Notifications',
             text: 'Please enter your password to confirm this action',
             html: `
                 <div class="swal2-input-group">
@@ -94,45 +94,51 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#B91C1C',
             showLoaderOnConfirm: true,
-            preConfirm: (password) => {
-                if (!password) {
-                    Swal.showValidationMessage('Password is required');
-                    return false;
-                }
-                
-                return fetch('fetch_api.php?action=bulk_archive_notifications', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        notification_ids: selectedNotifications,
-                        password: password
-                    })
-                })
-                .then(response => response.json())
-                .then(result => {
+            preConfirm: async () => {
+                try {
+                    const password = document.getElementById('swal-password').value;
+                    if (!password) {
+                        Swal.showValidationMessage('Password is required');
+                        return false;
+                    }
+                    
+                    const response = await fetch('fetch_api.php?action=bulk_archive_notifications', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            notification_ids: selectedNotifications,
+                            password: password
+                        })
+                    });
+
+                    const result = await response.json();
                     if (!result.success) {
-                        throw new Error(result.error || 'Failed to archive notifications');
+                        Swal.showValidationMessage(result.error || 'Failed to archive notifications');
+                        return false;
                     }
                     return result;
-                })
-                .catch(error => {
+                } catch (error) {
                     Swal.showValidationMessage(error.message);
-                    throw error;
-                });
+                    return false;
+                }
             },
             allowOutsideClick: () => !Swal.isLoading()
         }).then((result) => {
             if (result.isConfirmed) {
                 Swal.fire({
-                    title: 'Archived!',
-                    text: `${selectedNotifications.length} notification(s) have been archived.`,
-                    icon: 'success'
+                    title: 'Success',
+                    text: `${selectedNotifications.length} notification(s) have been archived`,
+                    icon: 'success',
+                    timer: 1500
                 }).then(() => {
                     fetchNotifications();
                     if (selectAll) selectAll.checked = false;
                     updateBulkActionButton();
+                    if (Math.random() < 0.1) {
+                        checkCleanup();
+                    }
                 });
             }
         });
@@ -309,44 +315,47 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#B91C1C',
             showLoaderOnConfirm: true,
-            preConfirm: (password) => {
-                if (!password) {
-                    Swal.showValidationMessage('Password is required');
-                    return false;
-                }
-                
-                return fetch('fetch_api.php?action=archive_notification', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        notification_id: notificationId,
-                        password: password
-                    })
-                })
-                .then(response => response.json())
-                .then(result => {
+            preConfirm: async () => {
+                try {
+                    const password = document.getElementById('swal-password').value;
+                    if (!password) {
+                        Swal.showValidationMessage('Password is required');
+                        return false;
+                    }
+                    
+                    const response = await fetch('fetch_api.php?action=archive_notification', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            notification_id: notificationId,
+                            password: password
+                        })
+                    });
+
+                    const result = await response.json();
                     if (!result.success) {
-                        throw new Error(result.error || 'Failed to archive notification');
+                        Swal.showValidationMessage(result.error || 'Failed to archive notification');
+                        return false;
                     }
                     return result;
-                })
-                .catch(error => {
+                } catch (error) {
                     Swal.showValidationMessage(error.message);
-                    throw error;
-                });
+                    return false;
+                }
             },
             allowOutsideClick: () => !Swal.isLoading()
         }).then((result) => {
             if (result.isConfirmed) {
                 Swal.fire({
-                    title: 'Archived!',
-                    text: 'The notification has been archived.',
-                    icon: 'success'
+                    title: 'Success',
+                    text: 'Notification has been archived',
+                    icon: 'success',
+                    timer: 1500
                 }).then(() => {
                     fetchNotifications();
-                    if (Math.random() < 0.1){
+                    if (Math.random() < 0.1) {
                         checkCleanup();
                     }
                 });

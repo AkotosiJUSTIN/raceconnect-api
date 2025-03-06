@@ -250,36 +250,36 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#B91C1C',
             showLoaderOnConfirm: true,
-            preConfirm: () => {
-                const password = document.getElementById('swal-password').value;
-                if (!password) {
-                    Swal.showValidationMessage('Password is required');
-                    return false;
-                }
-                
-                return fetch('fetch_api.php?action=archive_post', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        post_id: postId,
-                        password: password
-                    })
-                })
-                .then(response => response.json())
-                .then(result => {
+            preConfirm: async () => {
+                try {
+                    const password = document.getElementById('swal-password').value;
+                    if (!password) {
+                        Swal.showValidationMessage('Password is required');
+                        return false;
+                    }
+                    
+                    const response = await fetch('fetch_api.php?action=archive_post', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            post_id: postId,
+                            password: password
+                        })
+                    });
+
+                    const result = await response.json();
                     if (!result.success) {
-                        throw new Error(result.error || 'Failed to archive post');
+                        Swal.showValidationMessage(result.error || 'Failed to archive post');
+                        return false;
                     }
                     return result;
-                })
-                .catch(error => {
+                } catch (error) {
                     Swal.showValidationMessage(error.message);
-                    throw error;
-                });
-            },
-            allowOutsideClick: () => !Swal.isLoading()
+                    return false;
+                }
+            }
         }).then((result) => {
             if (result.isConfirmed) {
                 Swal.fire({

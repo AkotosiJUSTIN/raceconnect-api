@@ -58,22 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Close modals when clicking outside
-    window.addEventListener('click', function(e) {
-        if (e.target === forgotPasswordModal) {
-            forgotPasswordModal.style.display = 'none';
-            modalMessage.innerHTML = '';
-            forgotPasswordForm.reset();
-        } else if (e.target === resetPasswordModal) {
-            resetPasswordModal.style.display = 'none';
-            resetModalMessage.innerHTML = '';
-            resetPasswordForm.reset();
-            document.getElementById('passwordSection').style.display = 'none';
-            document.getElementById('otp').disabled = false;
-            verifyOtpButton.disabled = false;
-        }
-    });
-
     // Handle forgot password form submission
     forgotPasswordForm.addEventListener('submit', function(e) {
         e.preventDefault();
