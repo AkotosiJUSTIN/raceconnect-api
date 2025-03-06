@@ -12,6 +12,7 @@ use Controller\Comment\PostCommentController;
 use Controller\Repost\PostRepostController;
 use Controller\AuthController;
 use Controller\FriendsController;
+use Controller\AnnouncementController;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -175,6 +176,10 @@ class Api {
                 
                     $controller = new UserController($this->conn);
                     $controller->uploadProfilePicture($_FILES); // ✅ Fix: Pass $_FILES directly
+                    break;
+
+                case 'announcements':
+                    $this->handleRequest(new AnnouncementController($this->conn), $method, $id);
                     break;
                 
                 default:
