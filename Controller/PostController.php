@@ -257,6 +257,14 @@ class PostController {
             $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
             $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
             $posts = $this->post->getPostsByUserId($userId, $limit, $offset);
+    
+            foreach ($posts as &$post) {
+                $images = $this->post->getPostImages($post['id']);
+                $post['image_urls'] = array_map(function($image) {
+                    return $image['image_url'];
+                }, $images);
+            }
+    
             http_response_code(200);
             echo json_encode($posts);
         } catch (Exception $e) {
