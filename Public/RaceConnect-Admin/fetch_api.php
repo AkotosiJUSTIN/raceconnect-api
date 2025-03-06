@@ -502,6 +502,11 @@ function fetchPosts($conn) {
             LEFT JOIN post_images pi ON p.id = pi.post_id
             WHERE (p.report = 'reported' OR p.status = 'Hidden')
             AND p.status != 'Archived'
+            AND EXISTS (
+                SELECT 1 FROM reports 
+                WHERE post_id = p.id 
+                AND status = 'pending'
+            )
             GROUP BY p.id
             ORDER BY r.created_at DESC";
         
@@ -606,6 +611,11 @@ function fetchMarketplaceItems($conn) {
             LEFT JOIN marketplace_item_images mii ON mi.id = mii.marketplace_item_id
             WHERE (mi.report = 'reported' OR mi.status = 'Hidden')
             AND mi.status != 'Archived'
+            AND EXISTS (
+                SELECT 1 FROM reports 
+                WHERE marketplace_item_id = mi.id 
+                AND status = 'pending'
+            )
             GROUP BY mi.id
             ORDER BY 
                 COALESCE(mi.reported_at, mi.created_at) DESC";
@@ -860,7 +870,8 @@ function archivePost($conn) {
         $stmt = $conn->prepare("
             UPDATE posts 
             SET status = 'Archived',
-                archived_at = CURRENT_TIMESTAMP
+                archived_at = CURRENT_TIMESTAMP,
+                report = 'none'
             WHERE id = ?
         ");
         $stmt->bind_param("i", $postId);
@@ -869,6 +880,17 @@ function archivePost($conn) {
         if ($stmt->affected_rows === 0) {
             throw new Exception("Post not found or already archived");
         }
+
+        // Update reports to resolved status
+        $updateReports = $conn->prepare("
+            UPDATE reports 
+            SET status = 'resolved',
+                resolved_at = CURRENT_TIMESTAMP,
+                resolved_by = ?
+            WHERE post_id = ? AND status = 'pending'
+        ");
+        $updateReports->bind_param("ii", $_SESSION['admin_id'], $postId);
+        $updateReports->execute();
 
         // Commit transaction
         $conn->commit();
@@ -909,7 +931,8 @@ function archiveMarketplaceItem($conn) {
         $stmt = $conn->prepare("
             UPDATE marketplace_items 
             SET status = 'Archived',
-                archived_at = CURRENT_TIMESTAMP 
+                archived_at = CURRENT_TIMESTAMP,
+                report = 'none'
             WHERE id = ?
         ");
         
@@ -919,6 +942,17 @@ function archiveMarketplaceItem($conn) {
         if ($stmt->affected_rows === 0) {
             throw new Exception("Item not found or already archived");
         }
+
+        // Update reports to resolved status
+        $updateReports = $conn->prepare("
+            UPDATE reports 
+            SET status = 'resolved',
+                resolved_at = CURRENT_TIMESTAMP,
+                resolved_by = ?
+            WHERE marketplace_item_id = ? AND status = 'pending'
+        ");
+        $updateReports->bind_param("ii", $_SESSION['admin_id'], $itemId);
+        $updateReports->execute();
 
         // Commit the transaction
         $conn->commit();
