@@ -5,6 +5,30 @@ require_once __DIR__ . '/../../db_connect.php';
 header('Content-Type: application/json');
 session_start();
 
+// Password validation function
+$new_password = $_POST['new_password'];
+function validatePassword($password) {
+    $errors = [];
+
+    if (strlen($password) < 8) {
+        $errors[] = "Password must be at least 8 characters long.";
+    }
+    if (!preg_match("/[A-Z]/", $password)) {
+        $errors[] = "Password must contain at least one uppercase letter.";
+    }
+    if (!preg_match("/[a-z]/", $password)) {
+        $errors[] = "Password must contain at least one lowercase letter.";
+    }
+    if (!preg_match("/[0-9]/", $password)) {
+        $errors[] = "Password must contain at least one number.";
+    }
+    if (!preg_match("/[^A-Za-z0-9]/", $password)) {
+        $errors[] = "Password must contain at least one special character.";
+    }
+
+    return $errors;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Check if OTP was previously verified
     if (!isset($_SESSION['otp_verified']) || $_SESSION['otp_verified'] !== true) {
@@ -21,6 +45,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // Validate the new password
+    $passwordErrors = validatePassword($new_password);
+    $error_message = '';
+
+    if (!empty($passwordErrors)) {
+        $error_message = "Password does not meet the requirements:<ul>";
+        foreach ($passwordErrors as $error) {
+            $error_message .= "<li>$error</li>";
+        }
+        $error_message .= "</ul>";
+        echo json_encode(['success' => false, 'message' => $error_message]);
+        exit;
+    }
+
+    // Check if passwords match
     if ($new_password !== $confirm_password) {
         echo json_encode(['success' => false, 'message' => 'Passwords do not match']);
         exit;
@@ -46,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // If the password is different, proceed with the update
+        // If all checks pass, proceed with the update
         $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
         $update_stmt = $conn->prepare("UPDATE admins SET password = ? WHERE email = ?");
         $update_stmt->bind_param("ss", $hashed_password, $email);
@@ -80,3 +119,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'message' => 'Invalid request method.'
     ]);
 }
+?>

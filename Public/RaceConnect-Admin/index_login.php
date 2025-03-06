@@ -238,7 +238,7 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
                         <label for="new_password" class="input-label">New Password</label>
                         <div class="input-wrapper">
                             <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
-                            <input type="password" id="new_password" name="new_password" required class="text-input">
+                            <input type="password" id="new_password" name="new_password" required class="text-input password-input">
                             <button type="button" class="toggle-password" data-target="new_password">
                                 <box-icon name='show' color="#dc2626"></box-icon>
                             </button>
@@ -248,8 +248,9 @@ $logout_message = isset($_GET['logged_out']) && $_GET['logged_out'] == 'true' ? 
                         <label for="confirm_password" class="input-label">Confirm Password</label>
                         <div class="input-wrapper">
                             <box-icon type='solid' name='lock' color="#dc2626" class="input-icon"></box-icon>
-                            <input type="password" id="confirm_password" name="confirm_password" required class="text-input">
+                            <input type="password" id="confirm_password" name="confirm_password" required class="text-input password-input">
                         </div>
+                        <div id="resetModalMessage"></div>
                     </div>
                     <button type="submit" class="submit-button">Reset Password</button>
                 </div>

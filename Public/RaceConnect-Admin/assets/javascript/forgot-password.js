@@ -36,16 +36,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     toggleButtons.forEach(button => {
         button.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            const passwordInput = document.getElementById(targetId);
-            
-            // Toggle password visibility
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                this.innerHTML = '<box-icon name="hide" color="gray"></box-icon>';
-            } else {
-                passwordInput.type = 'password';
-                this.innerHTML = '<box-icon name="show" color="gray"></box-icon>';
+            const section = this.closest('#passwordSection');
+            if (section) {
+                const passwordInputs = section.querySelectorAll('.password-input');
+                passwordInputs.forEach(input => {
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                    } else {
+                        input.type = 'password';
+                    }
+                });
+                if (passwordInputs.length > 0) {
+                    const firstInput = passwordInputs[0];
+                    if (firstInput.type === 'text') {
+                        this.innerHTML = '<box-icon name="hide" color="#dc2626"></box-icon>';
+                    } else {
+                        this.innerHTML = '<box-icon name="show" color="#dc2626"></box-icon>';
+                    }
+                }
             }
         });
     });
@@ -181,13 +189,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData();
         formData.append('new_password', document.getElementById('new_password').value);
         formData.append('confirm_password', document.getElementById('confirm_password').value);
-
+    
         fetch('handle_reset_password.php', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
+            const resetModalMessage = document.getElementById('resetModalMessage');
             if (data.success) {
                 resetModalMessage.innerHTML = `
                     <div class="message success-message">${data.message}</div>
@@ -198,8 +207,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 2000);
             } else {
                 resetModalMessage.innerHTML = `
-                    <div class="message error-message">${data.message}</div>
-                `;
+                <div class="error-message">${data.message}</div>
+            `;
                 if (data.error) {
                     console.error('Error:', data.error);
                 }
