@@ -1,8 +1,10 @@
 <?php
 namespace Model\Like;
+
 use PDO;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+
 class PostLike {
     private $pdo;
     private $table = "Post_Likes";
@@ -70,8 +72,8 @@ class PostLike {
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
-        if ($user) {
-            // Insert notification with the like_id
+        // Only insert notification if the user is not the owner
+        if ($user && $data['user_id'] != $owner_id) {
             $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, like_id, content, created_at) 
                                          VALUES (:owner_id, :post_id, :like_id, CONCAT(:username, ' liked your post'), NOW())");
             $stmt->execute([
@@ -84,7 +86,6 @@ class PostLike {
     
         return ['success' => true];
     }
-    
 
     // Delete a like by ID
     public function deleteLike($id) {
@@ -111,7 +112,6 @@ class PostLike {
     
         return false;
     }
-    
 
     // Delete all likes for a specific post
     public function deleteLikesByPostId($post_id) {

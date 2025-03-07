@@ -67,8 +67,8 @@ class PostRepost {
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user) {
-                // Insert notification with repost_id
+            // Only insert notification if the user is not the owner
+            if ($user && $data['user_id'] != $owner_id) {
                 $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, repost_id, type, content, created_at) VALUES (:owner_id, :post_id, :repost_id, 'repost', CONCAT(:username, ' reposted your post'), NOW())");
                 $stmt->execute([
                     ':owner_id' => $owner_id,

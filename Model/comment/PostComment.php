@@ -1,5 +1,4 @@
 <?php
-
 namespace Model\Comment;
 
 use PDO;
@@ -79,8 +78,8 @@ class PostComment {
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user) {
-            // Insert notification with comment_id
+        // Only insert notification if the user is not the owner
+        if ($user && $data['user_id'] != $owner_id) {
             $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, comment_id, content, created_at) VALUES (:owner_id, :post_id, :comment_id, CONCAT(:username, ' commented on your post'), NOW())");
             $stmt->execute([
                 ':owner_id' => $owner_id,
@@ -93,7 +92,6 @@ class PostComment {
         return ['success' => true, 'comment_id' => $comment_id];
     }
 
-
     // Update a comment
     public function updateComment($id, $newComment) {
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET comment = :comment WHERE id = :id");
@@ -103,7 +101,7 @@ class PostComment {
         ]);
     }
 
-   // Delete a comment
+    // Delete a comment
     public function deleteComment($id) {
         // Get the post_id, owner_id, and comment_id for the comment
         $stmt = $this->pdo->prepare("SELECT post_id, owner_id FROM {$this->table} WHERE id = :id");
@@ -126,7 +124,6 @@ class PostComment {
         }
         return false;
     }
-
 
     // Delete all comments for a specific post
     public function deleteCommentsByPostId($post_id) {
