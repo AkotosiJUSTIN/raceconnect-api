@@ -49,16 +49,16 @@ class PostRepost {
             return ['message' => 'You cannot repost your own post'];
         }
 
-        // Insert new repost
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (user_id, post_id, owner_id) VALUES (:user_id, :post_id, :owner_id)");
+        // Insert new repost with quote
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (user_id, post_id, owner_id, quote) VALUES (:user_id, :post_id, :owner_id, :quote)");
         $result = $stmt->execute([
             ':user_id' => $data['user_id'],
             ':post_id' => $data['post_id'],
-            ':owner_id' => $owner_id
+            ':owner_id' => $owner_id,
+            ':quote' => $data['quote'] ?? null
         ]);
 
         if ($result) {
-            // Get the inserted repost ID
             $repost_id = $this->pdo->lastInsertId();
 
             // Fetch the username of the user who reposted
@@ -67,7 +67,6 @@ class PostRepost {
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Only insert notification if the user is not the owner
             if ($user && $data['user_id'] != $owner_id) {
                 $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, repost_id, type, content, created_at) VALUES (:owner_id, :post_id, :repost_id, 'repost', CONCAT(:username, ' reposted your post'), NOW())");
                 $stmt->execute([
@@ -132,14 +131,6 @@ class PostRepost {
         }
 
         return false;
-    }
-
-    // Get repost count for a post
-    public function getRepostCount($post_id) {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) as repost_count FROM {$this->table} WHERE post_id = :post_id");
-        $stmt->bindParam(':post_id', $post_id);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     // Get reposts by user ID

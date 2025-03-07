@@ -7,6 +7,7 @@ use RuntimeException;
 use Exception;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+
 class PostRepostController {
     private $postRepost;
 
@@ -32,11 +33,6 @@ class PostRepostController {
                         $user_id = $queryParams['user_id'];
                         $reposts = $this->postRepost->getRepostsByUserId($user_id);
                         echo json_encode($reposts);
-                    } elseif (!empty($queryParams['count']) && !empty($queryParams['post_id'])) {
-                        // Get repost count for a post
-                        $post_id = $queryParams['post_id'];
-                        $count = $this->postRepost->getRepostCount($post_id);
-                        echo json_encode(['post_id' => $post_id, 'repost_count' => $count['total_reposts']]);
                     } else {
                         // Get all reposts
                         $reposts = $this->postRepost->getAllReposts();
@@ -52,6 +48,9 @@ class PostRepostController {
                         echo json_encode(['message' => 'Invalid input data. Required: user_id, post_id']);
                         return;
                     }
+
+                    // Include optional `quote`
+                    $data['quote'] = $data['quote'] ?? null;
 
                     if ($this->postRepost->createRepost($data)) {
                         http_response_code(201);
