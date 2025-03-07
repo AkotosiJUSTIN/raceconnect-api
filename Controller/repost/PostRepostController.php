@@ -20,21 +20,17 @@ class PostRepostController {
             switch ($method) {
                 case 'GET':
                     if ($id) {
-                        // Get reposts for a specific post
                         $reposts = $this->postRepost->getRepostsByPostId($id);
                         if (!empty($reposts)) {
                             echo json_encode($reposts);
                         } else {
                             http_response_code(404);
-                            echo json_encode(['message' => 'Reposts not found for this post']);
+                            echo json_encode(['message' => 'No reposts found for this post']);
                         }
                     } elseif (!empty($queryParams['user_id'])) {
-                        // Get reposts by a specific user
-                        $user_id = $queryParams['user_id'];
-                        $reposts = $this->postRepost->getRepostsByUserId($user_id);
+                        $reposts = $this->postRepost->getRepostsByUserId($queryParams['user_id']);
                         echo json_encode($reposts);
                     } else {
-                        // Get all reposts
                         $reposts = $this->postRepost->getAllReposts();
                         echo json_encode($reposts);
                     }
@@ -44,41 +40,41 @@ class PostRepostController {
                     $data = json_decode(file_get_contents("php://input"), true);
                     
                     if (empty($data) || !isset($data['user_id'], $data['post_id'])) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Invalid input data. Required: user_id, post_id']);
-                        return;
+                        throw new InvalidArgumentException('Invalid input data. Required: user_id, post_id');
                     }
 
-                    // Include optional `quote`
                     $data['quote'] = $data['quote'] ?? null;
+                    $result = $this->postRepost->createRepost($data);
 
-                    if ($this->postRepost->createRepost($data)) {
+                    if (isset($result['success']) && $result['success']) {
                         http_response_code(201);
-                        echo json_encode(['message' => 'Repost added successfully']);
+                        echo json_encode([
+                            'message' => 'Repost created successfully',
+                            'repost_id' => $result['repost_id'] ?? null
+                        ]);
                     } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to add repost']);
+                        http_response_code(400);
+                        echo json_encode(['message' => $result['message'] ?? 'Failed to create repost']);
                     }
                     break;
 
                 case 'DELETE':
                     if (!$id) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Repost ID is required']);
-                        return;
+                        throw new InvalidArgumentException('Repost ID is required');
                     }
 
                     if ($this->postRepost->deleteRepost($id)) {
                         echo json_encode(['message' => 'Repost deleted successfully']);
                     } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to delete repost']);
+                        http_response_code(404);
+                        echo json_encode(['message' => 'Repost not found or failed to delete']);
                     }
                     break;
 
                 default:
                     http_response_code(405);
-                    echo json_encode(['message' => 'Unsupported HTTP method']);
+                    echo json_encode(['message' => 'Method not allowed']);
+                    break;
             }
         } catch (InvalidArgumentException $e) {
             http_response_code(400);
@@ -92,4 +88,3 @@ class PostRepostController {
         }
     }
 }
-?>
