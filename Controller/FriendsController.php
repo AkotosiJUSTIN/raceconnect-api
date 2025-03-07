@@ -18,17 +18,36 @@ class FriendsController {
     public function processRequest($method, $action = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true);
+            
+            $userId = null;
+            if ($method === 'GET') {
+                $userId = $_GET['user_id'] ?? null;
+            } elseif ($method === 'DELETE') {
+                // For DELETE requests, get user_id from query parameters
+                $userId = $_GET['user_id'] ?? null;
+            } elseif (!isset($data['user_id']) || empty($data['user_id'])) {
+                $this->sendErrorResponse(400, 'User ID is required.');
+                return;
+            } else {
+                $userId = $data['user_id'];
+            }
 
-            if (!isset($data['user_id']) || empty($data['user_id'])) {
+            if ($userId === null || empty($userId)) {
                 $this->sendErrorResponse(400, 'User ID is required.');
                 return;
             }
 
-            $userId = $data['user_id'];
-
             switch ($method) {
                 case 'GET':
-                    ($action === 'list') ? $this->getFriendsList($userId) : $this->sendErrorResponse(400, 'Invalid action.');
+                    if ($action === 'list') {
+                        $this->getFriendsList($userId);
+                    } elseif ($action === 'pending') {
+                        $this->getPendingRequests($userId);
+                    } elseif ($action === 'nonfriends') {
+                        $this->getNonFriends($userId);
+                    } else {
+                        $this->sendErrorResponse(400, 'Invalid action.');
+                    }
                     break;
 
                 case 'POST':
@@ -55,7 +74,7 @@ class FriendsController {
 
     private function getFriendsList($userId) {
         try {
-            $friendsList = $this->friend->getFriends($userId);
+            $friendsList = $this->friend->getFriendsList($userId);
             $this->sendSuccessResponse(200, $friendsList ?: []);
         } catch (Exception $e) {
             $this->sendErrorResponse(500, 'Failed to retrieve friends list.', $e);
@@ -73,7 +92,6 @@ class FriendsController {
             return;
         }
 
-        // Check if a friend request already exists in either direction
         $existingFriendship = $this->friend->getFriendship($userId, $data['friend_id']);
         if ($existingFriendship) {
             $this->sendErrorResponse(409, 'Friend request already exists.');
@@ -88,19 +106,21 @@ class FriendsController {
     }
 
     private function removeFriend($userId, $data) {
-        if (!isset($data['friend_id']) || empty($data['friend_id'])) {
+        error_log("Remove friend request: user_id=$userId, data=" . print_r($data, true));
+        $friendId = $data['friend_id'] ?? $_GET['friend_id'] ?? null;
+
+        if (empty($friendId)) {
             $this->sendErrorResponse(400, 'Friend ID is required.');
             return;
         }
 
-        // Check if the user is either the sender or the receiver of the friend request
-        $friendship = $this->friend->getFriendship($userId, $data['friend_id']);
+        $friendship = $this->friend->getFriendship($userId, $friendId);
         if (!$friendship) {
             $this->sendErrorResponse(404, 'Friend request not found.');
             return;
         }
 
-        if ($this->friend->removeFriend($userId, $data['friend_id'])) {
+        if ($this->friend->removeFriend($userId, $friendId)) {
             $this->sendSuccessResponse(200, 'Friend request removed successfully.');
         } else {
             $this->sendErrorResponse(500, 'Failed to remove friend request.');
@@ -112,35 +132,50 @@ class FriendsController {
             $this->sendErrorResponse(400, 'Friend ID and status are required.');
             return;
         }
-
+    
         $validStatuses = ['Accepted', 'Rejected', 'Blocked'];
         if (!in_array($data['status'], $validStatuses)) {
             $this->sendErrorResponse(400, 'Invalid status value.');
             return;
         }
-
+    
         try {
-            // Ensure the request exists and the current user is the receiver
-            $friendship = $this->friend->getFriendship($data['friend_id'], $userId); // Check if `friend_id` (sender) sent a request to `userId` (receiver)
-
+            // Clean up friend_id and user_id
+            $friendId = preg_replace('/\.0$/', '', (string)$data['friend_id']);
+            $userId = preg_replace('/\.0$/', '', (string)$userId);
+    
+            error_log("updateFriendStatus: user_id=$userId (type=" . gettype($userId) . "), friend_id=$friendId (type=" . gettype($friendId) . "), status=" . $data['status']);
+    
+            // $userId is the receiver, $friendId is the sender
+            $friendship = $this->friend->getFriendship($userId, $friendId);
+    
             if (!$friendship) {
                 $this->sendErrorResponse(404, 'No pending friend request found.');
                 return;
             }
-
+    
+            error_log("Friendship data: " . print_r($friendship, true));
+            error_log("friend_id from DB: " . $friendship['friend_id'] . " (type=" . gettype($friendship['friend_id']) . ")");
+    
             if ($friendship['status'] !== 'Pending') {
                 $this->sendErrorResponse(400, 'This request has already been processed.');
                 return;
             }
-
-            // Ensure only the receiver (user_id) can update the request
-            if ($friendship['friend_id'] !== $userId) {
+    
+            // Normalize both values for comparison
+            $friendshipFriendId = (string)$friendship['friend_id'];
+            $normalizedUserId = (string)$userId;
+    
+            error_log("Comparing: friend_id='$friendshipFriendId' (type=" . gettype($friendshipFriendId) . "), user_id='$normalizedUserId' (type=" . gettype($normalizedUserId) . ")");
+            error_log("Hex comparison: friend_id=" . bin2hex($friendshipFriendId) . ", user_id=" . bin2hex($normalizedUserId));
+    
+            if ($friendshipFriendId !== $normalizedUserId) {
+                error_log("User $normalizedUserId is not the receiver. Expected friend_id=$friendshipFriendId");
                 $this->sendErrorResponse(403, 'Only the receiver can update this request.');
                 return;
             }
-
-            // Update friend request status
-            if ($this->friend->updateFriendStatus($userId, $data['friend_id'], $data['status'])) {
+    
+            if ($this->friend->updateFriendStatus($userId, $friendId, $data['status'])) {
                 $this->sendSuccessResponse(200, 'Friend status updated successfully.');
             } else {
                 $this->sendErrorResponse(500, 'Failed to update friend status.');
@@ -165,6 +200,24 @@ class FriendsController {
         }
 
         echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE);
+    }
+
+    private function getPendingRequests($userId) {
+        try {
+            $pendingRequests = $this->friend->getPendingRequests($userId);
+            $this->sendSuccessResponse(200, $pendingRequests ?: []);
+        } catch (Exception $e) {
+            $this->sendErrorResponse(500, 'Failed to retrieve pending friend requests.', $e);
+        }
+    }
+
+    private function getNonFriends($userId) {
+        try {
+            $nonFriends = $this->friend->getNonFriends($userId);
+            $this->sendSuccessResponse(200, $nonFriends ?: []);
+        } catch (Exception $e) {
+            $this->sendErrorResponse(500, 'Failed to retrieve non-friends.', $e);
+        }
     }
 }
 ?>

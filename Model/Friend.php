@@ -58,7 +58,14 @@ class Friend {
 
     public function getFriends($userId) {
         try {
-            $stmt = $this->pdo->prepare("SELECT u.id, u.username, f.status FROM {$this->table} f JOIN Users u ON (f.friend_id = u.id OR f.user_id = u.id) WHERE (f.user_id = :user_id OR f.friend_id = :user_id) AND f.status = 'Accepted'");
+            $stmt = $this->pdo->prepare("
+                SELECT u.id, u.username 
+                FROM {$this->table} f 
+                JOIN Users u ON 
+                    (f.friend_id = u.id AND f.user_id = :user_id) 
+                    OR (f.user_id = u.id AND f.friend_id = :user_id)
+                WHERE f.status = 'Accepted' AND u.id != :user_id
+            ");
             $stmt->execute([':user_id' => $userId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -69,9 +76,14 @@ class Friend {
 
     public function getFriendship($userId, $friendId) {
         try {
+            $userId = preg_replace('/\.0$/', '', (string)$userId);
+            $friendId = preg_replace('/\.0$/', '', (string)$friendId);
+    
             $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE (user_id = :user_id AND friend_id = :friend_id) OR (user_id = :friend_id AND friend_id = :user_id)");
             $stmt->execute([':user_id' => $userId, ':friend_id' => $friendId]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            error_log("getFriendship result for user_id=$userId, friend_id=$friendId: " . print_r($result, true));
+            return $result;
         } catch (Exception $e) {
             error_log("Error fetching friendship: " . $e->getMessage());
             return null;
@@ -85,6 +97,78 @@ class Friend {
         } catch (Exception $e) {
             error_log("Error updating friend status: " . $e->getMessage());
             return false;
+        }
+    }
+
+    public function getPendingRequests($userId) {
+        try {
+            // Fetch incoming pending requests (where userId is the receiver)
+            $stmt = $this->pdo->prepare("
+                SELECT u.id, u.username 
+                FROM {$this->table} f 
+                JOIN Users u ON f.user_id = u.id 
+                WHERE f.friend_id = :user_id AND f.status = 'Pending'
+            ");
+            $stmt->execute([':user_id' => $userId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error fetching pending friend requests: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getNonFriends($userId) {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT u.id, u.username 
+                FROM Users u
+                WHERE u.id != :user_id
+                AND u.id NOT IN (
+                    SELECT friend_id FROM {$this->table} WHERE user_id = :user_id
+                    UNION
+                    SELECT user_id FROM {$this->table} WHERE friend_id = :user_id
+                )
+            ");
+            $stmt->execute([':user_id' => $userId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error fetching non-friends: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    // New method for getFriendsList to combine pending and non-friends
+    public function getFriendsList($userId) {
+        try {
+            // Fetch incoming pending requests (where userId is the receiver)
+            $pendingStmt = $this->pdo->prepare("
+                SELECT u.id AS friend_id, u.username, 'Pending' AS status
+                FROM {$this->table} f 
+                JOIN Users u ON f.user_id = u.id 
+                WHERE f.friend_id = :user_id AND f.status = 'Pending'
+            ");
+            $pendingStmt->execute([':user_id' => $userId]);
+            $pendingRequests = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Fetch non-friends
+            $nonFriendsStmt = $this->pdo->prepare("
+                SELECT u.id AS friend_id, u.username, 'NonFriends' AS status
+                FROM Users u
+                WHERE u.id != :user_id
+                AND u.id NOT IN (
+                    SELECT friend_id FROM {$this->table} WHERE user_id = :user_id
+                    UNION
+                    SELECT user_id FROM {$this->table} WHERE friend_id = :user_id
+                )
+            ");
+            $nonFriendsStmt->execute([':user_id' => $userId]);
+            $nonFriends = $nonFriendsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Combine the results
+            return array_merge($pendingRequests, $nonFriends);
+        } catch (Exception $e) {
+            error_log("Error fetching friends list: " . $e->getMessage());
+            return [];
         }
     }
 }

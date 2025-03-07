@@ -81,12 +81,37 @@ class Post {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getPostById($id) {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    public function getPostById($id, $limit = 10, $offset = 0) {
+        $query = "
+            SELECT p.* 
+            FROM {$this->table} p
+            WHERE 
+                p.privacy = 'Public' 
+                OR (
+                    p.privacy = 'Friends Only' 
+                    AND EXISTS (
+                        SELECT 1 FROM Friends f
+                        WHERE (
+                            (f.user_id = :user_id AND f.friend_id = p.user_id) 
+                            OR 
+                            (f.user_id = p.user_id AND f.friend_id = :user_id)
+                        ) 
+                        AND f.status = 'accepted'
+                    )
+                )
+            ORDER BY p.created_at DESC
+            LIMIT :limit OFFSET :offset
+        ";
+    
+        $stmt = $this->pdo->prepare($query);
+        $stmt->bindValue(':user_id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
 
     public function createPost($data) {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} 
