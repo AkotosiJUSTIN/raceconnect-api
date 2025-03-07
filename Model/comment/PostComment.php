@@ -15,22 +15,36 @@ class PostComment {
 
     // Get all comments
     public function getAllComments() {
-        $stmt = $this->pdo->query("SELECT * FROM {$this->table} ORDER BY created_at DESC");
+        $query = "SELECT pc.id, pc.user_id, pc.post_id, pc.comment AS text, pc.created_at, u.username, pc.likes 
+                  FROM {$this->table} pc 
+                  LEFT JOIN Users u ON pc.user_id = u.id 
+                  ORDER BY pc.created_at DESC";
+        $stmt = $this->pdo->query($query);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Get comments by post ID
     public function getCommentsByPostId($post_id) {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE post_id = :post_id ORDER BY created_at DESC");
-        $stmt->bindParam(':post_id', $post_id);
+        $query = "SELECT pc.id, pc.user_id, pc.post_id, pc.comment AS comment, pc.created_at, u.username, pc.likes 
+                  FROM {$this->table} pc 
+                  LEFT JOIN Users u ON pc.user_id = u.id 
+                  WHERE pc.post_id = :post_id 
+                  ORDER BY pc.created_at DESC";
+        $stmt = $this->pdo->prepare($query);
+        $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Get comments by user ID
     public function getCommentsByUserId($user_id) {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE user_id = :user_id ORDER BY created_at DESC");
-        $stmt->bindParam(':user_id', $user_id);
+        $query = "SELECT pc.id, pc.user_id, pc.post_id, pc.comment AS text, pc.created_at, u.username, pc.likes 
+                  FROM {$this->table} pc 
+                  LEFT JOIN Users u ON pc.user_id = u.id 
+                  WHERE pc.user_id = :user_id 
+                  ORDER BY pc.created_at DESC";
+        $stmt = $this->pdo->prepare($query);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -38,7 +52,7 @@ class PostComment {
     // Get comment count for a post
     public function getCommentCount($post_id) {
         $stmt = $this->pdo->prepare("SELECT COUNT(*) AS total_comments FROM {$this->table} WHERE post_id = :post_id");
-        $stmt->bindParam(':post_id', $post_id);
+        $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC)['total_comments'] ?? 0;
     }
@@ -51,7 +65,7 @@ class PostComment {
 
         // Fetch the owner_id of the post
         $stmt = $this->pdo->prepare("SELECT user_id AS owner_id FROM Posts WHERE id = :post_id");
-        $stmt->bindParam(':post_id', $data['post_id']);
+        $stmt->bindParam(':post_id', $data['post_id'], PDO::PARAM_INT);
         $stmt->execute();
         $post = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -62,19 +76,20 @@ class PostComment {
         $owner_id = $post['owner_id'];
 
         // Insert the comment
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (user_id, post_id, owner_id, comment, created_at) VALUES (:user_id, :post_id, :owner_id, :comment, NOW())");
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (user_id, post_id, owner_id, comment, created_at, likes) VALUES (:user_id, :post_id, :owner_id, :comment, NOW(), :likes)");
         $stmt->execute([
             ':user_id' => $data['user_id'],
             ':post_id' => $data['post_id'],
             ':owner_id' => $owner_id,
-            ':comment' => $data['comment']
+            ':comment' => $data['comment'],
+            ':likes' => 0 // Default value for likes
         ]);
 
         $comment_id = $this->pdo->lastInsertId(); // Get the inserted comment ID
 
         // Fetch the username of the commenter
         $stmt = $this->pdo->prepare("SELECT username FROM Users WHERE id = :user_id");
-        $stmt->bindParam(':user_id', $data['user_id']);
+        $stmt->bindParam(':user_id', $data['user_id'], PDO::PARAM_INT);
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -85,7 +100,7 @@ class PostComment {
                 ':owner_id' => $owner_id,
                 ':post_id' => $data['post_id'],
                 ':comment_id' => $comment_id,
-                ':username' => $user['username']
+                ':username' => $user['username'] ?? 'Unknown'
             ]);
         }
 
@@ -105,14 +120,14 @@ class PostComment {
     public function deleteComment($id) {
         // Get the post_id, owner_id, and comment_id for the comment
         $stmt = $this->pdo->prepare("SELECT post_id, owner_id FROM {$this->table} WHERE id = :id");
-        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
         $comment = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($comment) {
             // Delete the comment
             $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
-            $stmt->bindParam(':id', $id);
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $result = $stmt->execute();
 
             if ($result) {
@@ -129,7 +144,7 @@ class PostComment {
     public function deleteCommentsByPostId($post_id) {
         // Delete the comments
         $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE post_id = :post_id");
-        $stmt->bindParam(':post_id', $post_id);
+        $stmt->bindParam(':post_id', $post_id, PDO::PARAM_INT);
         $result = $stmt->execute();
 
         if ($result) {
@@ -139,5 +154,16 @@ class PostComment {
         }
         return $result;
     }
+
+    // Helper method to get a comment by ID
+    public function getCommentById($id) {
+        $query = "SELECT pc.id, pc.user_id, pc.post_id, pc.comment AS text, pc.created_at, u.username, pc.likes 
+                  FROM {$this->table} pc 
+                  LEFT JOIN Users u ON pc.user_id = u.id 
+                  WHERE pc.id = :id";
+        $stmt = $this->pdo->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
-?>
