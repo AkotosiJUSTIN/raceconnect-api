@@ -193,6 +193,7 @@ CREATE TABLE Post_Reposts (
     user_id INT NOT NULL, 
     post_id INT NOT NULL, 
     owner_id INT NOT NULL, 
+    quote TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
