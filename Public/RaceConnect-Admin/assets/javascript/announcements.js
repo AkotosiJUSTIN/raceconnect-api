@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showFloatingMessage('Announcement posted successfully!', 'success');
                 announcementForm.reset();
                 previewContainer.style.display = 'none';
+                updateCharacterCount();
             } else {
                 progressBar.style.width = '100%';
                 showFloatingMessage(result.error || 'Failed to post announcement', 'error');
