@@ -81,36 +81,40 @@ class Post {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getPostById($id, $limit = 10, $offset = 0) {
+    public function getPostById($userId, $limit = 10, $offset = 0) {
         $query = "
-            SELECT p.* 
+            SELECT 
+                p.*,
+                u.username,
+                u.profile_picture
             FROM {$this->table} p
-            WHERE 
-                p.privacy = 'Public' 
-                OR (
-                    p.privacy = 'Friends Only' 
-                    AND EXISTS (
-                        SELECT 1 FROM Friends f
-                        WHERE (
-                            (f.user_id = :user_id AND f.friend_id = p.user_id) 
-                            OR 
-                            (f.user_id = p.user_id AND f.friend_id = :user_id)
-                        ) 
-                        AND f.status = 'accepted'
-                    )
-                )
+            JOIN Users u ON p.user_id = u.id
+            WHERE p.user_id = :user_id
             ORDER BY p.created_at DESC
             LIMIT :limit OFFSET :offset
         ";
     
         $stmt = $this->pdo->prepare($query);
-        $stmt->bindValue(':user_id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
     
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        // Fetch images for each post
+        foreach ($posts as &$post) {
+            $postId = $post['id'];
+            $imageQuery = "SELECT image_url FROM Post_Images WHERE post_id = :post_id";
+            $imageStmt = $this->pdo->prepare($imageQuery);
+            $imageStmt->bindValue(':post_id', $postId, PDO::PARAM_INT);
+            $imageStmt->execute();
+            $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
+        }
+    
+        return $posts;
     }
+    
     
 
     public function createPost($data) {
@@ -189,7 +193,6 @@ class Post {
     }
 
     public function getPostsByCategoryAndPrivacy($userId, $categories, $limit = 10, $offset = 0) {
-        // Map abbreviations to full category names
         $categoryMap = [
             'F1'  => 'Formula 1',
             'LEM' => '24 Hours of Lemans',
@@ -199,7 +202,6 @@ class Post {
             'GT'  => 'GT Championship'
         ];
     
-        // Validate and convert abbreviations to full names
         $fullCategories = [];
         foreach ($categories as $abbr) {
             $abbrUpper = strtoupper($abbr);
@@ -209,15 +211,18 @@ class Post {
             $fullCategories[] = $categoryMap[$abbrUpper];
         }
     
-        // Build IN clause placeholders
         $placeholders = implode(', ', array_map(
             fn($key) => ":category$key", 
             array_keys($fullCategories)
         ));
     
         $query = "
-            SELECT p.* 
+            SELECT 
+                p.*,
+                u.username, 
+                u.profile_picture
             FROM Posts p
+            LEFT JOIN Users u ON p.user_id = u.id
             WHERE 
                 p.category IN ($placeholders)
                 AND p.status = 'Active' 
@@ -243,8 +248,7 @@ class Post {
         ";
     
         $stmt = $this->pdo->prepare($query);
-        
-        // Bind category values
+    
         foreach ($fullCategories as $key => $category) {
             $stmt->bindValue(":category$key", $category);
         }
@@ -254,8 +258,19 @@ class Post {
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
     
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        // Fetch all images for each post
+        foreach ($posts as &$post) {
+            $imageStmt = $this->pdo->prepare("SELECT image_url FROM Post_Images WHERE post_id = :post_id");
+            $imageStmt->bindValue(':post_id', $post['id'], PDO::PARAM_INT);
+            $imageStmt->execute();
+            $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
+        }
+    
+        return $posts;
     }
+    
 
     public function getPostsByUserId($userId, $limit = 10, $offset = 0) {
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE user_id = :user_id LIMIT :limit OFFSET :offset");

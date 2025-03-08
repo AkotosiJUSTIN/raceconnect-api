@@ -36,32 +36,49 @@ class AuthController {
             if (empty($data['username']) || empty($data['password'])) {
                 $this->handleError(400, 'Username and password are required');
             }
-
+    
             $user = $this->user->loginUser($data['username'], $data['password']);
             if (!$user) {
                 $this->handleError(401, 'Invalid username or password');
             }
-
+    
             $token = bin2hex(random_bytes(32));
             if (!$this->authMiddleware->storeToken($user['id'], $token)) {
                 $this->handleError(500, 'Failed to store authentication token');
             }
-
+    
             http_response_code(200);
             echo json_encode([
                 'message' => 'Login successful',
                 'user' => [
                     'id' => $user['id'],
                     'username' => $user['username'],
-                    'email' => $user['email']
+                    'email' => $user['email'],
+                    'birthdate' => $user['birthdate'],
+                    'number' => $user['number'],
+                    'address' => $user['address'],
+                    'age' => $user['age'],
+                    'profile_picture' => $user['profile_picture'] ?? null,
+                    'bio' => $user['bio'] ?? null,
+                    'favorite_categories' => json_decode($user['favorite_categories'], true) ?? [],
+                    'favorite_marketplace_items' => json_decode($user['favorite_marketplace_items'], true) ?? [],
+                    'friends_list' => json_decode($user['friends_list'], true) ?? [],
+                    'friend_privacy' => $user['friend_privacy'],
+                    'last_online' => $user['last_online'],
+                    'status' => $user['status'],
+                    'report' => $user['report'],
+                    'suspension_end_date' => $user['suspension_end_date'],
+                    'created_at' => $user['created_at'],
+                    'updated_at' => $user['updated_at'],
                 ],
                 'token' => $token
             ]);
-
+    
         } catch (Exception $e) {
             $this->handleError(500, 'An error occurred during login');
         }
     }
+    
 
     public function forgotPassword($data) {
         try {

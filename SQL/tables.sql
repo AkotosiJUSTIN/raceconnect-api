@@ -16,7 +16,7 @@ CREATE TABLE Users (
     friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public',
     last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     status ENUM('Active', 'Banned', 'Suspended') DEFAULT 'Active',
-    report ENUM ('None', 'Reported') DEFAULT 'None',
+    report ENUM ('none', 'reported') DEFAULT 'None',
     suspension_end_date TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -94,7 +94,7 @@ CREATE TABLE Marketplace_Items (
     category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship') DEFAULT 'Formula 1',
     favorite_count INT DEFAULT 0,
     status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
-    report ENUM ('None', 'Reported') DEFAULT 'None',
+    report ENUM ('none', 'reported') DEFAULT 'None',
     reported_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
