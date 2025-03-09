@@ -11,9 +11,15 @@
     },
     "minimum-stability": "stable",
     "require": {
+        "php": "~8.0.0",
         "phpmailer/phpmailer": "^6.9",
         "aws/aws-sdk-php": "^3.339",
         "vlucas/phpdotenv": "^5.6",
         "cboden/ratchet": "^0.4.4"
+    },
+    "config": {
+        "platform": {
+            "php": "8.0.30"
+        }
     }
 }

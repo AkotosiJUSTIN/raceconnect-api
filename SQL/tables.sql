@@ -1,355 +1,385 @@
--- Users Table
-CREATE TABLE Users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    birthdate DATE NOT NULL,
-    number VARCHAR(15) NOT NULL,
-    address TEXT NOT NULL,
-    age INT,
-    profile_picture VARCHAR(255),
-    bio TEXT,
-    favorite_categories JSON,
-    favorite_marketplace_items JSON,
-    friends_list JSON DEFAULT NULL,  -- Added friends_list column
-    friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public',
-    last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    status ENUM('Active', 'Banned', 'Suspended') DEFAULT 'Active',
-    report ENUM ('none', 'reported') DEFAULT 'None',
-    suspension_end_date TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+-- Create the users table first
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `birthdate` date NOT NULL,
+  `number` varchar(15) NOT NULL,
+  `address` text NOT NULL,
+  `age` int(11) DEFAULT NULL,
+  `profile_picture` varchar(255) DEFAULT NULL,
+  `bio` text DEFAULT NULL,
+  `favorite_categories` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`favorite_categories`)),
+  `favorite_marketplace_items` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`favorite_marketplace_items`)),
+  `friends_list` JSON DEFAULT NULL CHECK (JSON_VALID(`friends_list`)),  -- Added friends_list column
+  `friend_count` int(11) DEFAULT 0,
+  `friend_privacy` enum('Public','Only me','Friends Only') DEFAULT 'Public',
+  `last_online` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` enum('Active','Banned','Suspended') DEFAULT 'Active',
+  `report` enum('None','Reported') DEFAULT 'None',
+  `suspension_end_date` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-ALTER TABLE Users
-ADD CONSTRAINT chk_favorite_categories CHECK (JSON_VALID(favorite_categories)),
-ADD CONSTRAINT chk_favorite_marketplace_items CHECK (JSON_VALID(favorite_marketplace_items)),
-ADD CONSTRAINT chk_friends_list CHECK (JSON_VALID(friends_list));  -- Added constraint for friends_list
+-- Now create the admins table
+CREATE TABLE `admins` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `admin_name` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` enum('content_moderator','community_manager','marketplace_manager') DEFAULT 'content_moderator',
+  `failed_attempts` int(11) DEFAULT 0,
+  `last_attempt` datetime DEFAULT NULL,
+  `remember_token` varchar(255) DEFAULT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `admins_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE UNIQUE INDEX idx_username ON Users(username);
-CREATE UNIQUE INDEX idx_email ON Users(email);
+-- Table structure for table `posts`
+CREATE TABLE `posts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `content` text NOT NULL,
+  `like_count` int(11) DEFAULT 0,
+  `comment_count` int(11) DEFAULT 0,
+  `repost_count` int(11) DEFAULT 0,
+  `category` enum('Formula 1','24 Hours of Lemans','World Rally Championship','NASCAR','Formula Drift','GT Championship') DEFAULT 'Formula 1',
+  `privacy` enum('Public','Only me','Friends Only') DEFAULT 'Public',
+  `type` enum('text','image','video') DEFAULT 'text',
+  `post_type` enum('Announcement','Normal') DEFAULT 'Normal',
+  `status` enum('Active','Hidden','Archived') DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `report` enum('none','reported') DEFAULT 'none',
+  `archived_at` timestamp NULL DEFAULT NULL,  -- Added archived_at column
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  INDEX `idx_cleanup` (`status`, `archived_at`),  -- Added index
+  CONSTRAINT `posts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Friends Table
-CREATE TABLE Friends (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    friend_id INT NOT NULL,
-    status ENUM('Pending', 'Accepted', 'Blocked') DEFAULT 'Pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (friend_id) REFERENCES Users(id) ON DELETE CASCADE,
-    UNIQUE (user_id, friend_id)
-);
+-- Table structure for table `marketplace_items`
+CREATE TABLE `marketplace_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `seller_id` int(11) NOT NULL,
+  `title` varchar(100) NOT NULL,
+  `description` text NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `category` enum('Formula 1','24 Hours of Lemans','World Rally Championship','NASCAR','Formula Drift','GT Championship') DEFAULT 'Formula 1',
+  `favorite_count` int(11) DEFAULT 0,
+  `status` enum('Active','Hidden','Archived','Available','Sold','Reserved') DEFAULT 'Available',
+  `report` enum('None','Reported') DEFAULT 'None',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `listing_status` enum('Available','Sold','Reserved') DEFAULT 'Available',
+  `previous_status` enum('Available','Sold','Reserved') DEFAULT NULL,
+  `reported_at` timestamp NULL DEFAULT NULL,
+  `archived_at` timestamp NULL DEFAULT NULL,  -- Added archived_at column
+  PRIMARY KEY (`id`),
+  KEY `seller_id` (`seller_id`),
+  INDEX `idx_cleanup` (`status`, `archived_at`),  -- Added index
+  CONSTRAINT `marketplace_items_ibfk_1` FOREIGN KEY (`seller_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE INDEX idx_status ON Friends(status);
+-- Create the reports table
+CREATE TABLE `reports` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `post_id` int(11) DEFAULT NULL,
+  `marketplace_item_id` int(11) DEFAULT NULL,
+  `reporter_id` int(11) NOT NULL,
+  `reason` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('pending','resolved','hidden') NOT NULL DEFAULT 'pending',
+  `resolved_at` timestamp NULL DEFAULT NULL,
+  `resolved_by` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_post_id` (`post_id`),
+  KEY `idx_marketplace_item_id` (`marketplace_item_id`),
+  KEY `resolved_by` (`resolved_by`),
+  CONSTRAINT `fk_report_marketplace` FOREIGN KEY (`marketplace_item_id`) REFERENCES `marketplace_items` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_report_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `reports_ibfk_1` FOREIGN KEY (`resolved_by`) REFERENCES `admins` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- User Tokens Table
-CREATE TABLE user_tokens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    token VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NULL,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Now create the admin_notifications table
+CREATE TABLE `admin_notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `admin_id` int(11) NOT NULL,
+  `reporter_id` int(11) NOT NULL,
+  `post_id` int(11) DEFAULT NULL,
+  `marketplace_item_id` int(11) DEFAULT NULL,
+  `type` enum('post_report','marketplace_report','system_alert','user_report') NOT NULL,
+  `content` text NOT NULL,
+  `severity` enum('low','medium','high') DEFAULT 'medium',
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `report_id` int(11) DEFAULT NULL,
+  `status` enum('pending','in_review','resolved','archived') DEFAULT 'pending',
+  `action_taken` text DEFAULT NULL,
+  `resolved_by` int(11) DEFAULT NULL,
+  `resolved_at` timestamp NULL DEFAULT NULL,
+  `archived_at` timestamp NULL DEFAULT NULL,  -- Added archived_at column
+  PRIMARY KEY (`id`),
+  KEY `admin_id` (`admin_id`),
+  KEY `reporter_id` (`reporter_id`),
+  KEY `post_id` (`post_id`),
+  KEY `marketplace_item_id` (`marketplace_item_id`),
+  KEY `report_id` (`report_id`),
+  KEY `resolved_by` (`resolved_by`),
+  KEY `idx_type_status` (`type`,`status`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_severity` (`severity`),
+  INDEX `idx_cleanup` (`status`, `archived_at`),  -- Added index
+  CONSTRAINT `admin_notifications_ibfk_1` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `admin_notifications_ibfk_2` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `admin_notifications_ibfk_3` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `admin_notifications_ibfk_4` FOREIGN KEY (`marketplace_item_id`) REFERENCES `marketplace_items` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `admin_notifications_ibfk_5` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `admin_notifications_ibfk_6` FOREIGN KEY (`resolved_by`) REFERENCES `admins` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Posts Table (for Social Media)
-CREATE TABLE Posts (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    title VARCHAR(255),
-    content TEXT NOT NULL,
-    like_count INT DEFAULT 0,
-    comment_count INT DEFAULT 0,
-    repost_count INT DEFAULT 0,
-    category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship') DEFAULT 'Formula 1',
-    privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public',
-    type ENUM('text', 'image', 'video') DEFAULT 'text',
-    post_type ENUM('Announcement', 'Normal') DEFAULT 'Normal',
-    status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    report ENUM('none', 'reported') DEFAULT 'none',
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Table structure for table `user_profile_pictures`
+CREATE TABLE `user_profile_pictures` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `image_url` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `user_profile_pictures_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Announcements Table
-CREATE TABLE IF NOT EXISTS announcements (
-    id INT AUTO_INCREMENT PRIMARY KEY, 
-    title VARCHAR(255) NOT NULL, 
-    content TEXT NOT NULL, 
-    image_url VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
-    status ENUM('active', 'archived') DEFAULT 'active'
-);
+-- Table structure for table `user_tokens`
+CREATE TABLE `user_tokens` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `token` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `user_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Marketplace Items Table
-CREATE TABLE Marketplace_Items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    seller_id INT NOT NULL,
-    title VARCHAR(100) NOT NULL,
-    description TEXT NOT NULL,
-    price DECIMAL(10, 2) NOT NULL,
-    category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship') DEFAULT 'Formula 1',
-    listing_status ENUM('Available', 'Sold', 'Reserved') DEFAULT 'Available',
-    previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL;
-    favorite_count INT DEFAULT 0,
-    status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
-    report ENUM ('none', 'reported') DEFAULT 'None',
-    reported_at TIMESTAMP NULL DEFAULT NULL;
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE
-);
 
-CREATE INDEX idx_seller_id ON Marketplace_Items(seller_id);
-CREATE INDEX idx_status ON Marketplace_Items(status);
+-- Table structure for table `admin_analytics`
+CREATE TABLE `admin_analytics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `total_users` int(11) NOT NULL,
+  `total_posts` int(11) NOT NULL,
+  `total_reels` int(11) NOT NULL,
+  `total_marketplace_items` int(11) NOT NULL,
+  `report_date` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Notifications Table (Includes Likes, Comments, Reposts)
-CREATE TABLE Notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    post_id INT DEFAULT NULL,
-    marketplace_item_id INT DEFAULT NULL,
-    type ENUM('post', 'marketplace', 'system', 'report') NOT NULL DEFAULT 'system',
-    content TEXT NOT NULL,
-    is_read TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    report_id INT DEFAULT NULL,
-    status ENUM('active', 'archived') DEFAULT 'active',
-    repost_id INT DEFAULT NULL,
-    like_id INT DEFAULT NULL,
-    comment_id INT DEFAULT NULL,
-    INDEX idx_type_status (type, status),
-    INDEX idx_created_at (created_at)
-);
+-- Table structure for table `announcements`
+CREATE TABLE `announcements` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('active','archived') DEFAULT 'active',
+  `file_url` varchar(255) DEFAULT NULL,
+  `file_key` varchar(255) DEFAULT NULL,
+  `image_url` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Admins Table
-CREATE TABLE Admins (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    admin_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('content_moderator', 'community_manager',  'marketplace_manager') DEFAULT 'content_moderator',
-    failed_attempts INT DEFAULT 0,
-    last_attempt DATETIME,
-    remember_token VARCHAR(255),
-    active BOOLEAN DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Table structure for table `conversations`
+CREATE TABLE `conversations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `buyer_id` int(11) NOT NULL,
+  `seller_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `last_message` TEXT NULL,  -- Added last_message column
+  `last_message_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Added last_message_time column
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `buyer_id` (`buyer_id`),
+  KEY `seller_id` (`seller_id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `conversations_ibfk_1` FOREIGN KEY (`buyer_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `conversations_ibfk_2` FOREIGN KEY (`seller_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `conversations_ibfk_3` FOREIGN KEY (`product_id`) REFERENCES `marketplace_items` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Admin Dashboard Analytics Table
-CREATE TABLE Admin_Analytics (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    total_users INT NOT NULL,
-    total_posts INT NOT NULL,
-    total_reels INT NOT NULL,
-    total_marketplace_items INT NOT NULL,
-    report_date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Table structure for table `friends`
+CREATE TABLE `friends` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `friend_id` int(11) NOT NULL,
+  `status` enum('Pending','Accepted','Blocked') DEFAULT 'Pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_id` (`user_id`,`friend_id`),
+  KEY `friend_id` (`friend_id`),
+  CONSTRAINT `friends_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `friends_ibfk_2` FOREIGN KEY (`friend_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Post Likes Table
-CREATE TABLE Post_Likes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,  -- User who liked
-    post_id INT NOT NULL,  -- Post being liked
-    owner_id INT NOT NULL, -- Owner of the post
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
-    FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Table structure for table `marketplace_item_images`
+CREATE TABLE `marketplace_item_images` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `marketplace_item_id` int(11) NOT NULL,
+  `image_url` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `marketplace_item_id` (`marketplace_item_id`),
+  CONSTRAINT `marketplace_item_images_ibfk_1` FOREIGN KEY (`marketplace_item_id`) REFERENCES `marketplace_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Marketplace Item Likes Table
-CREATE TABLE Marketplace_Item_Likes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,  -- User who liked
-    marketplace_item_id INT NOT NULL,  -- Marketplace item being liked
-    owner_id INT NOT NULL, -- Seller (original owner of the item)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE,
-    FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Table structure for table `marketplace_item_likes`
+CREATE TABLE `marketplace_item_likes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `marketplace_item_id` int(11) NOT NULL,
+  `owner_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `marketplace_item_id` (`marketplace_item_id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `marketplace_item_likes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `marketplace_item_likes_ibfk_2` FOREIGN KEY (`marketplace_item_id`) REFERENCES `marketplace_items` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `marketplace_item_likes_ibfk_3` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Post Comments Table (Updated)
-CREATE TABLE Post_Comments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL, 
-    post_id INT NOT NULL, 
-    owner_id INT NOT NULL, 
-    comment TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
-    FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Table structure for table `messages`
+CREATE TABLE `messages` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `conversation_id` int(11) NOT NULL,
+  `sender_id` int(11) NOT NULL,
+  `receiver_id` INT NOT NULL,  -- Added receiver_id column
+  `message` text NOT NULL,
+  `status` enum('sent','delivered','read') DEFAULT 'sent',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `conversation_id` (`conversation_id`),
+  KEY `sender_id` (`sender_id`),
+  CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`),
+  CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `messages_ibfk_3` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`)  -- Added foreign key constraint
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Post Reposts Table (Updated)
-CREATE TABLE Post_Reposts (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL, 
-    post_id INT NOT NULL, 
-    owner_id INT NOT NULL, 
-    quote TEXT DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
-    FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Table structure for table `notifications`
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `post_id` int(11) DEFAULT NULL,
+  `marketplace_item_id` int(11) DEFAULT NULL,
+  `type` enum('post','marketplace','system') NOT NULL DEFAULT 'system',
+  `content` text NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `report_id` int(11) DEFAULT NULL,
+  `status` enum('active','archived') DEFAULT 'active',
+  `repost_id` int(11) DEFAULT NULL,
+  `like_id` int(11) DEFAULT NULL,
+  `comment_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Password Resets Table
-CREATE TABLE Password_Resets (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(100) NOT NULL,
-    otp VARCHAR(6) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (email) REFERENCES Users(email) ON DELETE CASCADE
-);
+-- Table structure for table `password_resets`
+CREATE TABLE `password_resets` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(100) NOT NULL,
+  `otp` varchar(6) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  CONSTRAINT `password_resets_ibfk_1` FOREIGN KEY (`email`) REFERENCES `users` (`email`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Create the password_resets_admin table with correct foreign key
-CREATE TABLE password_resets_admin (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(100) NOT NULL,
-    otp VARCHAR(6) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (email) REFERENCES admins(email) ON DELETE CASCADE
-);
+-- Table structure for table `password_resets_admin`
+CREATE TABLE `password_resets_admin` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(100) NOT NULL,
+  `otp` varchar(6) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `email` (`email`),
+  CONSTRAINT `password_resets_admin_ibfk_1` FOREIGN KEY (`email`) REFERENCES `admins` (`email`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- User Profile Pictures Table
-CREATE TABLE User_Profile_Pictures (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    image_url VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
-);
+-- Table structure for table `post_comments`
+CREATE TABLE `post_comments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `owner_id` int(11) NOT NULL,
+  `comment` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `post_id` (`post_id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `post_comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `post_comments_ibfk_2` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `post_comments_ibfk_3` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Post Images Table
-CREATE TABLE Post_Images (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    post_id INT NOT NULL,
-    image_url VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE
-);
+-- Table structure for table `post_images`
+CREATE TABLE `post_images` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `post_id` int(11) NOT NULL,
+  `image_url` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `post_id` (`post_id`),
+  CONSTRAINT `post_images_ibfk_1` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Marketplace Item Images Table
-CREATE TABLE Marketplace_Item_Images (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    marketplace_item_id INT NOT NULL,
-    image_url VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE
-);
+-- Table structure for table `post_likes`
+CREATE TABLE `post_likes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `owner_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `post_id` (`post_id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `post_likes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `post_likes_ibfk_2` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `post_likes_ibfk_3` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Reports Table
-CREATE TABLE Reports (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    post_id INT DEFAULT NULL,
-    marketplace_item_id INT DEFAULT NULL,
-    reporter_id INT NOT NULL,
-    reason VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('pending', 'resolved', 'hidden') DEFAULT 'pending';
-    resolved_at TIMESTAMP NULL DEFAULT NULL,
-    resolved_by INT NULL,
-    FOREIGN KEY (resolved_by) REFERENCES Admins(id) ON DELETE SET NULL,
-    FOREIGN KEY (reporter_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
-    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
-    INDEX idx_post_id (post_id),
-    INDEX idx_marketplace_item_id (marketplace_item_id)
-);
-
-ALTER TABLE Reports
-MODIFY COLUMN post_id INT NULL,
-MODIFY COLUMN marketplace_item_id INT NULL,
-ADD FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
-ADD FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL;
-
--- Conversations 
-CREATE TABLE conversations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    buyer_id INT NOT NULL,
-    seller_id INT NOT NULL,
-    product_id INT NOT NULL,
-    last_message TEXT NULL,
-    last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (buyer_id, seller_id, product_id),
-    FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES marketplace_items(id) ON DELETE CASCADE
-);
-
--- Messages Table 
-CREATE TABLE messages (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    conversation_id INT NOT NULL,
-    sender_id INT NOT NULL,
-    receiver_id INT NOT NULL,
-    message TEXT NOT NULL,
-    status ENUM('sent', 'delivered', 'read') DEFAULT 'sent',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
-    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Admin Notifications Table
-CREATE TABLE admin_notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    admin_id INT NOT NULL,
-    reporter_id INT NOT NULL,
-    post_id INT DEFAULT NULL,
-    marketplace_item_id INT DEFAULT NULL,
-    type ENUM('post_report', 'marketplace_report', 'system_alert', 'user_report') NOT NULL,
-    content TEXT NOT NULL,
-    severity ENUM('low', 'medium', 'high') DEFAULT 'medium',
-    is_read TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    report_id INT DEFAULT NULL,
-    status ENUM('pending', 'in_review', 'resolved', 'archived') DEFAULT 'pending',
-    action_taken TEXT DEFAULT NULL,
-    resolved_by INT DEFAULT NULL,
-    resolved_at TIMESTAMP NULL,
-    FOREIGN KEY (admin_id) REFERENCES Admins(id) ON DELETE CASCADE,
-    FOREIGN KEY (reporter_id) REFERENCES Users(id) ON DELETE CASCADE,
-    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
-    FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
-    FOREIGN KEY (report_id) REFERENCES Reports(id) ON DELETE SET NULL,
-    FOREIGN KEY (resolved_by) REFERENCES Admins(id) ON DELETE SET NULL,
-    INDEX idx_type_status (type, status),
-    INDEX idx_created_at (created_at),
-    INDEX idx_severity (severity)
-);
-
-ALTER TABLE admin_notifications
-ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
-ADD INDEX idx_cleanup (status, archived_at);
-
-ALTER TABLE posts
-ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
-ADD INDEX idx_cleanup (status, archived_at);
-
-ALTER TABLE marketplace_items
-ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
-ADD INDEX idx_cleanup (status, archived_at);
+-- Table structure for table `post_reposts`
+CREATE TABLE `post_reposts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `owner_id` int(11) NOT NULL,
+  `quote` TEXT DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `post_id` (`post_id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `post_reposts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `post_reposts_ibfk_2` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `post_reposts_ibfk_3` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 DELIMITER $$
-
-CREATE TRIGGER after_report_insert
-AFTER INSERT ON reports
-FOR EACH ROW
-BEGIN
+CREATE TRIGGER `after_report_insert` AFTER INSERT ON `reports` FOR EACH ROW BEGIN
     -- Update post or marketplace item report status
     IF NEW.post_id IS NOT NULL THEN
         UPDATE posts SET report = 'reported' WHERE id = NEW.post_id;
@@ -370,13 +400,13 @@ BEGIN
         created_at,
         report_id,
         status
-    ) 
-    SELECT 
+    )
+    SELECT
         a.id, -- Get the appropriate admin based on role
         NEW.reporter_id,
         NEW.post_id,
         NEW.marketplace_item_id,
-        CASE 
+        CASE
             WHEN NEW.post_id IS NOT NULL THEN 'post_report'
             WHEN NEW.marketplace_item_id IS NOT NULL THEN 'marketplace_report'
             ELSE 'user_report'
@@ -400,7 +430,5 @@ BEGIN
     )
     ORDER BY a.id -- Ensures only one admin is selected
     LIMIT 1;
-
 END$$
-
 DELIMITER ;
