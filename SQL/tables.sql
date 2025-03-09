@@ -270,9 +270,7 @@ ALTER TABLE Reports
 MODIFY COLUMN post_id INT NULL,
 MODIFY COLUMN marketplace_item_id INT NULL,
 ADD FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
-ADD FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
-ADD INDEX idx_post_id (post_id),
-ADD INDEX idx_marketplace_item_id (marketplace_item_id);
+ADD FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL;
 
 -- Conversations 
 CREATE TABLE conversations (
