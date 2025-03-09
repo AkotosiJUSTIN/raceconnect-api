@@ -157,10 +157,10 @@ class PostComment {
 
     // Helper method to get a comment by ID
     public function getCommentById($id) {
-        $query = "SELECT pc.id, pc.user_id, pc.post_id, pc.comment AS text, pc.created_at, u.username, pc.likes 
-                  FROM {$this->table} pc 
-                  LEFT JOIN Users u ON pc.user_id = u.id 
-                  WHERE pc.id = :id";
+        $query = "SELECT pc.id, pc.user_id, pc.post_id, pc.comment AS text, pc.created_at, u.username 
+          FROM {$this->table} pc 
+          LEFT JOIN Users u ON pc.user_id = u.id 
+          WHERE pc.id = :id";
         $stmt = $this->pdo->prepare($query);
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->execute();

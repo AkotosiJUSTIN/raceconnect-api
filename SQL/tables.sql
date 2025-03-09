@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS announcements (
 );
 
 -- Marketplace Items Table
-CREATE TABLE Marketplace_Items (
+CREATE TABLE IF NOT EXISTS Marketplace_Items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     seller_id INT NOT NULL,
     title VARCHAR(100) NOT NULL,
@@ -183,6 +183,7 @@ CREATE TABLE Post_Comments (
     post_id INT NOT NULL, 
     owner_id INT NOT NULL, 
     comment TEXT NOT NULL,
+    likes INT DEFAULT 0;
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
