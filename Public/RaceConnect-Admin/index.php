@@ -179,12 +179,12 @@ $total_reported_items = $row['total_items'];
                     </div>
                     <div class="chart-details">
                         <div class="chart-highest">Highest:</div>
-                        <div class="chart-highest-value">Open Wheel Racing</div>
-                        <div class="chart-highest-number">170</div>
+                        <div class="chart-highest-value">Loading...</div>
+                        <div class="chart-highest-number">0</div>
                         <br>
                         <div class="chart-lowest">Lowest:</div>
-                        <div class="chart-lowest-value">Rally Racing</div>
-                        <div class="chart-lowest-number">30</div>
+                        <div class="chart-lowest-value">Loading...</div>
+                        <div class="chart-lowest-number">0</div>
                     </div>
                 </div>
             </div>

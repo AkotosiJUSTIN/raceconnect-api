@@ -101,7 +101,43 @@ switch ($action) {
 $conn->close();
 
 function fetchDashboardData($conn) {
-    // Implement fetch dashboard data logic
+    try {
+        // Query to count posts by category
+        $query = "SELECT 
+            category,
+            COUNT(*) as count
+            FROM posts 
+            WHERE status != 'Archived'
+            GROUP BY category
+            ORDER BY count DESC";
+        
+        $result = $conn->query($query);
+        
+        if (!$result) {
+            throw new Exception($conn->error);
+        }
+        
+        $categories = [];
+        $counts = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $categories[] = $row['category'];
+            $counts[] = (int)$row['count'];
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'categories' => $categories,
+            'counts' => $counts
+        ]);
+        
+    } catch (Exception $e) {
+        error_log("Error in fetchDashboardData: " . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
+    }
 }
 
 function createReportNotification($conn, $itemId, $reportId, $type, $reason) {

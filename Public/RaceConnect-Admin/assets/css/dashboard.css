@@ -79,13 +79,12 @@
 
 .chart-content {
     display: flex;
-    gap: 16px;
     height: calc(100% - 36px); /* Subtract title height + margin */
     position: relative; /* Added for child positioning */
 }
 
 .chart-canvas {
-    width: 60%;
+    width: 80%;
     position: absolute; /* Position absolutely within chart-content */
     top: 0;
     left: 0;
@@ -93,29 +92,39 @@
 }
 
 .chart-details {
-    width: 25%;
-    margin-left: 75%; /* Align with the chart width */
+    width: 100%;
+    margin-left: 75%;
+    width: 35%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
 }
 
 .chart-highest,
 .chart-lowest {
     color: #6b7280;
+    font-size: clamp(24px, 2vw, 16px);
     font-weight: 600;
     margin-bottom: 8px;
-    font-size: xx-large;
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 .chart-highest-value,
 .chart-lowest-value {
     color: #b91c1c;
-    font-size: 18px;
+    font-size: clamp(16px, 2vw, 14px);
     font-weight: 700;
+    word-wrap: break-word;
+    max-width: 100%;
+    line-height: 1.2;
 }
 
 .chart-highest-number,
 .chart-lowest-number {
     color: #6b7280;
-    font-size: 18px;
+    font-size: clamp(16px, 2vw, 18px);
     font-weight: 700;
 }
 
