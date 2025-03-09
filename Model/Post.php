@@ -119,18 +119,19 @@ class Post {
 
     public function createPost($data) {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} 
-            (user_id, title, content, like_count, comment_count, repost_count, category, type) 
-            VALUES (:user_id, :title, :content, :like_count, :comment_count, :repost_count, :category, :type)");
+            (user_id, title, content, like_count, comment_count, repost_count, category, type, privacy) 
+            VALUES (:user_id, :title, :content, :like_count, :comment_count, :repost_count, :category, :type, :privacy)");
         
         $success = $stmt->execute([
-            ':user_id' => (int) $data['user_id'], // Ensure user_id is an integer
+            ':user_id' => (int) $data['user_id'],
             ':title' => htmlspecialchars($data['title'] ?? null, ENT_QUOTES, 'UTF-8'),
             ':content' => htmlspecialchars($data['content'], ENT_QUOTES, 'UTF-8'),
             ':like_count' => (int) ($data['like_count'] ?? 0),
             ':comment_count' => (int) ($data['comment_count'] ?? 0),
             ':repost_count' => (int) ($data['repost_count'] ?? 0),
             ':category' => htmlspecialchars($data['category'] ?? 'Formula 1', ENT_QUOTES, 'UTF-8'),
-            ':type' => htmlspecialchars($data['type'] ?? 'text', ENT_QUOTES, 'UTF-8')
+            ':type' => htmlspecialchars($data['type'] ?? 'text', ENT_QUOTES, 'UTF-8'),
+            ':privacy' => htmlspecialchars($data['privacy'] ?? 'Public', ENT_QUOTES, 'UTF-8')
         ]);
     
         if ($success) {

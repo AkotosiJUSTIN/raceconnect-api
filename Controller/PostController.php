@@ -59,19 +59,43 @@ class PostController {
     }
 
     private function handlePostRequest() {
-        $data = json_decode(file_get_contents("php://input"), true);
-        if ($data && isset($data['user_id'], $data['title'], $data['content'])) {
-            $postId = $this->post->createPost($data);
-            if ($postId) {
-                http_response_code(201);
-                echo json_encode(["message" => "Post created successfully", "post_id" => $postId]);
-            } else {
-                http_response_code(500);
-                echo json_encode(["error" => "Failed to create post"]);
+        try {
+            $data = !empty($_POST) ? $_POST : json_decode(file_get_contents("php://input"), true) ?? [];
+
+            if (empty($data['user_id']) || empty($data['content'])) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Missing required fields: user_id, content']);
+                return;
             }
-        } else {
-            http_response_code(400);
-            echo json_encode(["error" => "Invalid post data"]);
+
+            $postId = $this->post->createPost($data);
+            if (!$postId || $postId == 0) {
+                throw new Exception('Failed to create post.');
+            }
+            error_log("Generated Post ID: " . $postId); // Debugging: Check if the ID is valid
+
+            // Add a short delay to ensure database consistency (if needed)
+            usleep(500000); // 500ms delay
+
+            $imageUrls = $this->handleImageUpload($postId);
+
+            if (!empty($_FILES['image']['name']) && empty($imageUrls)) {
+                // Rollback: Delete post if image upload fails
+                $this->post->deletePost($postId);
+                http_response_code(500);
+                echo json_encode(['message' => 'Post creation failed due to image upload error']);
+                return;
+            }
+
+            http_response_code(201);
+            echo json_encode([
+                'message' => 'Post created successfully',
+                'post_id' => $postId,
+                'image_urls' => $imageUrls
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to create post', 'error' => $e->getMessage()]);
         }
     }
 
@@ -105,35 +129,104 @@ class PostController {
     }
 
     private function handlePutRequest($id, $data) {
-        if (!$id || empty($data)) {
-            http_response_code(400);
-            echo json_encode(["error" => "Invalid request"]);
-            return;
-        }
+        try {
+            if (!$id) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Post ID is required']);
+                return;
+            }
 
-        $updated = $this->post->updatePost($id, $data);
-        if ($updated) {
-            echo json_encode(["message" => "Post updated successfully"]);
-        } else {
+            if (empty($data)) {
+                http_response_code(400);
+                echo json_encode(['message' => 'No data provided for update']);
+                return;
+            }
+
+            if ($this->post->updatePost($id, $data)) {
+                http_response_code(200);
+                echo json_encode(['message' => 'Post updated successfully']);
+            } else {
+                throw new Exception('Failed to update post.');
+            }
+        } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(["error" => "Failed to update post"]);
+            echo json_encode(['message' => 'Update error', 'error' => $e->getMessage()]);
         }
     }
 
     private function handleDeleteRequest($id) {
-        if (!$id) {
-            http_response_code(400);
-            echo json_encode(["error" => "Invalid request"]);
-            return;
+        try {
+            if (!$id) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Post ID is required']);
+                return;
+            }
+
+            if ($this->post->deletePost($id)) {
+                http_response_code(200);
+                echo json_encode(['message' => 'Post deleted successfully']);
+            } else {
+                throw new Exception('Failed to delete post.');
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Deletion error', 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function handleImageUpload($postId) {
+        $imageUrls = [];
+
+        if (!isset($_FILES['image']) || empty($_FILES['image']['name'])) {
+            return $imageUrls;
         }
 
-        $deleted = $this->post->deletePost($id);
-        if ($deleted) {
-            echo json_encode(["message" => "Post deleted successfully"]);
-        } else {
-            http_response_code(500);
-            echo json_encode(["error" => "Failed to delete post"]);
+        try {
+            $files = is_array($_FILES['image']['name']) ? $_FILES['image'] : [
+                'name' => [$_FILES['image']['name']],
+                'type' => [$_FILES['image']['type']],
+                'tmp_name' => [$_FILES['image']['tmp_name']],
+                'error' => [$_FILES['image']['error']],
+                'size' => [$_FILES['image']['size']]
+            ];
+
+            for ($i = 0; $i < count($files['name']); $i++) {
+                if ($files['error'][$i] !== UPLOAD_ERR_OK) {
+                    $this->handleFileUploadError($files['error'][$i]);
+                    continue;
+                }
+
+                $tmpName = $files['tmp_name'][$i];
+                $imageData = file_get_contents($tmpName);
+                $imageName = uniqid() . '-' . basename($files['name'][$i]);
+
+                $imageUrl = $this->post->uploadPostImageToS3($imageData, $imageName);
+                if ($imageUrl) {
+                    $imageUrls[] = $imageUrl;
+                    $this->post->savePostImage($postId, $imageUrl);
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Image upload failed: " . $e->getMessage());
         }
+
+        return $imageUrls;
+    }
+
+    private function handleFileUploadError($errorCode) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE => 'Uploaded file exceeds the upload_max_filesize directive in php.ini.',
+            UPLOAD_ERR_FORM_SIZE => 'Uploaded file exceeds the MAX_FILE_SIZE directive specified in the form.',
+            UPLOAD_ERR_PARTIAL => 'File was only partially uploaded.',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder.',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+            UPLOAD_ERR_EXTENSION => 'File upload stopped by an extension.'
+        ];
+
+        $message = $errorMessages[$errorCode] ?? 'Unknown upload error.';
+        http_response_code(400);
+        echo json_encode(['message' => 'File upload error', 'error' => $message]);
     }
 }
 ?>
