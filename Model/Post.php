@@ -74,7 +74,7 @@ class Post {
     }
 
     public function getAllPosts($limit = 10, $offset = 0) {
-        $query = "SELECT p.*, u.username 
+        $query = "SELECT p.*, u.username, u.profile_picture 
                   FROM posts p
                   LEFT JOIN Users u ON p.user_id = u.id
                   LIMIT :limit OFFSET :offset";
@@ -83,9 +83,10 @@ class Post {
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-        
+    
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
 
     public function getPostById($userId, $limit = 10, $offset = 0) {
         $query = "
