@@ -102,14 +102,23 @@ $conn->close();
 
 function fetchDashboardData($conn) {
     try {
+        //Define all categories from db
+        $allCategories = [
+            'Formula 1',
+            'Formula Drift',
+            '24 Hours of Lemans',
+            'World Rally Championship',
+            'NASCAR',
+            'GT Championship'
+        ];
+
         // Query to count posts by category
         $query = "SELECT 
             category,
             COUNT(*) as count
             FROM posts 
             WHERE status != 'Archived'
-            GROUP BY category
-            ORDER BY count DESC";
+            GROUP BY category";
         
         $result = $conn->query($query);
         
@@ -117,13 +126,19 @@ function fetchDashboardData($conn) {
             throw new Exception($conn->error);
         }
         
-        $categories = [];
-        $counts = [];
+        $categoryCounts = array_fill_keys($allCategories, 0);
         
         while ($row = $result->fetch_assoc()) {
-            $categories[] = $row['category'];
-            $counts[] = (int)$row['count'];
+            if (isset($categoryCounts[$row['category']])) {
+                $categoryCounts[$row['category']] = $row['count'];
+            }
         }
+
+        //Sort the counts by category
+        arsort($categoryCounts);
+
+        $categories = array_keys($categoryCounts);
+        $counts = array_values($categoryCounts);
         
         echo json_encode([
             'success' => true,
