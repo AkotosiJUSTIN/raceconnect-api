@@ -13,6 +13,7 @@ CREATE TABLE Users (
     favorite_categories JSON,
     favorite_marketplace_items JSON,
     friends_list JSON DEFAULT NULL,  -- Added friends_list column
+    friend_count int(11) DEFAULT 0,
     friend_privacy ENUM('Public', 'Only me', 'Friends Only') DEFAULT 'Public',
     last_online TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     status ENUM('Active', 'Banned', 'Suspended') DEFAULT 'Active',
@@ -70,6 +71,7 @@ CREATE TABLE Posts (
     status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    archived_at timestamp NULL DEFAULT NULL,
     report ENUM('none', 'reported') DEFAULT 'none',
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
@@ -79,7 +81,9 @@ CREATE TABLE IF NOT EXISTS announcements (
     id INT AUTO_INCREMENT PRIMARY KEY, 
     title VARCHAR(255) NOT NULL, 
     content TEXT NOT NULL, 
-    image_url VARCHAR(255),
+    file_url varchar(255) DEFAULT NULL,
+    file_key varchar(255) DEFAULT NULL,
+    image_url varchar(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
     status ENUM('active', 'archived') DEFAULT 'active'
 );
@@ -96,6 +100,7 @@ CREATE TABLE IF NOT EXISTS Marketplace_Items (
     previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL,
     favorite_count INT DEFAULT 0,
     status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
+    archived_at timestamp NULL DEFAULT NULL,
     report ENUM ('none', 'reported') DEFAULT 'None',
     reported_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -322,12 +327,14 @@ CREATE TABLE admin_notifications (
     action_taken TEXT DEFAULT NULL,
     resolved_by INT DEFAULT NULL,
     resolved_at TIMESTAMP NULL,
+    archived_at timestamp NULL DEFAULT NULL,
     FOREIGN KEY (admin_id) REFERENCES Admins(id) ON DELETE CASCADE,
     FOREIGN KEY (reporter_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL,
     FOREIGN KEY (report_id) REFERENCES Reports(id) ON DELETE SET NULL,
     FOREIGN KEY (resolved_by) REFERENCES Admins(id) ON DELETE SET NULL,
+    INDEX idx_cleanup (status, archived_at),
     INDEX idx_type_status (type, status),
     INDEX idx_created_at (created_at),
     INDEX idx_severity (severity)

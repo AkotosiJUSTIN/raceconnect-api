@@ -16,39 +16,69 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle form submission
     announcementForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-
-        // Show loading state
-        btnText.textContent = 'Posting...';
-        loadingSpinner.style.display = 'block';
-        submitBtn.disabled = true;
-        progressBar.style.width = '0%';
-
-        const formData = new FormData(this);
-
+    
         try {
+            btnText.textContent = 'Posting...';
+            loadingSpinner.style.display = 'block';
+            submitBtn.disabled = true;
+            progressBar.style.width = '0%';
+    
+            const formData = new FormData(this);
+            
+            // Validate form data before submission
+            const title = formData.get('announcementTitle');
+            const content = formData.get('announcementContent');
+            const image = formData.get('announcementImage');
+
+            if (!title || !content) {
+                throw new Error('Title and content are required');
+            }
+
+            if (image && image.size > 0) {
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (image.size > maxSize) {
+                    throw new Error('Image size should be less than 5MB');
+                }
+            }
+    
             const response = await fetch('fetch_api.php?action=post_announcement', {
                 method: 'POST',
                 body: formData
             });
-
+    
             progressBar.style.width = '50%';
-            const result = await response.json();
-
-            if (result.success) {
-                showFloatingMessage('Announcement posted successfully!', 'success');
-                announcementForm.reset();
-                previewContainer.style.display = 'none';
-                updateCharacterCount();
-            } else {
-                progressBar.style.width = '100%';
-                showFloatingMessage(result.error || 'Failed to post announcement', 'error');
+    
+            const text = await response.text();
+    
+            // Check if response is empty
+            if (!text.trim()) {
+                throw new Error('Server returned empty response');
             }
-        } catch (error) {
-            console.error('Error:', error);
+    
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (parseError) {
+                console.error('Parse error:', parseError, 'Response:', text);
+                throw new Error('Server returned invalid response format');
+            }
+    
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to post announcement');
+            }
+    
             progressBar.style.width = '100%';
-            showFloatingMessage('An error occurred while posting the announcement', 'error');
+            showFloatingMessage('Announcement posted successfully!', 'success');
+            announcementForm.reset();
+            previewContainer.style.display = 'none';
+            resetImagePreview();
+            updateCharacterCount();
+    
+        } catch (error) {
+            console.error('Error details:', error);
+            progressBar.style.width = '100%';
+            showFloatingMessage(error.message, 'error');
         } finally {
-            // Reset button state
             btnText.textContent = 'Post Announcement';
             loadingSpinner.style.display = 'none';
             submitBtn.disabled = false;
