@@ -37,6 +37,16 @@ $total_reported_posts = $row['total_posts'];
 $result = $conn->query("SELECT COUNT(*) AS total_items FROM marketplace_items WHERE report = 'reported'");
 $row = $result->fetch_assoc();
 $total_reported_items = $row['total_items'];
+
+$mostPopularQuery = "SELECT category, COUNT(*) as post_count 
+                    FROM posts 
+                    WHERE status != 'Archived'
+                    GROUP BY category 
+                    ORDER BY post_count DESC 
+                    LIMIT 1";
+$result = $conn->query($mostPopularQuery);
+$mostPopular = $result->fetch_assoc();
+$popularCategory = $mostPopular ? $mostPopular['category'] : 'No posts yet';
 ?>
 
 <!DOCTYPE html>
@@ -164,7 +174,7 @@ $total_reported_items = $row['total_items'];
                 <div class="stat-card">
                 <box-icon type='solid' name='star' color="#b91c1c"></box-icon>
                     <div class="stat-text">
-                        <div class="stat-number">Open Wheel Racing</div>
+                        <div class="stat-number" id="popularCategory"><?php echo htmlspecialchars($popularCategory); ?></div>
                         <div class="stat-label">Most Popular Category</div>
                     </div>
                 </div>

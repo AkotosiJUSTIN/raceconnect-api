@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.error || 'Failed to fetch data');
             }
 
+            // Update most popular category card
+            const mostPopularCard = document.querySelector('.stat-number');
+            if (mostPopularCard && data.mostPopular) {
+                mostPopularCard.textContent = data.mostPopular.category;
+            }
+
             // Create the chart
             const chart = new Chart(ctx, {
                 type: "bar",
@@ -25,13 +31,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         data: data.counts,
                         backgroundColor: gradient,
                         borderColor: "rgba(220, 38, 38, 1)",
-                        borderWidth: 2}],
+                        borderWidth: 2
+                    }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
                         legend: {
                             display: false,
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.parsed.y} posts`;
+                                }
+                            }
                         },
                         title: {
                             display: true,
@@ -50,7 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 color: 'rgba(0, 0, 0, 0.1)'
                             },
                             ticks: {
-                                precision: 0
+                                precision: 0,
+                                callback: function(value) {
+                                    return value + ' posts';
+                                }
                             }
                         },
                         x: {
@@ -62,28 +79,25 @@ document.addEventListener('DOMContentLoaded', () => {
                                 minRotation: 0,
                                 autoSkip: true,
                                 callback: function(value) {
-                                  const label = this.getLabelForValue(value);
-                                  // Break long labels into multiple lines
-                                  if (window.innerWidth < 768) {
-                                      // For mobile screens
-                                      const words = label.split(' ');
-                                      return words.map(word => 
-                                          word.length > 8 ? word.substring(0, 6) + '...' : word
-                                      );
-                                  } else {
-                                      // For larger screens
-                                      return label.length > 15 ? 
-                                          label.split(' ').map(word => 
-                                              word.length > 10 ? word.substring(0, 8) + '...' : word
-                                          ) : 
-                                          label;
-                                  }
-                              },
-                              font: {
-                                  size: function() {
-                                      return window.innerWidth < 768 ? 10 : 12;
-                                  }
-                              }
+                                    const label = this.getLabelForValue(value);
+                                    if (window.innerWidth < 768) {
+                                        const words = label.split(' ');
+                                        return words.map(word => 
+                                            word.length > 8 ? word.substring(0, 6) + '...' : word
+                                        );
+                                    } else {
+                                        return label.length > 15 ? 
+                                            label.split(' ').map(word => 
+                                                word.length > 10 ? word.substring(0, 8) + '...' : word
+                                            ) : 
+                                            label;
+                                    }
+                                },
+                                font: {
+                                    size: function() {
+                                        return window.innerWidth < 768 ? 10 : 12;
+                                    }
+                                }
                             }
                         }
                     }
@@ -99,14 +113,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function updateChartDetails(categories, counts) {
-  const maxCount = Math.max(...counts);
-  const minCount = Math.min(...counts);
-  const highestCategories = categories.filter((_, index) => counts[index] === maxCount);
-  const lowestCategories = categories.filter((_, index) => counts[index] === minCount);
+    // Find the highest count and its index
+    const maxCount = Math.max(...counts);
+    const maxIndex = counts.indexOf(maxCount);
+    
+    // Update the stat card
+    const popularCategoryElement = document.getElementById('popularCategory');
+    if (popularCategoryElement && maxCount > 0) {
+        popularCategoryElement.textContent = categories[maxIndex];
+    }
 
-
-  document.querySelector('.chart-highest-value').textContent = highestCategories.join(', ');
-  document.querySelector('.chart-highest-number').textContent = maxCount;
-  document.querySelector('.chart-lowest-value').textContent = lowestCategories.join(', ');
-  document.querySelector('.chart-lowest-number').textContent = minCount;
+    // Update other chart details
+    document.querySelector('.chart-highest-value').textContent = categories[maxIndex] || 'None';
+    document.querySelector('.chart-highest-number').textContent = maxCount + ' posts';
+    
+    // Find lowest (excluding zero counts if possible)
+    const nonZeroCounts = counts.filter(count => count > 0);
+    const minCount = nonZeroCounts.length > 0 ? Math.min(...nonZeroCounts) : 0;
+    const minIndex = counts.indexOf(minCount);
+    
+    document.querySelector('.chart-lowest-value').textContent = minCount > 0 ? categories[minIndex] : 'None';
+    document.querySelector('.chart-lowest-number').textContent = minCount + ' posts';
 }

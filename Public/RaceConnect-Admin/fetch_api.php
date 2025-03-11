@@ -102,7 +102,6 @@ $conn->close();
 
 function fetchDashboardData($conn) {
     try {
-        //Define all categories from db
         $allCategories = [
             'Formula 1',
             'Formula Drift',
@@ -118,7 +117,8 @@ function fetchDashboardData($conn) {
             COUNT(*) as count
             FROM posts 
             WHERE status != 'Archived'
-            GROUP BY category";
+            GROUP BY category
+            ORDER BY count DESC";
         
         $result = $conn->query($query);
         
@@ -127,23 +127,31 @@ function fetchDashboardData($conn) {
         }
         
         $categoryCounts = array_fill_keys($allCategories, 0);
+        $mostPopularCategory = null;
+        $maxCount = 0;
         
         while ($row = $result->fetch_assoc()) {
             if (isset($categoryCounts[$row['category']])) {
-                $categoryCounts[$row['category']] = $row['count'];
+                $count = (int)$row['count'];
+                $categoryCounts[$row['category']] = $count;
+                
+                if ($count > $maxCount) {
+                    $maxCount = $count;
+                    $mostPopularCategory = $row['category'];
+                }
             }
         }
 
-        //Sort the counts by category
         arsort($categoryCounts);
-
-        $categories = array_keys($categoryCounts);
-        $counts = array_values($categoryCounts);
         
         echo json_encode([
             'success' => true,
-            'categories' => $categories,
-            'counts' => $counts
+            'categories' => array_keys($categoryCounts),
+            'counts' => array_values($categoryCounts),
+            'mostPopular' => [
+                'category' => $mostPopularCategory ?? 'No posts yet',
+                'count' => $maxCount
+            ]
         ]);
         
     } catch (Exception $e) {
