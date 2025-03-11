@@ -93,11 +93,11 @@ CREATE TABLE IF NOT EXISTS Marketplace_Items (
     price DECIMAL(10, 2) NOT NULL,
     category ENUM('Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship') DEFAULT 'Formula 1',
     listing_status ENUM('Available', 'Sold', 'Reserved') DEFAULT 'Available',
-    previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL;
+    previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL,
     favorite_count INT DEFAULT 0,
     status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
     report ENUM ('none', 'reported') DEFAULT 'None',
-    reported_at TIMESTAMP NULL DEFAULT NULL;
+    reported_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE
@@ -183,7 +183,7 @@ CREATE TABLE Post_Comments (
     post_id INT NOT NULL, 
     owner_id INT NOT NULL, 
     comment TEXT NOT NULL,
-    likes INT DEFAULT 0;
+    likes INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
@@ -258,7 +258,7 @@ CREATE TABLE Reports (
     reporter_id INT NOT NULL,
     reason VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('pending', 'resolved', 'hidden') DEFAULT 'pending';
+    status ENUM('pending', 'resolved', 'hidden') DEFAULT 'pending',
     resolved_at TIMESTAMP NULL DEFAULT NULL,
     resolved_by INT NULL,
     FOREIGN KEY (resolved_by) REFERENCES Admins(id) ON DELETE SET NULL,
