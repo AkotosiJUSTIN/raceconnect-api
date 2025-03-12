@@ -86,6 +86,11 @@ class ReportController {
             if (!$reportId || $reportId == 0) {
                 throw new Exception('Failed to create report.');
             }
+
+            // Update the post's report status if post_id is provided
+            if (isset($data['post_id'])) {
+                $this->report->updatePostReportStatus($data['post_id']);
+            }
             
             http_response_code(201);
             echo json_encode(['message' => 'Report created successfully', 'report_id' => $reportId]);

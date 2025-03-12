@@ -80,6 +80,12 @@ class Report {
         return $stmt->execute($params);
     }
 
+    public function updatePostReportStatus($postId) {
+        $stmt = $this->pdo->prepare("UPDATE posts SET report = 'reported' WHERE id = :post_id");
+        $stmt->bindParam(':post_id', $postId, PDO::PARAM_INT);
+        return $stmt->execute();
+    }
+
     public function deleteReport($id) {
         $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
