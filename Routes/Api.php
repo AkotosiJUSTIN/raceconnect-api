@@ -13,6 +13,7 @@ use Controller\Repost\PostRepostController;
 use Controller\AuthController;
 use Controller\FriendsController;
 use Controller\AnnouncementController;
+use Controller\ReportController;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -180,6 +181,10 @@ class Api {
 
                 case 'announcements':
                     $this->handleRequest(new AnnouncementController($this->conn), $method, $id);
+                    break;
+
+                case 'reports':
+                    $this->handleRequest(new ReportController($this->conn), $method, $id);
                     break;
                 
                 default:
