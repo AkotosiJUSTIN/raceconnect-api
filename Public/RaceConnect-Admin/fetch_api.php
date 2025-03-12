@@ -87,6 +87,9 @@ switch ($action) {
     case 'bulk_archive_notifications':
         bulkArchiveNotifications($conn);
     break;
+    case 'mark_notification_read':
+        markNotificationAsRead($conn);
+        return;
     case 'post_announcement':
         postAnnouncement($conn);
         break;
@@ -224,6 +227,55 @@ function createReportNotification($conn, $itemId, $reportId, $type, $reason) {
     } catch (Exception $e) {
         error_log("Error creating notification: " . $e->getMessage());
         throw $e;
+    }
+}
+
+function markNotificationAsRead($conn) {
+    try {
+        // Get POST data
+        $input = file_get_contents('php://input');
+        error_log("Received input: " . $input); // Debug log
+        
+        $data = json_decode($input, true);
+        if (!$data || !isset($data['notification_id'])) {
+            throw new Exception("Invalid or missing notification_id");
+        }
+
+        $notificationId = intval($data['notification_id']);
+        
+        // Prepare and execute update query
+        $stmt = $conn->prepare("
+            UPDATE admin_notifications 
+            SET is_read = 1 
+            WHERE id = ?
+        ");
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+
+        $stmt->bind_param("i", $notificationId);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+
+        echo json_encode([
+            'success' => true,
+            'affected_rows' => $affected,
+            'message' => 'Notification updated successfully'
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Error in markNotificationAsRead: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
     }
 }
 
@@ -369,7 +421,7 @@ function fetchNotifications($conn) {
             an.type,
             an.content,
             an.severity,
-            an.is_read,
+            COALESCE(an.is_read, 0) as is_read,
             an.created_at,
             an.report_id,
             an.status,
@@ -403,6 +455,8 @@ function fetchNotifications($conn) {
         
         $notifications = [];
         while ($row = $result->fetch_assoc()) {
+            // Ensure is_read is properly cast to integer
+            $row['is_read'] = (int)$row['is_read'];
             $notifications[] = $row;
         }
         
@@ -420,8 +474,6 @@ function fetchNotifications($conn) {
         ]);
     }
 }
-
-
 
 // Add this function to verify admin password
 function verifyAdminPassword($conn, $email, $password) {

@@ -67,6 +67,23 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
 }
 
+.notification-content.unread {
+    font-weight: 600;
+    background-color: rgba(185, 28, 28, 0.05);
+}
+
+tr.unread {
+    background-color: rgba(185, 28, 28, 0.02);
+}
+
+tr.read {
+    background-color: transparent;
+}
+
+.notification-content.read {
+    font-weight: normal;
+}
+
 .archive-btn {
     display: flex;
     align-items: center;

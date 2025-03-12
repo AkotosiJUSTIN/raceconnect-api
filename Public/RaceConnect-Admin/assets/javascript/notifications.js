@@ -189,32 +189,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const filterValue = filterDropdown.value;
 
         const filteredNotifications = notificationsData.filter(notification => {
-            const matchesSearch = 
-                (notification.reporter_username || '').toLowerCase().includes(searchTerm) ||
-                (notification.post_title || '').toLowerCase().includes(searchTerm) ||
-                (notification.report_reason || '').toLowerCase().includes(searchTerm);
-            
-            const matchesFilter = filterValue === 'all' || 
-                                (filterValue === 'unread' && !notification.is_read) ||
-                                (filterValue === 'read' && notification.is_read);
+            // Check if the notification matches the search term
+        const matchesSearch = 
+        (notification.reporter_username || '').toLowerCase().includes(searchTerm) ||
+        (notification.post_title || '').toLowerCase().includes(searchTerm) ||
+        (notification.report_reason || '').toLowerCase().includes(searchTerm);
+    
+        // Check if the notification matches the filter
+        const isRead = notification.is_read === 1 || notification.is_read === true;
+        const matchesFilter = filterValue === 'all' || 
+                            (filterValue === 'unread' && !isRead) ||
+                            (filterValue === 'read' && isRead);
 
-            return matchesSearch && matchesFilter;
-        });
+        return matchesSearch && matchesFilter;
+    });
 
         populateNotifications(filteredNotifications);
     }
 
     function populateNotifications(notifications) {
-        console.log('Populating notifications:', notifications); // Debug log
-
         const notificationsList = document.getElementById('notificationTableBody');
         if (!notificationsList) {
             console.error('Notification table body not found');
             return;
         }
-
+    
         notificationsList.innerHTML = '';
-
+    
         if (!notifications || notifications.length === 0) {
             notificationsList.innerHTML = `
                 <tr>
@@ -222,16 +223,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>`;
             return;
         }
-
+    
         notifications.forEach(notification => {
             const row = document.createElement('tr');
+            row.classList.add(notification.is_read === 1 ? 'read' : 'unread');
+            
             row.innerHTML = `
                 <td>
                     <input type="checkbox" class="notification-check" data-id="${notification.id}">
                 </td>
                 <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
                 <td>
-                    <div class="notification-content">
+                    <div class="notification-content ${notification.is_read === 1 ? 'read' : 'unread'}">
                         <strong>${escapeHtml(notification.post_title || notification.title || 'Untitled')}</strong><br>
                         <span class="report-reason">${escapeHtml(notification.report_reason || notification.content || 'No reason provided')}</span>
                     </div>
@@ -239,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${new Date(notification.created_at).toLocaleString()}</td>
                 <td>
                     <div class="actions">
-                        <button class="view-btn" onclick="handleViewPost(${notification.post_id}, ${notification.marketplace_item_id}, '${notification.type}')" title="View Item">
+                        <button class="view-btn" onclick="handleViewPost(${notification.post_id}, ${notification.marketplace_item_id}, '${notification.type}', ${notification.id})" title="View Item">
                             <box-icon type='solid' name='show' color="white"></box-icon>
                         </button>
                         <button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
@@ -248,12 +251,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </td>
             `;
-
+    
             const checkbox = row.querySelector('.notification-check');
             if (checkbox) {
                 checkbox.addEventListener('change', updateBulkActionButton);
             }
-
+    
             notificationsList.appendChild(row);
         });
     }
@@ -283,18 +286,58 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, "&#039;");
     }
 
-    // Update the handleViewPost function
-    window.handleViewPost = function(postId, marketplaceItemId, type) {
-        // Determine the correct URL based on the notification type
-        let redirectUrl;
-        if (type === 'marketplace_report') {
-            redirectUrl = `index_marketplace.php?item_id=${marketplaceItemId}&highlight=true`;
-        } else if (type === 'post_report') {
-            redirectUrl = `index_posts.php?post_id=${postId}&highlight=true`;
-        }
-
-        if (redirectUrl) {
-            window.location.href = redirectUrl;
+    // Updated handleViewPost function
+    window.handleViewPost = async function(postId, marketplaceItemId, type, notificationId) {
+        try {
+            console.log("Attempting to mark notification as read:", notificationId);
+    
+            const response = await fetch('fetch_api.php?action=mark_notification_read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    notification_id: notificationId
+                })
+            });
+    
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server response was not JSON');
+            }
+    
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || `Server error: ${response.status}`);
+            }
+    
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to update notification');
+            }
+    
+            // Update local data
+            const notification = notificationsData.find(n => n.id === notificationId);
+            if (notification) {
+                notification.is_read = 1;
+                filterAndPopulateTable();
+            }
+    
+            // Handle redirect
+            let redirectUrl;
+            if (type === 'marketplace_report') {
+                redirectUrl = `index_marketplace.php?item_id=${marketplaceItemId}&highlight=true`;
+            } else if (type === 'post_report') {
+                redirectUrl = `index_posts.php?post_id=${postId}&highlight=true`;
+            }
+    
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            }
+    
+        } catch (error) {
+            console.error("Error details:", error);
+            alert(`Failed to update notification: ${error.message}`);
         }
     };
 
