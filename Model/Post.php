@@ -32,19 +32,17 @@ class Post {
     }
 
     public function uploadPostImageToS3($imageData, $imageName) {
-        // Validate file type and size before uploading
         if (!$this->isValidImage($imageData)) {
             throw new Exception("Invalid image file.");
         }
 
-        // Generate a unique identifier and append it to the image name
         $uniqueId = uniqid();
         $uniqueImageName = $uniqueId . '-' . basename($imageName);
 
         try {
             $result = $this->s3->putObject([
-                'Bucket' => 'raceconnect-images', // Replace with your S3 bucket name
-                'Key'    => 'post-images/' . $uniqueImageName, // Prevent path traversal
+                'Bucket' => 'raceconnect-images',
+                'Key'    => 'post-images/' . $uniqueImageName,
                 'Body'   => $imageData
             ]);
             return $result['ObjectURL'];
@@ -54,14 +52,13 @@ class Post {
     }
 
     private function isValidImage($imageData) {
-        // Basic validation for image files
-        return (strlen($imageData) > 0 && strlen($imageData) <= 25000000); // 25MB limit
+        return (strlen($imageData) > 0 && strlen($imageData) <= 25000000);
     }
 
     public function savePostImage($postId, $imageUrl) {
         $stmt = $this->pdo->prepare("INSERT INTO Post_Images (post_id, image_url) VALUES (:post_id, :image_url)");
         return $stmt->execute([
-            ':post_id' => (int) $postId,  // Force integer conversion
+            ':post_id' => (int) $postId,
             ':image_url' => filter_var($imageUrl, FILTER_SANITIZE_URL)
         ]);
     }
@@ -86,43 +83,36 @@ class Post {
     
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
 
-    public function getPostById($userId, $limit = 10, $offset = 0) {
+    public function getPostById($id) {
         $query = "
-            SELECT 
+            SELECT
                 p.*,
                 u.username,
                 u.profile_picture
             FROM {$this->table} p
-            JOIN Users u ON p.user_id = u.id
-            WHERE p.user_id = :user_id
-            ORDER BY p.created_at DESC
-            LIMIT :limit OFFSET :offset
+            LEFT JOIN Users u ON p.user_id = u.id
+            WHERE p.id = :id
+            LIMIT 1
         ";
     
         $stmt = $this->pdo->prepare($query);
-        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
     
-        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $post = $stmt->fetch(PDO::FETCH_ASSOC);
     
-        // Fetch images for each post
-        foreach ($posts as &$post) {
-            $postId = $post['id'];
+        if ($post) {
             $imageQuery = "SELECT image_url FROM Post_Images WHERE post_id = :post_id";
             $imageStmt = $this->pdo->prepare($imageQuery);
-            $imageStmt->bindValue(':post_id', $postId, PDO::PARAM_INT);
+            $imageStmt->bindValue(':post_id', $id, PDO::PARAM_INT);
             $imageStmt->execute();
             $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
         }
     
-        return $posts;
+        error_log("Fetched post by ID $id: " . json_encode($post));
+        return $post ? $post : null;
     }
-    
-    
 
     public function createPost($data) {
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} 
@@ -142,12 +132,11 @@ class Post {
         ]);
     
         if ($success) {
-            return $this->pdo->lastInsertId(); // ✅ Return the post ID
+            return $this->pdo->lastInsertId();
         }
     
-        return false; // ❌ Return false if insert failed
+        return false;
     }
-    
 
     public function updatePost($id, $data) {
         $fields = [];
@@ -187,7 +176,7 @@ class Post {
         }
 
         if (empty($fields)) {
-            return false; // No fields to update
+            return false;
         }
 
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id");
@@ -268,7 +257,6 @@ class Post {
     
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-        // Fetch all images for each post
         foreach ($posts as &$post) {
             $imageStmt = $this->pdo->prepare("SELECT image_url FROM Post_Images WHERE post_id = :post_id");
             $imageStmt->bindValue(':post_id', $post['id'], PDO::PARAM_INT);
@@ -278,15 +266,42 @@ class Post {
     
         return $posts;
     }
-    
 
-    public function getPostsByUserId($userId, $limit = 10, $offset = 0) {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE user_id = :user_id LIMIT :limit OFFSET :offset");
-        $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
-        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+    public function getPostByUserId($userId, $limit = 10, $offset = 0) {
+        $query = "
+            SELECT 
+                p.*,
+                u.username,
+                u.profile_picture
+            FROM {$this->table} p
+            JOIN Users u ON p.user_id = u.id
+            WHERE p.user_id = :user_id
+            ORDER BY p.created_at DESC
+            LIMIT :limit OFFSET :offset
+        ";
+    
+        $stmt = $this->pdo->prepare($query);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        // Fetch images for each post
+        foreach ($posts as &$post) {
+            $postId = $post['id'];
+            $imageQuery = "SELECT image_url FROM Post_Images WHERE post_id = :post_id";
+            $imageStmt = $this->pdo->prepare($imageQuery);
+            $imageStmt->bindValue(':post_id', $postId, PDO::PARAM_INT);
+            $imageStmt->execute();
+            $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
+        }
+    
+        // Log the result to verify the output
+        error_log("Posts fetched for user $userId: " . json_encode($posts));
+    
+        return $posts;
     }
 }
 ?>

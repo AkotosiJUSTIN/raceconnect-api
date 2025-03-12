@@ -17,12 +17,12 @@ class PostController {
     public function processRequest($method, $id = null, $action = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true) ?? [];
-
+    
             switch ($method) {
                 case 'POST':
                     $this->handlePostRequest();
                     break;
-
+    
                 case 'GET':
                     if ($action === 'images' && $id) {
                         $this->handleGetPostImagesRequest($id);
@@ -31,23 +31,27 @@ class PostController {
                         $userId = (int) $_GET['user_id'];
                         $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
                         $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
-
                         $this->handleGetPostsByCategoryAndPrivacyRequest($userId, $categories, $limit, $offset);
                     } elseif (isset($_GET['user_id'])) {
                         $this->handleGetPostsByUserIdRequest((int)$_GET['user_id']);
-                    } else {
+                    } elseif ($id) {
                         $this->handleGetRequest($id);
+                    } else {
+                        $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
+                        $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
+                        $posts = $this->post->getAllPosts($limit, $offset);
+                        echo json_encode($posts);
                     }
                     break;
-
+    
                 case 'PUT':
                     $this->handlePutRequest($id, $data);
                     break;
-
+    
                 case 'DELETE':
                     $this->handleDeleteRequest($id);
                     break;
-
+    
                 default:
                     http_response_code(405);
                     echo json_encode(["error" => "Method not allowed"]);
@@ -102,19 +106,27 @@ class PostController {
     private function handleGetRequest($id) {
         if ($id) {
             $post = $this->post->getPostById($id);
-            echo json_encode($post);
+            if ($post) {
+                header('Content-Type: application/json');
+                echo json_encode($post);
+            } else {
+                http_response_code(404);
+                echo json_encode(['error' => 'Post not found']);
+            }
         } else {
             $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
             $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
             $posts = $this->post->getAllPosts($limit, $offset);
+            header('Content-Type: application/json');
             echo json_encode($posts);
         }
     }
-
+    
     private function handleGetPostsByUserIdRequest($userId) {
         $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
         $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
-        $posts = $this->post->getPostById($userId, $limit, $offset);
+        $posts = $this->post->getPostByUserId($userId, $limit, $offset);
+        header('Content-Type: application/json');
         echo json_encode($posts);
     }
 
