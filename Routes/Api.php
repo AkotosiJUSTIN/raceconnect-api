@@ -126,13 +126,22 @@ class Api {
                     }
                     break;
                         
-                case 'marketplace-items':
-                    if (isset($path[2]) && $path[2] === 'images') {
-                        $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');
-                    } else {
-                        $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
-                    }
-                    break;
+                    case 'marketplace-items':
+                        if (isset($path[2])) {
+                            if ($path[2] === 'images') {
+                                $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');
+                            } elseif ($path[1] === 'user') {
+                                // Correctly set $id to the user ID and $action to 'user'
+                                $id = $path[2]; // userId (e.g., "4")
+                                $action = 'user';
+                                $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, $action);
+                            } else {
+                                $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
+                            }
+                        } else {
+                            $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
+                        }
+                        break;
 
                 case 'notifications':
                     $this->handleRequest(new NotificationController($this->conn), $method, $id);

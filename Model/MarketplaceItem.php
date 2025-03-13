@@ -73,10 +73,25 @@ class MarketplaceItem {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getAllItems($limit = 10, $offset = 0) {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} LIMIT :limit OFFSET :offset");
-        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+    public function getAllItems($limit = 10, $offset = 0, $excludeSellerId = null) {
+        $query = "SELECT * FROM {$this->table}";
+        $params = [
+            ':limit' => $limit,
+            ':offset' => $offset
+        ];
+    
+        if ($excludeSellerId !== null) {
+            $query .= " WHERE seller_id != :exclude_seller_id";
+            $params[':exclude_seller_id'] = $excludeSellerId;
+        }
+    
+        $query .= " LIMIT :limit OFFSET :offset";
+        $stmt = $this->pdo->prepare($query);
+    
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+    
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -138,5 +153,24 @@ class MarketplaceItem {
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         return $stmt->execute();
     }
+
+    public function getItemByUserId($userId, $limit = 10, $offset = 0) {
+        $stmt = $this->pdo->prepare("
+            SELECT 
+                mi.*,
+                mii.image_url
+            FROM {$this->table} mi
+            LEFT JOIN Marketplace_Item_Images mii ON mi.id = mii.marketplace_item_id
+            WHERE mi.seller_id = :seller_id 
+            LIMIT :limit 
+            OFFSET :offset
+        ");
+        
+        $stmt->bindParam(':seller_id', $userId, PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
-?>

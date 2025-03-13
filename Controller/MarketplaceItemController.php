@@ -15,6 +15,7 @@ class MarketplaceItemController {
     }
 
     public function processRequest($method, $id = null, $action = null) {
+        error_log("Method: $method, ID: $id, Action: $action");
         try {
             $data = json_decode(file_get_contents("php://input"), true) ?? [];
     
@@ -22,6 +23,8 @@ class MarketplaceItemController {
                 case 'GET':
                     if ($action === 'images' && $id) {
                         $this->handleGetItemImagesRequest($id);
+                    } elseif ($action === 'user' && $id) {
+                        $this->handleGetItemsByUserRequest($id);
                     } else {
                         $this->handleGetRequest($id);
                     }
@@ -36,13 +39,11 @@ class MarketplaceItemController {
                     $this->handleDeleteRequest($id);
                     break;
                 default:
-                    http_response_code(405);
-                    echo json_encode(['message' => 'Unsupported HTTP method']);
+                    $this->respond(405, ['message' => 'Method Not Allowed']);
             }
         } catch (Exception $e) {
-            error_log("Server error: " . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['message' => 'Internal Server Error', 'error' => $e->getMessage()]);
+            error_log("Server error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->respond(500, ['message' => 'Internal Server Error', 'error' => $e->getMessage()]);
         }
     }
 
@@ -51,30 +52,43 @@ class MarketplaceItemController {
             if ($id) {
                 $item = $this->item->getItemById($id);
                 if (!$item) {
-                    http_response_code(404);
-                    echo json_encode(['message' => 'Item not found']);
+                    $this->respond(404, ['message' => 'Item not found']);
                     return;
                 }
-                http_response_code(200);
-                echo json_encode($item);
+                $this->respond(200, $item);
             } else {
-                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
-                $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
-                
-                if ($limit <= 0 || $offset < 0) {
-                    http_response_code(400);
-                    echo json_encode(['message' => 'Invalid limit or offset values']);
-                    return;
-                }
-                
-                $items = $this->item->getAllItems($limit, $offset);
-                http_response_code(200);
-                echo json_encode($items);
+                $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
+                $offset = max(0, (int)($_GET['offset'] ?? 0));
+                $excludeSellerId = isset($_GET['exclude_seller_id']) && is_numeric($_GET['exclude_seller_id']) 
+                    ? (int)$_GET['exclude_seller_id'] 
+                    : null;
+    
+                $items = $this->item->getAllItems($limit, $offset, $excludeSellerId);
+                $this->respond(200, $items);
             }
         } catch (Exception $e) {
-            error_log("GET request failed: " . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to retrieve items', 'error' => $e->getMessage()]);
+            throw new Exception("GET request failed: " . $e->getMessage());
+        }
+    }
+
+    private function handleGetItemsByUserRequest($userId) {
+        try {
+            $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
+            $offset = max(0, (int)($_GET['offset'] ?? 0));
+            
+            if (!is_numeric($userId)) {
+                $this->respond(400, ['message' => 'Invalid user ID']);
+                return;
+            }
+
+            $items = $this->item->getItemByUserId($userId, $limit, $offset);
+            if (empty($items)) {
+                $this->respond(404, ['message' => 'No items found for this user']);
+                return;
+            }
+            $this->respond(200, $items);
+        } catch (Exception $e) {
+            throw new Exception("Get items by user failed: " . $e->getMessage());
         }
     }
 
@@ -83,99 +97,100 @@ class MarketplaceItemController {
             $data = $_POST ?: json_decode(file_get_contents("php://input"), true);
             
             if (!$this->validateItemData($data, true)) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Invalid input data']);
+                $this->respond(400, ['message' => 'Invalid or missing required fields']);
                 return;
             }
             
             $itemId = $this->item->createItem($data);
-            if (!$itemId || $itemId == 0) {
-                throw new Exception('Failed to create item.');
+            if (!$itemId) {
+                throw new Exception('Failed to create item');
             }
-            error_log("Generated Post ID: " . $itemId); // Debugging: Check if the ID is valid
             
             $imageUrls = $this->handleImageUpload($itemId);
-            http_response_code(201);
-            echo json_encode(['message' => 'Item created successfully', 'item_id' => $itemId, 'image_urls' => $imageUrls]);
+            $this->respond(201, [
+                'message' => 'Item created successfully',
+                'item_id' => $itemId,
+                'image_urls' => $imageUrls
+            ]);
         } catch (Exception $e) {
-            error_log("POST request failed: " . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to create item', 'error' => $e->getMessage()]);
+            throw new Exception("POST request failed: " . $e->getMessage());
         }
     }
 
     private function handlePutRequest($id, $data) {
         try {
-            if (!$id) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Item ID is required']);
+            if (!$id || !is_numeric($id)) {
+                $this->respond(400, ['message' => 'Valid Item ID is required']);
                 return;
             }
             
             if (!$this->validateItemData($data, false)) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Invalid input data for update']);
+                $this->respond(400, ['message' => 'Invalid update data']);
                 return;
             }
             
             if (!$this->item->updateItem($id, $data)) {
-                throw new Exception("Failed to update item.");
+                $this->respond(404, ['message' => 'Item not found or no changes made']);
+                return;
             }
             
-            http_response_code(200);
-            echo json_encode(['message' => 'Item updated successfully']);
+            $this->respond(200, ['message' => 'Item updated successfully']);
         } catch (Exception $e) {
-            error_log("PUT request failed: " . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to update item', 'error' => $e->getMessage()]);
+            throw new Exception("PUT request failed: " . $e->getMessage());
         }
     }
 
     private function handleDeleteRequest($id) {
         try {
-            if (!$id) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Item ID is required']);
+            if (!$id || !is_numeric($id)) {
+                $this->respond(400, ['message' => 'Valid Item ID is required']);
                 return;
             }
             
             if (!$this->item->deleteItem($id)) {
-                throw new Exception("Failed to delete item.");
+                $this->respond(404, ['message' => 'Item not found']);
+                return;
             }
             
-            http_response_code(200);
-            echo json_encode(['message' => 'Item deleted successfully']);
+            $this->respond(200, ['message' => 'Item deleted successfully']);
         } catch (Exception $e) {
-            error_log("DELETE request failed: " . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to delete item', 'error' => $e->getMessage()]);
+            throw new Exception("DELETE request failed: " . $e->getMessage());
         }
     }
 
     private function validateItemData($data, $isNew = true) {
-        if ($isNew && (!isset($data['seller_id'], $data['title'], $data['description'], $data['price']))) {
-            return false;
+        $requiredFields = ['seller_id', 'title', 'description', 'price', 'category'];
+        
+        if ($isNew) {
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field]) || empty(trim($data[$field]))) {
+                    return false;
+                }
+            }
         }
-        return !empty($data['title']) && !empty($data['description']) && is_numeric($data['price']) && $data['price'] > 0;
+        
+        return (!empty($data['title']) || !$isNew) &&
+               (!empty($data['description']) || !$isNew) &&
+               (!isset($data['price']) || (is_numeric($data['price']) && $data['price'] >= 0));
     }
 
     private function handleImageUpload($itemId) {
         $imageUrls = [];
 
-        if (empty($_FILES['image']['name'])) {
+        if (empty($_FILES['image']) || !is_array($_FILES['image']['name'])) {
             return $imageUrls;
         }
         
         try {
-            foreach ($_FILES['image']['tmp_name'] as $index => $tmpName) {
-                if ($_FILES['image']['error'][$index] === UPLOAD_ERR_OK) {
-                    $imageData = file_get_contents($tmpName);
-                    $imageName = uniqid() . '-' . basename($_FILES['image']['name'][$index]);
-                    $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
+            $fileCount = count($_FILES['image']['name']);
+            for ($i = 0; $i < $fileCount; $i++) {
+                if ($_FILES['image']['error'][$i] === UPLOAD_ERR_OK) {
+                    $imageData = file_get_contents($_FILES['image']['tmp_name'][$i]);
+                    $imageName = $_FILES['image']['name'][$i];
                     
-                    if ($imageUrl) {
+                    $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
+                    if ($imageUrl && $this->item->saveItemImage($itemId, $imageUrl)) {
                         $imageUrls[] = $imageUrl;
-                        $this->item->saveItemImage($itemId, $imageUrl);
                     }
                 }
             }
@@ -188,17 +203,23 @@ class MarketplaceItemController {
 
     private function handleGetItemImagesRequest($itemId) {
         try {
-            $images = $this->item->getItemImages($itemId);
-            if ($images) {
-                http_response_code(200);
-                echo json_encode($images);
-            } else {
-                http_response_code(404);
-                echo json_encode(['message' => 'No images found for this item']);
+            if (!is_numeric($itemId)) {
+                $this->respond(400, ['message' => 'Valid Item ID is required']);
+                return;
             }
+            
+            $images = $this->item->getItemImages($itemId);
+            $this->respond($images ? 200 : 404, 
+                $images ?: ['message' => 'No images found for this item']);
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to retrieve item images', 'error' => $e->getMessage()]);
+            throw new Exception("Get item images failed: " . $e->getMessage());
         }
+    }
+
+    private function respond($code, $data) {
+        http_response_code($code);
+        header('Content-Type: application/json');
+        echo json_encode($data);
+        exit;
     }
 }
