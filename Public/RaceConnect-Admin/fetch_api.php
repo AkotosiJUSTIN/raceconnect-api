@@ -586,14 +586,13 @@ function fetchPosts($conn) {
                 WHEN r.pending_count > 0 THEN 'reported'
                 WHEN r.pending_count IS NULL OR r.pending_count = 0 THEN 'none'
                 ELSE p.report
-            END
-            WHERE p.status != 'Hidden'";
+            END";
         
         if (!$conn->query($syncQuery)) {
             throw new Exception("Failed to sync report status: " . $conn->error);
         }
 
-        // Then fetch posts that are either reported or hidden
+        // Modified query to show both reported and hidden posts
         $query = "SELECT 
             p.id, 
             p.user_id, 
@@ -608,18 +607,19 @@ function fetchPosts($conn) {
             u.username as reporter_username,
             GROUP_CONCAT(pi.image_url) as images
             FROM posts p
-            LEFT JOIN reports r ON p.id = r.post_id AND r.status = 'pending'
+            LEFT JOIN reports r ON p.id = r.post_id
             LEFT JOIN users u ON r.reporter_id = u.id
             LEFT JOIN post_images pi ON p.id = pi.post_id
             WHERE (p.report = 'reported' OR p.status = 'Hidden')
             AND p.status != 'Archived'
-            AND EXISTS (
-                SELECT 1 FROM reports 
-                WHERE post_id = p.id 
-                AND status = 'pending'
-            )
             GROUP BY p.id
-            ORDER BY r.created_at DESC";
+            ORDER BY 
+                CASE 
+                    WHEN r.status = 'pending' THEN 1
+                    WHEN p.status = 'Hidden' THEN 2
+                    ELSE 3
+                END,
+                r.created_at DESC";
         
         $result = $conn->query($query);
         
@@ -687,19 +687,21 @@ function fetchMarketplaceItems($conn) {
     try {
         // Update reported_at timestamp when items are reported
         $syncQuery = "UPDATE marketplace_items mi 
-            INNER JOIN (
+            LEFT JOIN (
                 SELECT marketplace_item_id, MIN(created_at) as first_report
                 FROM reports 
                 WHERE status = 'pending'
                 GROUP BY marketplace_item_id
             ) r ON mi.id = r.marketplace_item_id 
-            SET mi.report = 'reported',
-                mi.reported_at = COALESCE(mi.reported_at, r.first_report)
-            WHERE r.marketplace_item_id IS NOT NULL";
+            SET mi.report = CASE
+                WHEN r.marketplace_item_id IS NOT NULL THEN 'reported'
+                ELSE 'none'
+            END,
+            mi.reported_at = COALESCE(mi.reported_at, r.first_report)";
         
         $conn->query($syncQuery);
 
-        // Then fetch items that are either reported or hidden
+        // Modified query to show both reported and hidden items
         $queryItems = "SELECT 
             mi.id, 
             mi.seller_id, 
@@ -717,18 +719,18 @@ function fetchMarketplaceItems($conn) {
             u.username as reporter_username,
             GROUP_CONCAT(mii.image_url) as image_urls
             FROM marketplace_items mi
-            LEFT JOIN reports r ON mi.id = r.marketplace_item_id AND r.status = 'pending'
+            LEFT JOIN reports r ON mi.id = r.marketplace_item_id
             LEFT JOIN users u ON r.reporter_id = u.id
             LEFT JOIN marketplace_item_images mii ON mi.id = mii.marketplace_item_id
             WHERE (mi.report = 'reported' OR mi.status = 'Hidden')
             AND mi.status != 'Archived'
-            AND EXISTS (
-                SELECT 1 FROM reports 
-                WHERE marketplace_item_id = mi.id 
-                AND status = 'pending'
-            )
             GROUP BY mi.id
             ORDER BY 
+                CASE 
+                    WHEN r.status = 'pending' THEN 1
+                    WHEN mi.status = 'Hidden' THEN 2
+                    ELSE 3
+                END,
                 COALESCE(mi.reported_at, mi.created_at) DESC";
 
         $resultItems = $conn->query($queryItems);
@@ -751,7 +753,7 @@ function fetchMarketplaceItems($conn) {
         error_log("Error in fetchMarketplaceItems: " . $e->getMessage());
         echo json_encode([
             'success' => false,
-            'error' => 'Failed to fetch items'
+            'error' => 'Failed to fetch items: ' . $e->getMessage()
         ]);
     }
 }
