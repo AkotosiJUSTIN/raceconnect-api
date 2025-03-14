@@ -159,12 +159,12 @@ class MarketplaceItem {
         $stmt = $this->pdo->prepare("
             SELECT 
                 mi.*,
-                mii.image_url
+                COALESCE(MAX(mii.image_url), '') AS image_url
             FROM {$this->table} mi
             LEFT JOIN Marketplace_Item_Images mii ON mi.id = mii.marketplace_item_id
             WHERE mi.seller_id = :seller_id 
-            LIMIT :limit 
-            OFFSET :offset
+            GROUP BY mi.id
+            LIMIT :limit OFFSET :offset
         ");
         
         $stmt->bindParam(':seller_id', $userId, PDO::PARAM_INT);
@@ -172,6 +172,8 @@ class MarketplaceItem {
         $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
         
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        error_log("getItemByUserId returned " . count($items) . " items for user $userId");
+        return $items;
     }
 }

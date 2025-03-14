@@ -79,15 +79,18 @@ class MarketplaceItemController {
                 $this->respond(400, ['message' => 'Invalid user ID']);
                 return;
             }
-
+    
+            error_log("Fetching items for user ID: $userId with limit $limit and offset $offset");
             $items = $this->item->getItemByUserId($userId, $limit, $offset);
+            error_log("Fetched items count: " . count($items));
             if (empty($items)) {
-                $this->respond(404, ['message' => 'No items found for this user']);
+                $this->respond(200, []); // Return empty list instead of 404
                 return;
             }
             $this->respond(200, $items);
         } catch (Exception $e) {
-            throw new Exception("Get items by user failed: " . $e->getMessage());
+            error_log("Get items by user failed: " . $e->getMessage());
+            $this->respond(500, ['message' => 'Internal Server Error', 'error' => $e->getMessage()]);
         }
     }
 

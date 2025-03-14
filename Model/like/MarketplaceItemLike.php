@@ -6,8 +6,8 @@ use PDO;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 class MarketplaceItemLike {
-    private $pdo;
-    private $table = "Marketplace_Item_Likes";
+    public $pdo;
+    public $table = "Marketplace_Item_Likes";
 
     public function __construct($db) {
         $this->pdo = $db;
@@ -35,14 +35,14 @@ class MarketplaceItemLike {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // Check if a user already liked the item
+    // Check if a user already liked the item and return the full row
     public function hasUserLiked($user_id, $marketplace_item_id) {
-        $stmt = $this->pdo->prepare("SELECT id FROM {$this->table} WHERE user_id = :user_id AND marketplace_item_id = :marketplace_item_id");
+        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE user_id = :user_id AND marketplace_item_id = :marketplace_item_id");
         $stmt->execute([
             ':user_id' => $user_id,
             ':marketplace_item_id' => $marketplace_item_id
         ]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ? true : false;
+        return $stmt->fetch(PDO::FETCH_ASSOC); // Return full row or false if not found
     }
 
     // Add a like to an item

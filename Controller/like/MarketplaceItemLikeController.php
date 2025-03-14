@@ -21,7 +21,6 @@ class MarketplaceItemLikeController {
             switch ($method) {
                 case 'GET':
                     if ($id) {
-                        // Get like count if requested
                         if (isset($_GET['count'])) {
                             $count = $this->marketplaceItemLike->getLikeCount($id);
                             echo json_encode($count);
@@ -47,22 +46,19 @@ class MarketplaceItemLikeController {
 
                 case 'POST':
                     $data = json_decode(file_get_contents("php://input"), true);
-                    
-                    // Validate input data
+
                     if (empty($data['user_id']) || empty($data['marketplace_item_id']) || empty($data['owner_id'])) {
                         http_response_code(400);
                         echo json_encode(['message' => 'Missing required fields: user_id, marketplace_item_id, owner_id']);
                         return;
                     }
 
-                    // Prevent duplicate likes
                     if ($this->marketplaceItemLike->hasUserLiked($data['user_id'], $data['marketplace_item_id'])) {
                         http_response_code(409);
                         echo json_encode(['message' => 'User has already liked this item']);
                         return;
                     }
 
-                    // Add like
                     if ($this->marketplaceItemLike->createLike($data)) {
                         http_response_code(201);
                         echo json_encode(['message' => 'Like added successfully']);
@@ -73,17 +69,40 @@ class MarketplaceItemLikeController {
                     break;
 
                 case 'DELETE':
-                    if (!$id) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Like ID is required']);
-                        return;
-                    }
+                    $data = json_decode(file_get_contents("php://input"), true);
 
-                    if ($this->marketplaceItemLike->deleteLike($id)) {
-                        echo json_encode(['message' => 'Like deleted successfully']);
+                    if ($id) {
+                        // Delete by like ID
+                        if ($this->marketplaceItemLike->deleteLike($id)) {
+                            echo json_encode(['message' => 'Like deleted successfully']);
+                        } else {
+                            http_response_code(500);
+                            echo json_encode(['message' => 'Failed to delete like']);
+                        }
+                    } elseif (isset($data['user_id']) && isset($data['marketplace_item_id'])) {
+                        // Delete by user_id and marketplace_item_id
+                        $like = $this->marketplaceItemLike->hasUserLiked($data['user_id'], $data['marketplace_item_id']);
+                        if ($like) {
+                            $stmt = $this->marketplaceItemLike->pdo->prepare(
+                                "DELETE FROM {$this->marketplaceItemLike->table} WHERE user_id = :user_id AND marketplace_item_id = :marketplace_item_id"
+                            );
+                            $result = $stmt->execute([
+                                ':user_id' => $data['user_id'],
+                                ':marketplace_item_id' => $data['marketplace_item_id']
+                            ]);
+                            if ($result) {
+                                echo json_encode(['message' => 'Like removed successfully']);
+                            } else {
+                                http_response_code(500);
+                                echo json_encode(['message' => 'Failed to remove like']);
+                            }
+                        } else {
+                            http_response_code(404);
+                            echo json_encode(['message' => 'Like not found']);
+                        }
                     } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to delete like']);
+                        http_response_code(400);
+                        echo json_encode(['message' => 'Like ID or user_id and marketplace_item_id required']);
                     }
                     break;
 

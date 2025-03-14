@@ -36,6 +36,10 @@ class Api {
 
         $resource = $path[0] ?? null;
         $id = $path[1] ?? null;
+        $action = $path[2] ?? null;
+
+        // Debug log for routing
+        error_log("Routing: Resource=$resource, ID=$id, Action=$action, Query=" . http_build_query($_GET));
 
         // Handle invalid routes
         if (!$resource) {
@@ -47,7 +51,7 @@ class Api {
         try {
             switch ($resource) {
                 case 'users':
-                    if (isset($path[2]) && $path[2] === 'images') {
+                    if ($action === 'images' && $id) {
                         $this->handleRequest(new UserController($this->conn), $method, $id, 'images');
                     } else {
                         $this->handleRequest(new UserController($this->conn), $method, $id);
@@ -98,7 +102,7 @@ class Api {
                     break;
 
                 case 'reset-password':
-                    if ($method !== 'PUT') { // Ensure this is PUT
+                    if ($method !== 'PUT') {
                         http_response_code(405);
                         echo json_encode(['message' => 'Method Not Allowed: Use PUT for reset password']);
                         exit;
@@ -113,10 +117,10 @@ class Api {
                     break;
 
                 case 'posts':
-                    if (isset($path[2])) {
-                        if ($path[2] === 'images') {
+                    if ($action) {
+                        if ($action === 'images') {
                             $this->handleRequest(new PostController($this->conn), $method, $id, 'images');
-                        } elseif ($path[2] === 'category' && isset($path[3])) {
+                        } elseif ($action === 'category' && isset($path[3])) {
                             $this->handleRequest(new PostController($this->conn), $method, $path[3], 'category');
                         } else {
                             $this->handleRequest(new PostController($this->conn), $method, $id);
@@ -125,23 +129,23 @@ class Api {
                         $this->handleRequest(new PostController($this->conn), $method, $id);
                     }
                     break;
-                        
-                    case 'marketplace-items':
-                        if (isset($path[2])) {
-                            if ($path[2] === 'images') {
-                                $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');
-                            } elseif ($path[1] === 'user') {
-                                // Correctly set $id to the user ID and $action to 'user'
-                                $id = $path[2]; // userId (e.g., "4")
-                                $action = 'user';
-                                $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, $action);
-                            } else {
-                                $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
-                            }
-                        } else {
-                            $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
-                        }
-                        break;
+
+                case 'marketplace-items':
+                    if ($id === 'user' && isset($path[2]) && is_numeric($path[2])) {
+                        // For /marketplace-items/user/{userId}
+                        $userId = $path[2]; // The user ID is in $path[2] (e.g., '4')
+                        error_log("Routing to handleGetItemsByUserRequest for user ID: $userId");
+                        $this->handleRequest(new MarketplaceItemController($this->conn), $method, $userId, 'user');
+                    } elseif ($id && isset($path[2]) && $path[2] === 'images' && is_numeric($id)) {
+                        // For /marketplace-items/{id}/images
+                        error_log("Routing to handleGetItemImagesRequest for item ID: $id");
+                        $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');
+                    } else {
+                        // For /marketplace-items (with query params) or /marketplace-items/{id}
+                        error_log("Routing to handleGetRequest for resource with ID: $id");
+                        $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
+                    }
+                    break;
 
                 case 'notifications':
                     $this->handleRequest(new NotificationController($this->conn), $method, $id);
@@ -185,7 +189,7 @@ class Api {
                     }
                 
                     $controller = new UserController($this->conn);
-                    $controller->uploadProfilePicture($_FILES); // ✅ Fix: Pass $_FILES directly
+                    $controller->uploadProfilePicture($_FILES);
                     break;
 
                 case 'announcements':
@@ -195,7 +199,7 @@ class Api {
                 case 'reports':
                     $this->handleRequest(new ReportController($this->conn), $method, $id);
                     break;
-                
+
                 default:
                     http_response_code(404);
                     echo json_encode(['message' => 'Not Found: Invalid resource']);
@@ -210,9 +214,6 @@ class Api {
         }
     }
 
-    /**
-     * Validates and retrieves JSON input data
-     */
     private function getJsonInput() {
         $input = file_get_contents("php://input");
         $data = json_decode($input, true);
@@ -226,9 +227,6 @@ class Api {
         return $data;
     }
 
-    /**
-     * Handles request for controllers with CRUD operations
-     */
     private function handleRequest($controller, $method, $id, $action = null) {
         if (!method_exists($controller, 'processRequest')) {
             http_response_code(500);
