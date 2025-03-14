@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Update most popular category card
-            const mostPopularCard = document.querySelector('.stat-number');
+            const mostPopularCard = document.getElementById('popularCategory');
             if (mostPopularCard && data.mostPopular) {
                 mostPopularCard.textContent = data.mostPopular.category;
             }
@@ -123,15 +123,19 @@ function updateChartDetails(categories, counts) {
         popularCategoryElement.textContent = categories[maxIndex];
     }
 
-    // Update other chart details
+    // Update highest details
     document.querySelector('.chart-highest-value').textContent = categories[maxIndex] || 'None';
     document.querySelector('.chart-highest-number').textContent = maxCount + ' posts';
     
-    // Find lowest (excluding zero counts if possible)
+    // Find all lowest categories (excluding zeros if possible)
     const nonZeroCounts = counts.filter(count => count > 0);
     const minCount = nonZeroCounts.length > 0 ? Math.min(...nonZeroCounts) : 0;
-    const minIndex = counts.indexOf(minCount);
     
-    document.querySelector('.chart-lowest-value').textContent = minCount > 0 ? categories[minIndex] : 'None';
+    // Get all categories with the lowest count
+    const lowestCategories = categories.filter((category, index) => counts[index] === minCount);
+    
+    // Display all lowest categories
+    document.querySelector('.chart-lowest-value').textContent = 
+        minCount > 0 ? lowestCategories.join(', ') : 'None';
     document.querySelector('.chart-lowest-number').textContent = minCount + ' posts';
 }
