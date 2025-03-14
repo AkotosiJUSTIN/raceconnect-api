@@ -132,16 +132,16 @@ class Api {
 
                 case 'marketplace-items':
                     if ($id === 'user' && isset($path[2]) && is_numeric($path[2])) {
-                        // For /marketplace-items/user/{userId}
-                        $userId = $path[2]; // The user ID is in $path[2] (e.g., '4')
+                        $userId = $path[2];
                         error_log("Routing to handleGetItemsByUserRequest for user ID: $userId");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $userId, 'user');
                     } elseif ($id && isset($path[2]) && $path[2] === 'images' && is_numeric($id)) {
-                        // For /marketplace-items/{id}/images
                         error_log("Routing to handleGetItemImagesRequest for item ID: $id");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');
+                    } elseif ($id && isset($path[2]) && $path[2] === 'likes' && is_numeric($id)) {
+                        error_log("Routing to handleGetItemLikesRequest for item ID: $id");
+                        $this->handleRequest(new MarketplaceItemLikeController($this->conn), $method, $id);
                     } else {
-                        // For /marketplace-items (with query params) or /marketplace-items/{id}
                         error_log("Routing to handleGetRequest for resource with ID: $id");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
                     }
@@ -164,7 +164,32 @@ class Api {
                     break;
 
                 case 'marketplace-item-likes':
-                    $this->handleRequest(new MarketplaceItemLikeController($this->conn), $method, $id);
+                    $controller = new MarketplaceItemLikeController($this->conn);
+                    if ($action === 'toggle' && $method === 'POST') {
+                        $data = $this->getJsonInput();
+                        if (empty($data['user_id']) || empty($data['marketplace_item_id']) || empty($data['owner_id'])) {
+                            http_response_code(400);
+                            echo json_encode(['message' => 'Missing required fields: user_id, marketplace_item_id, owner_id']);
+                            exit;
+                        }
+                        $controller->processRequest($method, null);
+                    } elseif ($action === 'user' && $id && $method === 'GET') {
+                        $_GET['user_id'] = $id;
+                        $controller->processRequest($method, null);
+                    } elseif ($action === 'liked-posts' && $method === 'GET') {
+                        // Modified route: /marketplace-item-likes/liked-posts?user_ids=1,2,3
+                        if (!isset($_GET['user_ids'])) {
+                            http_response_code(400);
+                            echo json_encode(['message' => 'user_ids parameter is required']);
+                            exit;
+                        }
+                        $controller->processRequest($method, null);
+                    } elseif ($action === 'count' && $id && $method === 'GET') {
+                        $_GET['count'] = true;
+                        $controller->processRequest($method, $id);
+                    } else {
+                        $controller->processRequest($method, $id);
+                    }
                     break;
 
                 case 'post-comments':
@@ -181,13 +206,11 @@ class Api {
                         echo json_encode(['message' => 'Method Not Allowed: Use POST for uploading profile picture']);
                         exit;
                     }
-                    
                     if (empty($_FILES)) {
                         http_response_code(400);
                         echo json_encode(['message' => 'No file uploaded']);
                         exit;
                     }
-                
                     $controller = new UserController($this->conn);
                     $controller->uploadProfilePicture($_FILES);
                     break;
@@ -237,4 +260,3 @@ class Api {
         $controller->processRequest($method, $id, $action);
     }
 }
-?>

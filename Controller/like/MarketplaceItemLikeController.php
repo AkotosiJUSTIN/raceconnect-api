@@ -23,103 +23,108 @@ class MarketplaceItemLikeController {
                     if ($id) {
                         if (isset($_GET['count'])) {
                             $count = $this->marketplaceItemLike->getLikeCount($id);
-                            echo json_encode($count);
+                            $this->sendResponse(200, [
+                                'status' => 'success',
+                                'data' => $count,
+                                'message' => null
+                            ]);
+                        } elseif (isset($_GET['user_ids'])) {
+                            // New endpoint for multiple user IDs
+                            $user_ids = array_map('intval', explode(',', $_GET['user_ids']));
+                            $likedItems = $this->marketplaceItemLike->getLikedItemsByUserIds($user_ids);
+                            $this->sendResponse(200, [
+                                'status' => 'success',
+                                'data' => $likedItems ?: new \stdClass(), // Empty object if no results
+                                'message' => empty($likedItems) ? 'No liked items found for these users' : null
+                            ]);
+                        } elseif (isset($_GET['user_id']) && isset($_GET['liked_posts'])) {
+                            $likedPosts = $this->marketplaceItemLike->getLikedItemsByUserIds($_GET['user_id']);
+                            $this->sendResponse(200, [
+                                'status' => 'success',
+                                'data' => $likedPosts ?: [],
+                                'message' => empty($likedPosts) ? 'No liked posts found' : null
+                            ]);
+                        } elseif (isset($_GET['user_id'])) {
+                            $liked = $this->marketplaceItemLike->hasUserLiked($_GET['user_id'], $id);
+                            $this->sendResponse(200, [
+                                'status' => 'success',
+                                'data' => ['liked' => (bool)$liked],
+                                'message' => null
+                            ]);
                         } else {
                             $likes = $this->marketplaceItemLike->getLikesByItemId($id);
-                            if ($likes) {
-                                echo json_encode($likes);
-                            } else {
-                                http_response_code(404);
-                                echo json_encode(['message' => 'No likes found for this item']);
-                            }
+                            $this->sendResponse(200, [
+                                'status' => 'success',
+                                'data' => $likes ?: [],
+                                'message' => empty($likes) ? 'No likes found for this item' : null
+                            ]);
                         }
+                    } elseif (isset($_GET['user_id'])) {
+                        $userLikes = $this->marketplaceItemLike->getUserLikedItems($_GET['user_id']);
+                        $this->sendResponse(200, [
+                            'status' => 'success',
+                            'data' => $userLikes ?: [],
+                            'message' => empty($userLikes) ? 'No liked items found' : null
+                        ]);
                     } else {
                         $likes = $this->marketplaceItemLike->getAllLikes();
-                        if ($likes) {
-                            echo json_encode($likes);
-                        } else {
-                            http_response_code(404);
-                            echo json_encode(['message' => 'No likes found']);
-                        }
+                        $this->sendResponse(200, [
+                            'status' => 'success',
+                            'data' => $likes ?: [],
+                            'message' => empty($likes) ? 'No likes found' : null
+                        ]);
                     }
                     break;
 
                 case 'POST':
                     $data = json_decode(file_get_contents("php://input"), true);
-
-                    if (empty($data['user_id']) || empty($data['marketplace_item_id']) || empty($data['owner_id'])) {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Missing required fields: user_id, marketplace_item_id, owner_id']);
+                    if (!isset($data['user_id']) || !isset($data['marketplace_item_id']) || !isset($data['owner_id'])) {
+                        $this->sendResponse(400, ['message' => 'Missing required fields: user_id, marketplace_item_id, owner_id']);
                         return;
                     }
 
-                    if ($this->marketplaceItemLike->hasUserLiked($data['user_id'], $data['marketplace_item_id'])) {
-                        http_response_code(409);
-                        echo json_encode(['message' => 'User has already liked this item']);
+                    $user_id = filter_var($data['user_id'], FILTER_VALIDATE_INT);
+                    $marketplace_item_id = filter_var($data['marketplace_item_id'], FILTER_VALIDATE_INT);
+                    $owner_id = filter_var($data['owner_id'], FILTER_VALIDATE_INT);
+
+                    if ($user_id === false || $marketplace_item_id === false || $owner_id === false) {
+                        $this->sendResponse(400, ['message' => 'Invalid field values: user_id, marketplace_item_id, and owner_id must be integers']);
                         return;
                     }
 
-                    if ($this->marketplaceItemLike->createLike($data)) {
-                        http_response_code(201);
-                        echo json_encode(['message' => 'Like added successfully']);
-                    } else {
-                        http_response_code(500);
-                        echo json_encode(['message' => 'Failed to add like']);
+                    if ($user_id <= 0 || $marketplace_item_id <= 0) {
+                        $this->sendResponse(400, ['message' => 'Invalid field values: user_id and marketplace_item_id must be positive integers']);
+                        return;
                     }
+
+                    $result = $this->marketplaceItemLike->toggleLike($user_id, $marketplace_item_id, $owner_id);
+                    $this->sendResponse($result['status'], $result['data']);
                     break;
 
                 case 'DELETE':
-                    $data = json_decode(file_get_contents("php://input"), true);
-
                     if ($id) {
-                        // Delete by like ID
-                        if ($this->marketplaceItemLike->deleteLike($id)) {
-                            echo json_encode(['message' => 'Like deleted successfully']);
-                        } else {
-                            http_response_code(500);
-                            echo json_encode(['message' => 'Failed to delete like']);
-                        }
-                    } elseif (isset($data['user_id']) && isset($data['marketplace_item_id'])) {
-                        // Delete by user_id and marketplace_item_id
-                        $like = $this->marketplaceItemLike->hasUserLiked($data['user_id'], $data['marketplace_item_id']);
-                        if ($like) {
-                            $stmt = $this->marketplaceItemLike->pdo->prepare(
-                                "DELETE FROM {$this->marketplaceItemLike->table} WHERE user_id = :user_id AND marketplace_item_id = :marketplace_item_id"
-                            );
-                            $result = $stmt->execute([
-                                ':user_id' => $data['user_id'],
-                                ':marketplace_item_id' => $data['marketplace_item_id']
-                            ]);
-                            if ($result) {
-                                echo json_encode(['message' => 'Like removed successfully']);
-                            } else {
-                                http_response_code(500);
-                                echo json_encode(['message' => 'Failed to remove like']);
-                            }
-                        } else {
-                            http_response_code(404);
-                            echo json_encode(['message' => 'Like not found']);
-                        }
+                        $result = $this->marketplaceItemLike->deleteLike($id);
+                        $this->sendResponse($result ? 200 : 500, $result ? ['message' => 'Like deleted successfully'] : ['message' => 'Failed to delete like']);
                     } else {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Like ID or user_id and marketplace_item_id required']);
+                        $this->sendResponse(400, ['message' => 'Like ID required']);
                     }
                     break;
 
                 default:
-                    http_response_code(405);
-                    echo json_encode(['message' => 'Unsupported HTTP method']);
+                    $this->sendResponse(405, ['message' => 'Unsupported HTTP method']);
             }
         } catch (InvalidArgumentException $e) {
-            http_response_code(400);
-            echo json_encode(['message' => 'Invalid argument', 'error' => $e->getMessage()]);
+            $this->sendResponse(400, ['message' => 'Invalid argument', 'error' => $e->getMessage()]);
         } catch (RuntimeException $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'Runtime error', 'error' => $e->getMessage()]);
+            $this->sendResponse(500, ['message' => 'Runtime error', 'error' => $e->getMessage()]);
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['message' => 'An error occurred', 'error' => $e->getMessage()]);
+            $this->sendResponse(500, ['message' => 'An error occurred', 'error' => $e->getMessage()]);
         }
     }
+
+    private function sendResponse($statusCode, $data) {
+        http_response_code($statusCode);
+        header('Content-Type: application/json');
+        echo json_encode($data);
+    }
 }
-?>

@@ -169,6 +169,14 @@ CREATE TABLE Post_Likes (
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
+-- Index for user-specific queries on Post_Likes
+CREATE INDEX idx_user_id_post_likes ON Post_Likes(user_id);
+
+
+-- For Post Likes
+ALTER TABLE Post_Likes
+ADD UNIQUE KEY unique_user_post_like (user_id, post_id);
+
 -- Marketplace Item Likes Table
 CREATE TABLE Marketplace_Item_Likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -180,6 +188,13 @@ CREATE TABLE Marketplace_Item_Likes (
     FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE CASCADE,
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
+
+-- For Marketplace Item Likes
+ALTER TABLE Marketplace_Item_Likes
+ADD UNIQUE KEY unique_user_item_like (user_id, marketplace_item_id);
+
+-- Index for user-specific queries on Marketplace_Item_Likes
+CREATE INDEX idx_user_id_marketplace_likes ON Marketplace_Item_Likes(user_id);
 
 -- Post Comments Table (Updated)
 CREATE TABLE Post_Comments (
