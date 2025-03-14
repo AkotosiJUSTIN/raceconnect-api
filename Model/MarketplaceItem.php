@@ -120,33 +120,58 @@ class MarketplaceItem {
     public function updateItem($id, $data) {
         $fields = [];
         $params = [':id' => (int) $id];
-
-        if (!empty($data['title'])) {
+    
+        // Handle title
+        if (isset($data['title']) && $data['title'] !== '') {
             $fields[] = "title = :title";
             $params[':title'] = htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8');
         }
-        if (!empty($data['description'])) {
+    
+        // Handle description
+        if (isset($data['description']) && $data['description'] !== '') {
             $fields[] = "description = :description";
             $params[':description'] = htmlspecialchars($data['description'], ENT_QUOTES, 'UTF-8');
         }
-        if (!empty($data['price']) && is_numeric($data['price'])) {
-            $fields[] = "price = :price";
-            $params[':price'] = (float) $data['price'];
-        }
-        if (!empty($data['category'])) {
+    
+        // Handle price (required, default to 0.00 if not provided or invalid)
+        $price = isset($data['price']) && is_numeric($data['price']) ? (float) $data['price'] : 0.00;
+        $fields[] = "price = :price"; // Always include price
+        $params[':price'] = $price;
+    
+        // Handle category
+        if (isset($data['category']) && $data['category'] !== '') {
             $fields[] = "category = :category";
             $params[':category'] = htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8');
         }
-        if (!empty($data['status']) && in_array($data['status'], ['Active', 'Hidden', 'Archived'])) {
-            $fields[] = "status = :status";
-            $params[':status'] = $data['status'];
+    
+        // Handle listing_status
+        if (isset($data['listing_status']) && $data['listing_status'] !== '') {
+            $fields[] = "listing_status = :listing_status";
+            $params[':listing_status'] = htmlspecialchars($data['listing_status'], ENT_QUOTES, 'UTF-8');
         }
+    
+        // Handle status
+        $status = $data['status'] ?? 'Active';
+        if (isset($status) && in_array($status, ['Active', 'Hidden', 'Archived'])) {
+            $fields[] = "status = :status";
+            $params[':status'] = $status;
+        }
+    
         if (empty($fields)) {
             return false;
         }
-
-        $stmt = $this->pdo->prepare("UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id");
-        return $stmt->execute($params);
+    
+        // Debug the query and parameters
+        $query = "UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id";
+        error_log("SQL Query: $query");
+        error_log("Parameters: " . json_encode($params));
+    
+        $stmt = $this->pdo->prepare($query);
+        $result = $stmt->execute($params);
+        if (!$result) {
+            error_log("SQL Execute Failed: " . json_encode($stmt->errorInfo()));
+        }
+        return $result;
     }
 
     public function deleteItem($id) {
@@ -176,4 +201,6 @@ class MarketplaceItem {
         error_log("getItemByUserId returned " . count($items) . " items for user $userId");
         return $items;
     }
+
+    
 }

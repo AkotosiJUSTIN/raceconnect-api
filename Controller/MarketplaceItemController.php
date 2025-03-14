@@ -29,7 +29,11 @@ class MarketplaceItemController {
                     }
                     break;
                 case 'POST':
-                    $this->handlePostRequest();
+                    if ($action === 'images' && $id) {
+                        $this->handleUploadItemImagesRequest($id);
+                    } else {
+                        $this->handlePostRequest();
+                    }
                     break;
                 case 'PUT':
                     $this->handlePutRequest($id, $data);
@@ -42,6 +46,29 @@ class MarketplaceItemController {
             }
         } catch (Exception $e) {
             error_log("Server error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $this->respond(500, ['message' => 'Internal Server Error', 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function handleUploadItemImagesRequest($id) {
+        try {
+            if (!$id || !is_numeric($id)) {
+                $this->respond(400, ['message' => 'Valid Item ID is required']);
+                return;
+            }
+    
+            $imageUrls = $this->handleImageUpload($id);
+            if (empty($imageUrls)) {
+                $this->respond(400, ['message' => 'No valid images uploaded']);
+                return;
+            }
+    
+            $this->respond(200, [
+                'message' => 'Images uploaded successfully',
+                'image_urls' => $imageUrls
+            ]);
+        } catch (Exception $e) {
+            error_log("Image upload failed: " . $e->getMessage());
             $this->respond(500, ['message' => 'Internal Server Error', 'error' => $e->getMessage()]);
         }
     }
@@ -131,12 +158,21 @@ class MarketplaceItemController {
                 return;
             }
             
+            // Handle image uploads if present in PUT request
+            $imageUrls = [];
+            if (!empty($_FILES['image']) && is_array($_FILES['image']['name'])) {
+                $imageUrls = $this->handleImageUpload($id);
+            }
+
             if (!$this->item->updateItem($id, $data)) {
                 $this->respond(404, ['message' => 'Item not found or no changes made']);
                 return;
             }
             
-            $this->respond(200, ['message' => 'Item updated successfully']);
+            $this->respond(200, [
+                'message' => 'Item updated successfully',
+                'image_urls' => $imageUrls
+            ]);
         } catch (Exception $e) {
             throw new Exception("PUT request failed: " . $e->getMessage());
         }
@@ -180,28 +216,38 @@ class MarketplaceItemController {
 
     private function handleImageUpload($itemId) {
         $imageUrls = [];
-
+    
+        error_log("Files received: " . json_encode($_FILES));
+    
         if (empty($_FILES['image']) || !is_array($_FILES['image']['name'])) {
+            error_log("No valid image files found in $_FILES[image]");
             return $imageUrls;
         }
         
         try {
             $fileCount = count($_FILES['image']['name']);
+            error_log("Processing $fileCount image files");
             for ($i = 0; $i < $fileCount; $i++) {
                 if ($_FILES['image']['error'][$i] === UPLOAD_ERR_OK) {
                     $imageData = file_get_contents($_FILES['image']['tmp_name'][$i]);
                     $imageName = $_FILES['image']['name'][$i];
                     
+                    error_log("Uploading image: $imageName");
                     $imageUrl = $this->item->uploadItemImageToS3($imageData, $imageName);
                     if ($imageUrl && $this->item->saveItemImage($itemId, $imageUrl)) {
                         $imageUrls[] = $imageUrl;
+                        error_log("Image uploaded successfully: $imageUrl");
+                    } else {
+                        error_log("Failed to save image to database or S3: $imageName");
                     }
+                } else {
+                    error_log("Upload error for image[$i]: " . $_FILES['image']['error'][$i]);
                 }
             }
         } catch (Exception $e) {
             error_log("Image upload failed: " . $e->getMessage());
         }
-
+    
         return $imageUrls;
     }
 
