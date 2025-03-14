@@ -1,5 +1,4 @@
 <?php
-
 namespace Controller;
 use Model\MarketplaceItem;
 use Exception;
@@ -169,9 +168,11 @@ class MarketplaceItemController {
             }
         }
         
+        $validStatuses = ['Active', 'Hidden', 'Archived'];
         return (!empty($data['title']) || !$isNew) &&
                (!empty($data['description']) || !$isNew) &&
-               (!isset($data['price']) || (is_numeric($data['price']) && $data['price'] >= 0));
+               (!isset($data['price']) || (is_numeric($data['price']) && $data['price'] >= 0)) &&
+               (!isset($data['status']) || in_array($data['status'], $validStatuses));
     }
 
     private function handleImageUpload($itemId) {

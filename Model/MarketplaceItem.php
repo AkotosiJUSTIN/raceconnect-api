@@ -20,7 +20,7 @@ class MarketplaceItem {
         $this->pdo = $db;
         $this->s3 = new S3Client([
             'version' => 'latest',
-            'region'  => 'ap-southeast-2', // Replace with your region
+            'region'  => 'ap-southeast-2',
             'credentials' => [
                 'key'    => $_ENV['AWS_ACCESS_KEY'],
                 'secret' => $_ENV['AWS_SECRET_KEY'],
@@ -32,18 +32,16 @@ class MarketplaceItem {
     }
 
     public function uploadItemImageToS3($imageData, $imageName) {
-        // Validate file type and size before uploading
         if (!$this->isValidImage($imageData)) {
             throw new Exception("Invalid image file.");
         }
 
-        // Generate a unique identifier and append it to the image name
         $uniqueId = uniqid();
         $uniqueImageName = $uniqueId . '-' . basename($imageName);
 
         try {
             $result = $this->s3->putObject([
-                'Bucket' => 'raceconnect-images', 
+                'Bucket' => 'raceconnect-images',
                 'Key'    => 'item-images/' . $uniqueImageName,
                 'Body'   => $imageData
             ]);
@@ -54,15 +52,14 @@ class MarketplaceItem {
     }
 
     private function isValidImage($imageData) {
-        // Basic validation for image files
-        return (strlen($imageData) > 0 && strlen($imageData) <= 25000000); // 25MB limit
+        return (strlen($imageData) > 0 && strlen($imageData) <= 25000000);
     }
 
     public function saveItemImage($itemId, $imageUrl) {
         $stmt = $this->pdo->prepare("INSERT INTO Marketplace_Item_Images (marketplace_item_id, image_url) VALUES (:item_id, :image_url)");
         return $stmt->execute([
-            ':item_id' => (int) $itemId, // Explicit type conversion
-            ':image_url' => htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8') // Sanitize URL
+            ':item_id' => (int) $itemId,
+            ':image_url' => htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8')
         ]);
     }
 
@@ -104,8 +101,8 @@ class MarketplaceItem {
     }
 
     public function createItem($data) {
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (seller_id, title, description, price, category) 
-                                    VALUES (:seller_id, :title, :description, :price, :category)");
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (seller_id, title, description, price, category, status) 
+                                    VALUES (:seller_id, :title, :description, :price, :category, 'Active')");
         $result = $stmt->execute([
             ':seller_id' => (int) $data['seller_id'],
             ':title' => htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8'),
@@ -115,7 +112,7 @@ class MarketplaceItem {
         ]);
 
         if ($result) {
-            return $this->pdo->lastInsertId(); // Return inserted ID
+            return $this->pdo->lastInsertId();
         }
         return false;
     }
@@ -140,8 +137,12 @@ class MarketplaceItem {
             $fields[] = "category = :category";
             $params[':category'] = htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8');
         }
+        if (!empty($data['status']) && in_array($data['status'], ['Active', 'Hidden', 'Archived'])) {
+            $fields[] = "status = :status";
+            $params[':status'] = $data['status'];
+        }
         if (empty($fields)) {
-            return false; // No valid fields to update
+            return false;
         }
 
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id");

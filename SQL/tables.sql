@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS Marketplace_Items (
     listing_status ENUM('Available', 'Sold', 'Reserved') DEFAULT 'Available',
     previous_status ENUM('Available', 'Sold', 'Reserved') DEFAULT NULL,
     favorite_count INT DEFAULT 0,
-    status ENUM('Active', 'Hidden', 'Archived', 'Available', 'Sold', 'Reserved') DEFAULT 'Available',
+    status ENUM('Active', 'Hidden', 'Archived') DEFAULT 'Active',
     archived_at timestamp NULL DEFAULT NULL,
     report ENUM ('none', 'reported') DEFAULT 'None',
     reported_at TIMESTAMP NULL DEFAULT NULL,
