@@ -431,3 +431,25 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE TRIGGER after_like_insert
+AFTER INSERT ON Post_Likes
+FOR EACH ROW
+BEGIN
+    UPDATE Posts
+    SET like_count = like_count + 1
+    WHERE id = NEW.post_id;
+END$$
+
+CREATE TRIGGER after_like_delete
+AFTER DELETE ON Post_Likes
+FOR EACH ROW
+BEGIN
+    UPDATE Posts
+    SET like_count = like_count - 1
+    WHERE id = OLD.post_id;
+END$$
+
+DELIMITER ;
