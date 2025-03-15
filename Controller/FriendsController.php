@@ -23,7 +23,6 @@ class FriendsController {
             if ($method === 'GET') {
                 $userId = $_GET['user_id'] ?? null;
             } elseif ($method === 'DELETE') {
-                // For DELETE requests, get user_id from query parameters
                 $userId = $_GET['user_id'] ?? null;
             } elseif (!isset($data['user_id']) || empty($data['user_id'])) {
                 $this->sendErrorResponse(400, 'User ID is required.');
@@ -31,12 +30,12 @@ class FriendsController {
             } else {
                 $userId = $data['user_id'];
             }
-
+    
             if ($userId === null || empty($userId)) {
                 $this->sendErrorResponse(400, 'User ID is required.');
                 return;
             }
-
+    
             switch ($method) {
                 case 'GET':
                     if ($action === 'list') {
@@ -45,23 +44,25 @@ class FriendsController {
                         $this->getPendingRequests($userId);
                     } elseif ($action === 'nonfriends') {
                         $this->getNonFriends($userId);
+                    } elseif ($action === 'accepted') { // New endpoint
+                        $this->getAcceptedFriends($userId);
                     } else {
                         $this->sendErrorResponse(400, 'Invalid action.');
                     }
                     break;
-
+    
                 case 'POST':
                     ($action === 'add') ? $this->addFriend($userId, $data) : $this->sendErrorResponse(400, 'Invalid action.');
                     break;
-
+    
                 case 'PUT':
                     ($action === 'update') ? $this->updateFriendStatus($userId, $data) : $this->sendErrorResponse(400, 'Invalid action.');
                     break;
-
+    
                 case 'DELETE':
                     ($action === 'remove') ? $this->removeFriend($userId, $data) : $this->sendErrorResponse(400, 'Invalid action.');
                     break;
-
+    
                 default:
                     $this->sendErrorResponse(405, 'Unsupported HTTP method.');
             }
@@ -78,6 +79,15 @@ class FriendsController {
             $this->sendSuccessResponse(200, $friendsList ?: []);
         } catch (Exception $e) {
             $this->sendErrorResponse(500, 'Failed to retrieve friends list.', $e);
+        }
+    }
+
+    private function getAcceptedFriends($userId) {
+        try {
+            $acceptedFriends = $this->friend->getAcceptedFriends($userId);
+            $this->sendSuccessResponse(200, $acceptedFriends ?: []);
+        } catch (Exception $e) {
+            $this->sendErrorResponse(500, 'Failed to retrieve accepted friends.', $e);
         }
     }
 

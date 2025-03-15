@@ -185,5 +185,27 @@ class Friend {
             return [];
         }
     }
+
+    public function getAcceptedFriends($userId) {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    u.id AS friend_id, 
+                    u.username, 
+                    f.status AS status, 
+                    u.profile_picture
+                FROM {$this->table} f
+                JOIN Users u ON 
+                    (f.friend_id = u.id AND f.user_id = :user_id) 
+                    OR (f.user_id = u.id AND f.friend_id = :user_id)
+                WHERE f.status = 'Accepted' AND u.id != :user_id
+            ");
+            $stmt->execute([':user_id' => $userId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error fetching accepted friends: " . $e->getMessage());
+            return [];
+        }
+    }
 }
 ?>
