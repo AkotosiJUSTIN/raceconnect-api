@@ -11,16 +11,18 @@
     },
     "minimum-stability": "stable",
     "require": {
-        "php": "~8.0.0",
-        "phpmailer/phpmailer": "^6.8.0",
+        "php": "^8.0.0",
         "aws/aws-sdk-php": "^3.235.0",
-        "vlucas/phpdotenv": "^5.5.0",
         "cboden/ratchet": "^0.4.4",
-        "symfony/http-foundation": "^5.4"
+        "phpmailer/phpmailer": "^6.8.0",
+        "ratchet/pawl": "^0.4.2",
+        "symfony/http-foundation": "^5.4",
+        "textalk/websocket": "^1.5",
+        "vlucas/phpdotenv": "^5.5.0"
     },
     "config": {
         "platform": {
-            "php": "8.0.30"
+            "php": "8.2.12"
         },
         "platform-check": false,
         "preferred-install": "dist",

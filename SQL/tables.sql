@@ -299,34 +299,56 @@ MODIFY COLUMN marketplace_item_id INT NULL,
 ADD FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE SET NULL,
 ADD FOREIGN KEY (marketplace_item_id) REFERENCES Marketplace_Items(id) ON DELETE SET NULL;
 
--- Conversations 
+-- Conversations Table
 CREATE TABLE conversations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     buyer_id INT NOT NULL,
     seller_id INT NOT NULL,
     product_id INT NOT NULL,
     last_message TEXT NULL,
-    last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_message_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (buyer_id, seller_id, product_id),
+    status ENUM('active', 'closed', 'archived') DEFAULT 'active',
+    unread_count_buyer INT DEFAULT 0,
+    unread_count_seller INT DEFAULT 0,
+    last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_conversation (buyer_id, seller_id, product_id),
+    INDEX idx_buyer (buyer_id, last_activity_at),
+    INDEX idx_seller (seller_id, last_activity_at),
+    INDEX idx_product (product_id),
     FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES marketplace_items(id) ON DELETE CASCADE
 );
 
--- Messages Table 
+-- Messages Table
 CREATE TABLE messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     conversation_id INT NOT NULL,
     sender_id INT NOT NULL,
     receiver_id INT NOT NULL,
+    message_type ENUM('text', 'image', 'system') DEFAULT 'text',
     message TEXT NOT NULL,
-    status ENUM('sent', 'delivered', 'read') DEFAULT 'sent',
+    media_url VARCHAR(255) NULL,
+    status ENUM('sent', 'delivered', 'read', 'failed') DEFAULT 'sent',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    delivered_at TIMESTAMP NULL,
+    read_at TIMESTAMP NULL,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    INDEX idx_conversation (conversation_id, created_at),
+    INDEX idx_sender (sender_id),
+    INDEX idx_receiver (receiver_id),
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
     FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+ALTER TABLE Notifications
+ADD COLUMN convo_id INT DEFAULT NULL,
+ADD CONSTRAINT fk_notifications_convo_id
+FOREIGN KEY (convo_id) 
+REFERENCES conversations(id) 
+ON DELETE CASCADE;
 
 -- Admin Notifications Table
 CREATE TABLE admin_notifications (
@@ -452,4 +474,38 @@ BEGIN
     WHERE id = OLD.post_id;
 END$$
 
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER after_message_insert
+AFTER INSERT ON messages
+FOR EACH ROW
+BEGIN
+    IF NEW.sender_id = (SELECT buyer_id FROM conversations WHERE id = NEW.conversation_id) THEN
+        UPDATE conversations 
+        SET unread_count_seller = unread_count_seller + 1
+        WHERE id = NEW.conversation_id;
+    ELSE
+        UPDATE conversations 
+        SET unread_count_buyer = unread_count_buyer + 1
+        WHERE id = NEW.conversation_id;
+    END IF;
+END;//
+
+CREATE TRIGGER after_message_read
+AFTER UPDATE ON messages
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'read' AND OLD.status != 'read' THEN
+        IF NEW.receiver_id = (SELECT buyer_id FROM conversations WHERE id = NEW.conversation_id) THEN
+            UPDATE conversations 
+            SET unread_count_buyer = GREATEST(unread_count_buyer - 1, 0)
+            WHERE id = NEW.conversation_id;
+        ELSE
+            UPDATE conversations 
+            SET unread_count_seller = GREATEST(unread_count_seller - 1, 0)
+            WHERE id = NEW.conversation_id;
+        END IF;
+    END IF;
+END;//
 DELIMITER ;
