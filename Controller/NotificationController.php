@@ -1,5 +1,4 @@
 <?php
-
 namespace Controller;
 use Model\Notification;
 use Exception;
@@ -69,24 +68,17 @@ class NotificationController {
         }
 
         // Validate required fields
-        if (!isset($data['user_id'], $data['type'], $data['content'])) {
+        if (!isset($data['user_id'], $data['type'], $data['content'], $data['trigger_user_id'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Missing required fields: user_id, type, content']);
+            echo json_encode(['error' => 'Missing required fields: user_id, type, content, trigger_user_id']);
             return;
         }
 
         // Validate type
-        $validTypes = ['like', 'comment', 'repost'];
+        $validTypes = ['like', 'comment', 'repost', 'post', 'marketplace', 'system', 'report'];
         if (!in_array($data['type'], $validTypes)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Invalid notification type. Allowed: like, comment, repost']);
-            return;
-        }
-
-        // Ensure either post_id or marketplace_item_id is provided
-        if (!isset($data['post_id']) && !isset($data['marketplace_item_id'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Either post_id or marketplace_item_id must be provided.']);
+            echo json_encode(['error' => 'Invalid notification type']);
             return;
         }
 
