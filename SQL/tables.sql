@@ -73,8 +73,7 @@ CREATE TABLE Posts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     archived_at timestamp NULL DEFAULT NULL,
     report ENUM('none', 'reported') DEFAULT 'none',
-    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
-    INDEX idx_cleanup (status, archived_at)
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
 -- Announcements Table
@@ -106,8 +105,7 @@ CREATE TABLE IF NOT EXISTS Marketplace_Items (
     reported_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE,
-    INDEX idx_cleanup (status, archived_at)
+    FOREIGN KEY (seller_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_seller_id ON Marketplace_Items(seller_id);
@@ -382,6 +380,18 @@ CREATE TABLE admin_notifications (
     INDEX idx_created_at (created_at),
     INDEX idx_severity (severity)
 );
+
+ALTER TABLE admin_notifications
+ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
+ADD INDEX idx_cleanup (status, archived_at);
+
+ALTER TABLE posts
+ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
+ADD INDEX idx_cleanup (status, archived_at);
+
+ALTER TABLE marketplace_items
+ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL,
+ADD INDEX idx_cleanup (status, archived_at);
 
 DELIMITER $$
 
