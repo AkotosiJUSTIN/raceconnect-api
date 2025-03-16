@@ -11,6 +11,7 @@ use Exception;
 
 header('Content-Type: application/json');
 
+
 class SendMessageController {
     private $pdo;
 
