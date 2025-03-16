@@ -3,38 +3,22 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
-use Dotenv\Dotenv;
-use Ratchet\Server\IoServer;
-use Ratchet\Http\HttpServer;
-use Ratchet\WebSocket\WsServer;
-use React\Socket\Server as ReactServer;
-use React\EventLoop\Factory as LoopFactory;
 
 class WebsocketServer implements MessageComponentInterface {
     protected $clients;
     private $pdo;
-    private $userConnections; // Array of arrays to store multiple connections per user_id
-    private $offlineMessages; // Store messages for offline users
+    private $userConnections;
 
     public function __construct() {
-        // Load .env file
-        $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
-        $dotenv->load();
-
         $this->clients = new \SplObjectStorage;
         $this->userConnections = [];
-        $this->offlineMessages = [];
 
-        // Get database credentials from .env
-        $dbHost = $_ENV['DB_HOST'];
-        $dbName = $_ENV['DB_NAME'];
-        $dbUser = $_ENV['DB_USER'];
-        $dbPass = $_ENV['DB_PASS'];
-
-        $dsn = "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4";
+        $dsn = "mysql:host=localhost;dbname=raceconnect;charset=utf8mb4";
+        $username = "root";
+        $password = "";
 
         try {
-            $this->pdo = new PDO($dsn, $dbUser, $dbPass, [
+            $this->pdo = new PDO($dsn, $username, $password, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
             ]);
@@ -44,56 +28,56 @@ class WebsocketServer implements MessageComponentInterface {
         }
     }
 
+    private function validateToken($userId, $token) {
+        $stmt = $this->pdo->prepare("
+            SELECT token 
+            FROM user_tokens 
+            WHERE user_id = ? 
+            AND token = ? 
+            AND expires_at > NOW()
+        ");
+        $stmt->execute([(string)$userId, $token]);
+        return $stmt->fetch() !== false;
+    }
+
     public function onOpen(ConnectionInterface $conn) {
         $this->clients->attach($conn);
         $query = $conn->httpRequest->getUri()->getQuery();
         parse_str($query, $params);
         
-        if (isset($params['user_id'])) {
+        if (isset($params['user_id']) && isset($params['token'])) {
             $userId = (string)$params['user_id'];
-            $this->registerUser($conn, $userId);
-            echo "New connection for user $userId ({$conn->resourceId})\n";
-        } else {
-            $conn->send(json_encode(['error' => 'No user_id provided']));
-            echo "No user_id provided for connection ({$conn->resourceId})\n";
-        }
-    }
-
-    private function registerUser(ConnectionInterface $conn, string $userId) {
-        if (!isset($this->userConnections[$userId])) {
-            $this->userConnections[$userId] = [];
-        }
-        $this->userConnections[$userId][] = $conn;
-        
-        // Save to database
-        $stmt = $this->pdo->prepare("
-            INSERT INTO websocket_clients (user_id, connection_id) 
-            VALUES (:user_id, :connection_id) 
-            ON DUPLICATE KEY UPDATE connection_id = :connection_id_update
-        ");
-        $stmt->execute([
-            ':user_id' => $userId,
-            ':connection_id' => $conn->resourceId,
-            ':connection_id_update' => $conn->resourceId
-        ]);
-
-        // Send queued messages if any
-        if (isset($this->offlineMessages[$userId])) {
-            foreach ($this->offlineMessages[$userId] as $queuedMessage) {
-                $conn->send($queuedMessage);
+            $token = $params['token'];
+            if ($this->validateToken($userId, $token)) {
+                if (!isset($this->userConnections[$userId])) {
+                    $this->userConnections[$userId] = [];
+                }
+                $this->userConnections[$userId][] = $conn;
+                echo "User $userId connected ({$conn->resourceId})\n";
+            } else {
+                echo "Invalid or expired token for user $userId ({$conn->resourceId}), closing connection\n";
+                $conn->send(json_encode(["type" => "error", "message" => "Authentication failed"]));
+                $conn->close();
             }
-            unset($this->offlineMessages[$userId]);
+        } else {
+            echo "No user_id or token provided for connection ({$conn->resourceId}), closing\n";
+            $conn->send(json_encode(["type" => "error", "message" => "Authentication required"]));
+            $conn->close();
         }
-        
-        $conn->send(json_encode(['status' => 'connected', 'user_id' => $userId]));
+        echo "New connection ({$conn->resourceId})\n";
     }
 
     public function onMessage(ConnectionInterface $from, $msg) {
         echo "Received message: $msg\n";
         $data = json_decode($msg, true);
         
-        if (!isset($data['type'])) {
-            $from->send(json_encode(['error' => 'Invalid message format']));
+        if (!isset($data['type']) || !isset($data['token']) || !isset($data['sender_id'])) {
+            $from->send(json_encode(["type" => "error", "message" => "Missing required fields"]));
+            return;
+        }
+
+        if (!$this->validateToken($data['sender_id'], $data['token'])) {
+            $from->send(json_encode(["type" => "error", "message" => "Invalid or expired token"]));
             return;
         }
 
@@ -121,19 +105,23 @@ class WebsocketServer implements MessageComponentInterface {
                     $this->broadcastTyping($from, $data);
                 }
                 break;
+                
+            case 'new_message':
+                if (isset($data['sender_id'], $data['receiver_id'])) {
+                    $this->broadcastToUsers($data['sender_id'], $data['receiver_id'], $data);
+                }
+                break;
         }
     }
 
     private function fetchMessages(ConnectionInterface $client, $conversation_id) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT 
-                    id, sender_id, receiver_id, 
-                    message_type, message, media_url,
-                    status, created_at, delivered_at, read_at
+                SELECT id, sender_id, receiver_id, message_type, message, media_url, status, 
+                       created_at, delivered_at, read_at
                 FROM messages 
                 WHERE conversation_id = :conversation_id 
-                AND is_deleted = 0
+                AND is_deleted = FALSE
                 ORDER BY created_at ASC
             ");
             $stmt->execute([':conversation_id' => $conversation_id]);
@@ -144,12 +132,16 @@ class WebsocketServer implements MessageComponentInterface {
                 "conversation_id" => $conversation_id,
                 "messages" => $messages ?: []
             ]);
+            echo "Sending conversation history to client: $response\n";
             $client->send($response);
         } catch (PDOException $e) {
-            $client->send(json_encode([
+            $error = json_encode([
                 "type" => "error",
+                "error_code" => $e->getCode(),
                 "message" => "Failed to fetch messages: " . $e->getMessage()
-            ]));
+            ]);
+            echo "Error sending to client: $error\n";
+            $client->send($error);
         }
     }
 
@@ -162,9 +154,6 @@ class WebsocketServer implements MessageComponentInterface {
         $media_url = $data['media_url'] ?? null;
 
         try {
-            $this->pdo->beginTransaction();
-            
-            // Verify conversation
             $stmt = $this->pdo->prepare("
                 SELECT status 
                 FROM conversations 
@@ -178,17 +167,17 @@ class WebsocketServer implements MessageComponentInterface {
             ]);
 
             if ($stmt->rowCount() === 0) {
-                throw new Exception("Invalid conversation or permission denied");
+                $from->send(json_encode(["type" => "error", "message" => "Invalid conversation or permission denied"]));
+                return;
             }
 
-            // Insert message
+            $this->pdo->beginTransaction();
+            
             $stmt = $this->pdo->prepare("
                 INSERT INTO messages (
-                    conversation_id, sender_id, receiver_id, 
-                    message_type, message, media_url, status
+                    conversation_id, sender_id, receiver_id, message_type, message, media_url, status
                 ) VALUES (
-                    :conversation_id, :sender_id, :receiver_id, 
-                    :message_type, :message, :media_url, 'sent'
+                    :conversation_id, :sender_id, :receiver_id, :message_type, :message, :media_url, 'sent'
                 )
             ");
             $stmt->execute([
@@ -202,8 +191,15 @@ class WebsocketServer implements MessageComponentInterface {
 
             $message_id = $this->pdo->lastInsertId();
 
-            // Update conversation
-            $this->updateConversation($conversation_id, $message);
+            $updateStmt = $this->pdo->prepare("
+                UPDATE conversations 
+                SET last_message = :message, last_message_time = NOW(), last_activity_at = NOW()
+                WHERE id = :conversation_id
+            ");
+            $updateStmt->execute([
+                ':message' => $message,
+                ':conversation_id' => $conversation_id
+            ]);
 
             $this->pdo->commit();
 
@@ -217,68 +213,23 @@ class WebsocketServer implements MessageComponentInterface {
                 "message" => $message,
                 "media_url" => $media_url,
                 "status" => "sent",
-                "timestamp" => date('Y-m-d H:i:s')
+                "timestamp" => date('Y-m-d H:i:s'),
+                "token" => $data['token']
             ];
 
-            $this->sendMessage($receiver_id, $messageData);
-            $this->sendMessage($sender_id, $messageData);
-
-        } catch (Exception $e) {
+            $this->broadcastToUsers($sender_id, $receiver_id, $messageData);
+        } catch (PDOException $e) {
             $this->pdo->rollBack();
-            $from->send(json_encode([
-                "type" => "error",
-                "message" => "Failed to send message: " . $e->getMessage()
-            ]));
+            $from->send(json_encode(["type" => "error", "message" => "Failed to send message: " . $e->getMessage()]));
         }
-    }
-
-    private function updateConversation($conversation_id, $message): void {
-        $stmt = $this->pdo->prepare("
-            UPDATE conversations 
-            SET 
-                last_message = :message,
-                last_message_time = NOW(),
-                last_activity_at = NOW()
-            WHERE id = :conversation_id
-        ");
-        $stmt->execute([
-            ':message' => $message,
-            ':conversation_id' => $conversation_id
-        ]);
-    }
-
-    private function sendMessage(string $userId, array $data): bool {
-        $messageJson = json_encode($data);
-        
-        if (!isset($this->userConnections[$userId])) {
-            echo "User $userId is offline; queuing message\n";
-            $this->offlineMessages[$userId][] = $messageJson;
-            return false;
-        }
-
-        $sent = false;
-        foreach ($this->userConnections[$userId] as $conn) {
-            try {
-                $conn->send($messageJson);
-                $sent = true;
-                echo "Message sent to user $userId (resource {$conn->resourceId})\n";
-            } catch (\Exception $e) {
-                echo "Failed to send to user $userId: {$e->getMessage()}\n";
-            }
-        }
-        return $sent;
     }
 
     private function markMessageAsRead(ConnectionInterface $from, $data) {
         try {
             $stmt = $this->pdo->prepare("
                 UPDATE messages 
-                SET 
-                    status = 'read',
-                    read_at = NOW()
-                WHERE id = :message_id 
-                AND receiver_id = :user_id
-                AND status != 'read'
+                SET status = 'read', read_at = NOW()
+                WHERE id = :message_id AND receiver_id = :user_id AND status != 'read'
             ");
             $stmt->execute([
                 ':message_id' => $data['message_id'],
@@ -290,25 +241,21 @@ class WebsocketServer implements MessageComponentInterface {
                     "type" => "message_status",
                     "message_id" => $data['message_id'],
                     "status" => "read",
-                    "read_at" => date('Y-m-d H:i:s')
+                    "read_at" => date('Y-m-d H:i:s'),
+                    "token" => $data['token']
                 ];
 
-                $stmt = $this->pdo->prepare("
-                    SELECT sender_id, receiver_id 
-                    FROM messages 
-                    WHERE id = :message_id
-                ");
+                $stmt = $this->pdo->prepare("SELECT sender_id, receiver_id FROM messages WHERE id = :message_id");
                 $stmt->execute([':message_id' => $data['message_id']]);
                 $message = $stmt->fetch();
 
-                $this->sendMessage($message['sender_id'], $broadcastData);
-                $this->sendMessage($message['receiver_id'], $broadcastData);
+                echo "Message {$data['message_id']} marked as read, broadcasting status\n";
+                $this->broadcastToUsers($message['sender_id'], $message['receiver_id'], $broadcastData);
+            } else {
+                echo "Message {$data['message_id']} not updated (already read or invalid user)\n";
             }
         } catch (PDOException $e) {
-            $from->send(json_encode([
-                "type" => "error",
-                "message" => "Failed to update message status: " . $e->getMessage()
-            ]));
+            $from->send(json_encode(["type" => "error", "message" => "Failed to update message status: " . $e->getMessage()]));
         }
     }
 
@@ -316,29 +263,53 @@ class WebsocketServer implements MessageComponentInterface {
         $broadcastData = [
             "type" => "typing",
             "conversation_id" => $data['conversation_id'],
-            "user_id" => $data['user_id']
+            "user_id" => $data['user_id'],
+            "token" => $data['token']
         ];
 
-        $stmt = $this->pdo->prepare("
-            SELECT buyer_id, seller_id 
-            FROM conversations 
-            WHERE id = :conversation_id
-        ");
+        $stmt = $this->pdo->prepare("SELECT buyer_id, seller_id FROM conversations WHERE id = :conversation_id");
         $stmt->execute([':conversation_id' => $data['conversation_id']]);
         $conv = $stmt->fetch();
 
         if ($conv) {
             $otherUserId = ($conv['buyer_id'] == $data['user_id']) ? $conv['seller_id'] : $conv['buyer_id'];
-            $this->sendMessage($otherUserId, $broadcastData);
+            if (isset($this->userConnections[$otherUserId])) {
+                foreach ($this->userConnections[$otherUserId] as $conn) {
+                    $jsonTyping = json_encode($broadcastData);
+                    echo "Sending typing to user $otherUserId (resource {$conn->resourceId}): $jsonTyping\n";
+                    try {
+                        $conn->send($jsonTyping);
+                    } catch (\Exception $e) {
+                        echo "Failed to send typing to user $otherUserId: {$e->getMessage()}\n";
+                    }
+                }
+            }
+        }
+    }
+
+    private function broadcastToUsers($senderId, $receiverId, $messageData) {
+        $senderId = (string)$senderId;
+        $receiverId = (string)$receiverId;
+        echo "Broadcasting to users: $senderId, $receiverId\n";
+        foreach ([$senderId, $receiverId] as $userId) {
+            if (isset($this->userConnections[$userId])) {
+                $jsonMessage = json_encode($messageData);
+                foreach ($this->userConnections[$userId] as $conn) {
+                    echo "Sending message to user $userId (resource {$conn->resourceId}): $jsonMessage\n";
+                    try {
+                        $conn->send($jsonMessage);
+                    } catch (\Exception $e) {
+                        echo "Failed to send to user $userId (resource {$conn->resourceId}): {$e->getMessage()}\n";
+                    }
+                }
+            } else {
+                echo "User $userId not connected\n";
+            }
         }
     }
 
     public function onClose(ConnectionInterface $conn) {
         $this->clients->detach($conn);
-        
-        $stmt = $this->pdo->prepare("DELETE FROM websocket_clients WHERE connection_id = :connection_id");
-        $stmt->execute([':connection_id' => $conn->resourceId]);
-        
         foreach ($this->userConnections as $userId => $connections) {
             foreach ($connections as $index => $connection) {
                 if ($connection === $conn) {
@@ -358,34 +329,19 @@ class WebsocketServer implements MessageComponentInterface {
 
     public function onError(ConnectionInterface $conn, \Exception $e) {
         echo "Error: {$e->getMessage()}\n";
-        $conn->send(json_encode([
-            "type" => "error",
-            "message" => "Server error occurred"
-        ]));
+        $conn->send(json_encode(["type" => "error", "message" => "Server error occurred"]));
         $conn->close();
     }
 }
 
-// Load .env for host and port
-$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
-$dotenv->load();
-$host = $_ENV['WS_HOST'] ?? '0.0.0.0'; // Default to all interfaces
-$port = $_ENV['WS_PORT'] ?? 8080;
-
-// Create event loop and socket with explicit host and port
-$loop = LoopFactory::create();
-$socket = new ReactServer("{$host}:{$port}", $loop);
-
-// Start the Ratchet server
-$server = new IoServer(
-    new HttpServer(
-        new WsServer(
+$server = \Ratchet\Server\IoServer::factory(
+    new \Ratchet\Http\HttpServer(
+        new \Ratchet\WebSocket\WsServer(
             new WebsocketServer()
         )
     ),
-    $socket,
-    $loop
+    8080
 );
 
-echo "WebSocket server running on ws://{$host}:{$port}...\n";
+echo "WebSocket server running on port 8080...\n";
 $server->run();

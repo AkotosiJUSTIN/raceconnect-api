@@ -350,6 +350,15 @@ FOREIGN KEY (convo_id)
 REFERENCES conversations(id) 
 ON DELETE CASCADE;
 
+DROP TABLE IF EXISTS websocket_clients;
+
+CREATE TABLE websocket_clients (
+    user_id INT PRIMARY KEY,
+    connection_id VARCHAR(255) NOT NULL, -- Use VARCHAR for spl_object_hash
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Admin Notifications Table
 CREATE TABLE admin_notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,

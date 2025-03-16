@@ -3,7 +3,7 @@
         'name' => 'myvendor/rceconnect',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'fb216bc5be30d4c3a01087fd54636a29f1939a7c',
+        'reference' => '39a022ca2cb239641cb6714069a4578715de30aa',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -94,7 +94,7 @@
         'myvendor/rceconnect' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'fb216bc5be30d4c3a01087fd54636a29f1939a7c',
+            'reference' => '39a022ca2cb239641cb6714069a4578715de30aa',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

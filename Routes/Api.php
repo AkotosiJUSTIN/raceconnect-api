@@ -14,6 +14,7 @@ use Controller\AuthController;
 use Controller\FriendsController;
 use Controller\AnnouncementController;
 use Controller\ReportController;
+use Controller\SendMessageController;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -221,6 +222,19 @@ class Api {
 
                 case 'reports':
                     $this->handleRequest(new ReportController($this->conn), $method, $id);
+                    break;
+
+                case 'chat':
+                    $controller = new SendMessageController();
+                    if ($method === 'POST' && $action === null) {
+                        $data = $this->getJsonInput();
+                        $controller->processRequest($method, $id, $data);
+                    } elseif ($method === 'GET' && $id !== null) {
+                        $controller->processRequest($method, $id);
+                    } else {
+                        http_response_code(404);
+                        echo json_encode(['message' => 'Not Found: Invalid chat action']);
+                    }
                     break;
 
                 default:

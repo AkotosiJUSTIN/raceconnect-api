@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <script>
+        const ws = new WebSocket("ws://localhost:8080?user_id=1");
+        ws.onmessage = (event) => console.log("Received:", event.data);
+        ws.onopen = () => console.log("Connected");
+        ws.onerror = (error) => console.error("Error:", error);
+        ws.onclose = () => console.log("Disconnected");
+    </script>
+</body>
+</html>
