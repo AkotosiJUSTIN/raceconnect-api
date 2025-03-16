@@ -23,7 +23,7 @@ To run the WebSocket server, follow these steps:
 1. Open a terminal and navigate to the project directory:
 
     ```sh
-    cd /c:/xampp/htdocs/raceconnectapi/chat
+    cd C:\xampp\htdocs\raceconnect-api\chat
     ```
 
 2. Run the WebSocket server script:
