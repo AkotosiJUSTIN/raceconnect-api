@@ -183,39 +183,84 @@ class User {
 
     // Store OTP
     public function storeOtp($email, $otp) {
-        $stmt = $this->pdo->prepare("INSERT INTO Password_Resets (email, otp, created_at) VALUES (:email, :otp, NOW()) 
-                                     ON DUPLICATE KEY UPDATE otp = :otp, created_at = NOW()");
-        $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
-        $stmt->bindValue(':otp', intval($otp));
-        return $stmt->execute();
+        $this->cleanupExpiredOtps();
+        
+        // Explicitly set timezone to match database/server
+        $dateTime = new \DateTime('now', new \DateTimeZone('Asia/Manila')); // Adjust timezone as needed
+        $expiresAt = $dateTime->modify('+5 minutes')->format('Y-m-d H:i:s');
+        
+        error_log("Storing OTP: Email=$email, OTP=$otp, ExpiresAt=$expiresAt, CurrentTime=" . $dateTime->format('Y-m-d H:i:s'));
+        
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO Password_Resets (email, otp, expires_at) 
+             VALUES (:email, :otp, :expires_at)
+             ON DUPLICATE KEY UPDATE 
+             otp = VALUES(otp), 
+             created_at = NOW(), 
+             expires_at = VALUES(expires_at)"
+        );
+        
+        $result = $stmt->execute([
+            ':email' => filter_var($email, FILTER_SANITIZE_EMAIL),
+            ':otp' => intval($otp),
+            ':expires_at' => $expiresAt
+        ]);
+        
+        if (!$result) {
+            error_log("Failed to store OTP: " . implode(", ", $stmt->errorInfo()));
+        }
+        
+        return $result;
     }
 
-    // Verify OTP (valid for 1 hour)
     public function verifyOtp($email, $otp) {
-        $stmt = $this->pdo->prepare("SELECT * FROM Password_Resets WHERE email = :email AND otp = :otp 
-                                     AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM Password_Resets 
+             WHERE email = :email 
+             AND otp = :otp 
+             AND expires_at > NOW()"
+        );
         $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
         $stmt->bindValue(':otp', intval($otp));
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+        
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result === false) {
+            error_log("OTP verification failed: Email=$email, OTP=$otp, No matching valid OTP found");
+            $debugStmt = $this->pdo->prepare("SELECT * FROM Password_Resets WHERE email = :email");
+            $debugStmt->execute([':email' => filter_var($email, FILTER_SANITIZE_EMAIL)]);
+            $debugResult = $debugStmt->fetch(PDO::FETCH_ASSOC);
+            error_log("Current state: " . json_encode($debugResult));
+        } else {
+            error_log("OTP verified: Email=$email, OTP=$otp, ExpiresAt=" . $result['expires_at']);
+            $this->cleanupExpiredOtps();
+        }
+        
+        return $result !== false;
     }
 
-    public function deleteOtp($email) {
-        error_log("Attempting to delete OTP for: " . $email); // Debug log
-    
-        $stmt = $this->pdo->prepare("DELETE FROM Password_Resets WHERE email = :email");
-        $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
-    
+    private function cleanupExpiredOtps() {
+        $stmt = $this->pdo->prepare(
+            "DELETE FROM Password_Resets 
+             WHERE expires_at <= NOW()"
+        );
         $result = $stmt->execute();
-    
         if ($result) {
-            error_log("OTP deleted successfully for: " . $email);
-        } else {
-            error_log("Failed to delete OTP for: " . $email);
-            error_log("PDO Error: " . implode(", ", $stmt->errorInfo())); // Log error info
+            error_log("Cleaned up expired OTPs");
         }
-    
         return $result;
+    }
+
+
+    // Delete OTP (unchanged from your version)
+    public function deleteOtp($email) {
+        $stmt = $this->pdo->prepare(
+            "DELETE FROM Password_Resets 
+             WHERE email = :email"
+        );
+        $stmt->bindValue(':email', filter_var($email, FILTER_SANITIZE_EMAIL));
+        return $stmt->execute();
     }
     
     

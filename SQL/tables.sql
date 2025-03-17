@@ -227,14 +227,18 @@ CREATE TABLE Post_Reposts (
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
--- Password Resets Table
+-- Drop the existing table if it exists
+DROP TABLE IF EXISTS Password_Resets;
+
+-- Create updated Password_Resets table
 CREATE TABLE Password_Resets (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(100) NOT NULL,
     otp VARCHAR(6) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (email) REFERENCES Users(email) ON DELETE CASCADE
+    expires_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Changed to NOT NULL with explicit expiration
+    FOREIGN KEY (email) REFERENCES Users(email) ON DELETE CASCADE,
+    UNIQUE KEY unique_email (email) -- Ensure only one OTP per email
 );
 
 -- Create the password_resets_admin table with correct foreign key
