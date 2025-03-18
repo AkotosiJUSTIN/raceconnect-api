@@ -11,7 +11,6 @@ use Exception;
 
 header('Content-Type: application/json');
 
-
 class SendMessageController {
     private $pdo;
 
@@ -40,6 +39,7 @@ class SendMessageController {
         echo json_encode(['success' => false, 'message' => $message]);
         exit;
     }
+
     public function processRequest($method, $id = null, $data = null) {
         if ($method === 'POST') {
             if ($data === null) {
@@ -87,10 +87,10 @@ class SendMessageController {
             $this->pdo->beginTransaction();
 
             $query = $this->pdo->prepare("
-                SELECT id, status 
-                FROM conversations 
-                WHERE buyer_id = ? 
-                AND seller_id = ? 
+                SELECT id, status
+                FROM conversations
+                WHERE buyer_id = ?
+                AND seller_id = ?
                 AND product_id = ?
             ");
             $query->execute([$buyer_id, $seller_id, $product_id]);
@@ -99,10 +99,10 @@ class SendMessageController {
             if (!$conversation) {
                 $stmt = $this->pdo->prepare("
                     INSERT INTO conversations (
-                        buyer_id, 
-                        seller_id, 
-                        product_id, 
-                        last_message, 
+                        buyer_id,
+                        seller_id,
+                        product_id,
+                        last_message,
                         last_message_time,
                         last_activity_at
                     ) VALUES (?, ?, ?, ?, NOW(), NOW())
@@ -121,9 +121,9 @@ class SendMessageController {
                 if ($sender && $product) {
                     $notification_stmt = $this->pdo->prepare("
                         INSERT INTO notifications (
-                            user_id, 
-                            type, 
-                            content, 
+                            user_id,
+                            type,
+                            content,
                             created_at
                         ) VALUES (?, 'new_conversation', ?, NOW())
                     ");
@@ -140,8 +140,8 @@ class SendMessageController {
                 }
 
                 $stmt = $this->pdo->prepare("
-                    UPDATE conversations 
-                    SET 
+                    UPDATE conversations
+                    SET
                         last_message = ?,
                         last_message_time = NOW(),
                         last_activity_at = NOW()
@@ -223,7 +223,7 @@ class SendMessageController {
     private function getUserConversations($userId) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT 
+                SELECT
                     c.id AS conversation_id,
                     c.buyer_id,
                     c.seller_id,
@@ -233,18 +233,19 @@ class SendMessageController {
                     c.last_activity_at,
                     u1.username AS buyer_username,
                     u2.username AS seller_username,
-                    m.title AS product_title
-                FROM 
+                    m.title AS product_title,
+                    (SELECT image_url FROM marketplace_item_images WHERE marketplace_item_id = m.id ORDER BY id ASC LIMIT 1) AS product_image_url
+                FROM
                     conversations c
-                JOIN 
+                JOIN
                     users u1 ON c.buyer_id = u1.id
-                JOIN 
+                JOIN
                     users u2 ON c.seller_id = u2.id
-                JOIN 
+                JOIN
                     marketplace_items m ON c.product_id = m.id
-                WHERE 
+                WHERE
                     c.buyer_id = ? OR c.seller_id = ?
-                ORDER BY 
+                ORDER BY
                     c.last_activity_at DESC
             ");
             $stmt->execute([$userId, $userId]);
@@ -258,6 +259,29 @@ class SendMessageController {
             ]);
         } catch (Exception $e) {
             $this->handleError(500, "Error fetching conversations: " . $e->getMessage());
+        }
+    }
+
+    public function checkConversationExists($buyer_id, $seller_id, $product_id) {
+        try {
+            $query = $this->pdo->prepare("
+                SELECT id
+                FROM conversations
+                WHERE buyer_id = ?
+                AND seller_id = ?
+                AND product_id = ?
+            ");
+            $query->execute([$buyer_id, $seller_id, $product_id]);
+            $conversation = $query->fetch();
+            if ($conversation) {
+                http_response_code(200);
+                echo json_encode(['exists' => true, 'conversation_id' => $conversation['id']]);
+            } else {
+                http_response_code(200);
+                echo json_encode(['exists' => false]);
+            }
+        } catch (Exception $e) {
+            $this->handleError(500, "Error checking conversation: " . $e->getMessage());
         }
     }
 }

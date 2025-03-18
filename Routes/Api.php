@@ -229,6 +229,16 @@ class Api {
                     if ($method === 'POST' && $action === null) {
                         $data = $this->getJsonInput();
                         $controller->processRequest($method, $id, $data);
+                    } elseif ($method === 'GET' && $action === 'exists') {
+                        $buyer_id = $_GET['buyer_id'] ?? null;
+                        $seller_id = $_GET['seller_id'] ?? null;
+                        $product_id = $_GET['product_id'] ?? null;
+                        if ($buyer_id && $seller_id && $product_id) {
+                            $controller->checkConversationExists($buyer_id, $seller_id, $product_id);
+                        } else {
+                            http_response_code(400);
+                            echo json_encode(['message' => 'Missing parameters']);
+                        }
                     } elseif ($method === 'GET' && $id !== null) {
                         $controller->processRequest($method, $id);
                     } else {
