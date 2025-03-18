@@ -74,13 +74,14 @@ class PostLike {
     
         // Only insert notification if the user is not the owner
         if ($user && $data['user_id'] != $owner_id) {
-            $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, like_id, content, created_at) 
-                                         VALUES (:owner_id, :post_id, :like_id, CONCAT(:username, ' liked your post'), NOW())");
+            $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, like_id, type, content, trigger_user_id, created_at) 
+                                         VALUES (:owner_id, :post_id, :like_id, 'system', CONCAT(:username, ' liked your post'), :trigger_user_id, NOW())");
             $stmt->execute([
                 ':owner_id' => $owner_id,
                 ':post_id' => $data['post_id'],
                 ':like_id' => $like_id,
-                ':username' => $user['username']
+                ':username' => $user['username'],
+                ':trigger_user_id' => $data['user_id'] // Set the trigger_user_id to the user who liked
             ]);
         }
     

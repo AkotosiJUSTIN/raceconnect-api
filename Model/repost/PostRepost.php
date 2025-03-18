@@ -31,24 +31,24 @@ class PostRepost {
         if (!isset($data['user_id']) || !isset($data['post_id'])) {
             return ['message' => 'Missing required fields (user_id, post_id)'];
         }
-
+    
         // Fetch the owner_id of the post
         $stmt = $this->pdo->prepare("SELECT user_id AS owner_id FROM Posts WHERE id = :post_id");
         $stmt->bindParam(':post_id', $data['post_id'], PDO::PARAM_INT);
         $stmt->execute();
         $post = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
         if (!$post) {
             return ['message' => 'Post not found'];
         }
-
+    
         $owner_id = $post['owner_id'];
-
+    
         // Check if user_id and owner_id are the same
         if ($data['user_id'] == $owner_id) {
             return ['message' => 'You cannot repost your own post'];
         }
-
+    
         // Check if repost already exists
         $stmt = $this->pdo->prepare("SELECT id FROM {$this->table} WHERE user_id = :user_id AND post_id = :post_id");
         $stmt->execute([
@@ -58,7 +58,7 @@ class PostRepost {
         if ($stmt->fetch()) {
             return ['message' => 'You have already reposted this post'];
         }
-
+    
         // Insert new repost with quote
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (user_id, post_id, owner_id, quote) VALUES (:user_id, :post_id, :owner_id, :quote)");
         $result = $stmt->execute([
@@ -67,28 +67,29 @@ class PostRepost {
             ':owner_id' => $owner_id,
             ':quote' => $data['quote'] ?? null
         ]);
-
+    
         if ($result) {
             $repost_id = $this->pdo->lastInsertId();
-
+    
             // Fetch the username of the user who reposted
             $stmt = $this->pdo->prepare("SELECT username FROM Users WHERE id = :user_id");
             $stmt->bindParam(':user_id', $data['user_id'], PDO::PARAM_INT);
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
             if ($user && $data['user_id'] != $owner_id) {
-                $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, repost_id, type, content, created_at) VALUES (:owner_id, :post_id, :repost_id, 'repost', CONCAT(:username, ' reposted your post'), NOW())");
+                $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, repost_id, type, content, trigger_user_id, created_at) VALUES (:owner_id, :post_id, :repost_id, 'repost', CONCAT(:username, ' reposted your post'), :trigger_user_id, NOW())");
                 $stmt->execute([
                     ':owner_id' => $owner_id,
                     ':post_id' => $data['post_id'],
                     ':repost_id' => $repost_id,
-                    ':username' => $user['username']
+                    ':username' => $user['username'],
+                    ':trigger_user_id' => $data['user_id'] // Set the trigger_user_id to the user who reposted
                 ]);
             }
             return ['success' => true, 'repost_id' => $repost_id];
         }
-
+    
         return ['success' => false, 'message' => 'Failed to create repost'];
     }
 

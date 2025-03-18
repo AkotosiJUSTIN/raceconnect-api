@@ -126,6 +126,7 @@ CREATE TABLE Notifications (
     repost_id INT DEFAULT NULL,
     like_id INT DEFAULT NULL,
     comment_id INT DEFAULT NULL,
+    convo_id INT DEFAULT NULL,
     INDEX idx_type_status (type, status),
     INDEX idx_created_at (created_at)
 );

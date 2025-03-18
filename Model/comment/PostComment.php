@@ -62,19 +62,19 @@ class PostComment {
         if (!isset($data['user_id']) || !isset($data['post_id']) || !isset($data['comment'])) {
             return ['message' => 'Missing required fields (user_id, post_id, comment)'];
         }
-
+    
         // Fetch the owner_id of the post
         $stmt = $this->pdo->prepare("SELECT user_id AS owner_id FROM Posts WHERE id = :post_id");
         $stmt->bindParam(':post_id', $data['post_id'], PDO::PARAM_INT);
         $stmt->execute();
         $post = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
         if (!$post) {
             return ['message' => 'Post not found'];
         }
-
+    
         $owner_id = $post['owner_id'];
-
+    
         // Insert the comment
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (user_id, post_id, owner_id, comment, created_at, likes) VALUES (:user_id, :post_id, :owner_id, :comment, NOW(), :likes)");
         $stmt->execute([
@@ -84,26 +84,27 @@ class PostComment {
             ':comment' => $data['comment'],
             ':likes' => 0 // Default value for likes
         ]);
-
+    
         $comment_id = $this->pdo->lastInsertId(); // Get the inserted comment ID
-
+    
         // Fetch the username of the commenter
         $stmt = $this->pdo->prepare("SELECT username FROM Users WHERE id = :user_id");
         $stmt->bindParam(':user_id', $data['user_id'], PDO::PARAM_INT);
         $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
         // Only insert notification if the user is not the owner
         if ($user && $data['user_id'] != $owner_id) {
-            $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, comment_id, content, created_at) VALUES (:owner_id, :post_id, :comment_id, CONCAT(:username, ' commented on your post'), NOW())");
+            $stmt = $this->pdo->prepare("INSERT INTO Notifications (user_id, post_id, comment_id, type, content, trigger_user_id, created_at) VALUES (:owner_id, :post_id, :comment_id, 'system', CONCAT(:username, ' commented on your post'), :trigger_user_id, NOW())");
             $stmt->execute([
                 ':owner_id' => $owner_id,
                 ':post_id' => $data['post_id'],
                 ':comment_id' => $comment_id,
-                ':username' => $user['username'] ?? 'Unknown'
+                ':username' => $user['username'] ?? 'Unknown',
+                ':trigger_user_id' => $data['user_id'] // Set the trigger_user_id to the user who commented
             ]);
         }
-
+    
         return ['success' => true, 'comment_id' => $comment_id];
     }
 

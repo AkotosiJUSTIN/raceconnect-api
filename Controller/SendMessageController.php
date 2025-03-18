@@ -109,29 +109,6 @@ class SendMessageController {
                 ");
                 $stmt->execute([$buyer_id, $seller_id, $product_id, $message]);
                 $conversation_id = $this->pdo->lastInsertId();
-
-                $sender_query = $this->pdo->prepare("SELECT username FROM users WHERE id = ?");
-                $sender_query->execute([$sender_id]);
-                $sender = $sender_query->fetch();
-
-                $product_query = $this->pdo->prepare("SELECT title FROM marketplace_items WHERE id = ?");
-                $product_query->execute([$product_id]);
-                $product = $product_query->fetch();
-
-                if ($sender && $product) {
-                    $notification_stmt = $this->pdo->prepare("
-                        INSERT INTO notifications (
-                            user_id,
-                            type,
-                            content,
-                            created_at
-                        ) VALUES (?, 'new_conversation', ?, NOW())
-                    ");
-                    $notification_message = "New conversation from {$sender['username']} about '{$product['title']}'";
-                    $notification_stmt->execute([$receiver_id, $notification_message]);
-                } else {
-                    error_log("API: Failed to fetch sender or product details for notification");
-                }
             } else {
                 $conversation_id = $conversation['id'];
 
@@ -171,6 +148,41 @@ class SendMessageController {
                 $media_url
             ]);
             $message_id = $this->pdo->lastInsertId();
+
+            // Fetch sender's username and product title for notification
+            $sender_query = $this->pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $sender_query->execute([$sender_id]);
+            $sender = $sender_query->fetch();
+
+            $product_query = $this->pdo->prepare("SELECT title FROM marketplace_items WHERE id = ?");
+            $product_query->execute([$product_id]);
+            $product = $product_query->fetch();
+
+            // Insert notification for the receiver
+            if ($sender && $product) {
+                $notification_stmt = $this->pdo->prepare("
+                    INSERT INTO notifications (
+                        user_id,
+                        marketplace_item_id,
+                        type,
+                        content,
+                        trigger_user_id,
+                        convo_id,
+                        created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $notification_content = "{$sender['username']} sent you a message about the item {$product['title']}";
+                $notification_stmt->execute([
+                    $receiver_id,
+                    $product_id,
+                    'marketplace',
+                    $notification_content,
+                    $sender_id,
+                    $conversation_id
+                ]);
+            } else {
+                error_log("API: Failed to fetch sender username or product title for notification");
+            }
 
             $this->pdo->commit();
 

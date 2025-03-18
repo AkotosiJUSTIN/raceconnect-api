@@ -43,7 +43,13 @@ class Notification {
         $stmt = $this->pdo->prepare($query);
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $notification = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if ($notification && $notification['trigger_user_id'] === null) {
+            error_log("Notification ID $id has null trigger_user_id");
+        }
+    
+        return $notification;
     }
 
     // Updated createNotification to include trigger_user_id
