@@ -272,7 +272,7 @@ class SendMessageController {
                 AND product_id = ?
             ");
             $query->execute([$buyer_id, $seller_id, $product_id]);
-            $conversation = $query->fetch();
+            $conversation = $query->fetch(PDO::FETCH_ASSOC);
             if ($conversation) {
                 http_response_code(200);
                 echo json_encode(['exists' => true, 'conversation_id' => $conversation['id']]);
@@ -281,7 +281,8 @@ class SendMessageController {
                 echo json_encode(['exists' => false]);
             }
         } catch (Exception $e) {
-            $this->handleError(500, "Error checking conversation: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
         }
     }
 }

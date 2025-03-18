@@ -226,9 +226,10 @@ class Api {
 
                 case 'chat':
                     $controller = new SendMessageController();
+                    $action = $id; // Override $action with $id if it matches 'exists'
                     if ($method === 'POST' && $action === null) {
                         $data = $this->getJsonInput();
-                        $controller->processRequest($method, $id, $data);
+                        $controller->processRequest($method, null, $data); // No ID needed for POST
                     } elseif ($method === 'GET' && $action === 'exists') {
                         $buyer_id = $_GET['buyer_id'] ?? null;
                         $seller_id = $_GET['seller_id'] ?? null;
@@ -239,8 +240,8 @@ class Api {
                             http_response_code(400);
                             echo json_encode(['message' => 'Missing parameters']);
                         }
-                    } elseif ($method === 'GET' && $id !== null) {
-                        $controller->processRequest($method, $id);
+                    } elseif ($method === 'GET' && $id !== null && $action !== 'exists') {
+                        $controller->processRequest($method, $id); // Handle specific conversation by ID
                     } else {
                         http_response_code(404);
                         echo json_encode(['message' => 'Not Found: Invalid chat action']);
