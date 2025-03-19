@@ -795,7 +795,7 @@ function hideMarketplaceItem($conn) {
 
         // Update only the report status to Hidden while preserving the reason
         $updateReport = $conn->prepare("UPDATE reports SET status = 'Hidden' WHERE marketplace_item_id = ? AND status = 'pending'");
-        $updateReport->bind_param("i", $postId);
+        $updateReport->bind_param("i", $itemId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
         }
