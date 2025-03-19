@@ -104,7 +104,7 @@ class Post {
         // Bind parameters: first is post_id, then the image IDs
         $params = array_merge([$postId], $imageIds);
         $stmt->execute($params);
-    
+
         // Delete corresponding images from S3
         foreach ($imageIds as $imageId) {
             $stmt = $this->pdo->prepare("SELECT image_url FROM Post_Images WHERE id = ? AND post_id = ?");
@@ -159,11 +159,11 @@ class Post {
         $post = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($post) {
-            $imageQuery = "SELECT image_url FROM Post_Images WHERE post_id = :post_id";
+            $imageQuery = "SELECT id, image_url FROM Post_Images WHERE post_id = :post_id";
             $imageStmt = $this->pdo->prepare($imageQuery);
             $imageStmt->bindValue(':post_id', $id, PDO::PARAM_INT);
             $imageStmt->execute();
-            $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
+            $post['images'] = $imageStmt->fetchAll(PDO::FETCH_ASSOC); // Modified to fetch id and image_url
         }
 
         error_log("Fetched post by ID $id: " . json_encode($post));
