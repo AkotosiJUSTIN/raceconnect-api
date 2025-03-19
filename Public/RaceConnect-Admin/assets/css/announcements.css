@@ -40,10 +40,8 @@ body {
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     padding: 32px;
-    margin: 0 auto 32px; /* Center the form */
-    width: 100%;
-    max-width: 1070px;
     height: auto; /* Change from -webkit-fill-available */
+    max-height: 100vh;
     border: 1px solid #f0f0f0;
 }
 
