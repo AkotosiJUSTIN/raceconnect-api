@@ -20,7 +20,7 @@ class User {
         $this->pdo = $db;
         $this->s3 = new S3Client([
             'version' => 'latest',
-            'region'  => 'ap-southeast-2', // Replace with your region
+            'region'  => $_ENV['AWS_REGION'],
             'credentials' => [
                 'key'    => $_ENV['AWS_ACCESS_KEY'],
                 'secret' => $_ENV['AWS_SECRET_KEY'],
@@ -41,7 +41,7 @@ class User {
 
         try {
             $result = $this->s3->putObject([
-                'Bucket' => 'raceconnect-images',
+                'Bucket' => $_ENV['AWS_S3_BUCKET'],
                 'Key'    => 'profile-pictures/' . $uniqueImageName,
                 'Body'   => $imageData
             ]);
