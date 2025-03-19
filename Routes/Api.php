@@ -118,14 +118,14 @@ class Api {
                     break;
 
                 case 'posts':
-                    if ($action) {
-                        if ($action === 'images') {
-                            $this->handleRequest(new PostController($this->conn), $method, $id, 'images');
-                        } elseif ($action === 'category' && isset($path[3])) {
-                            $this->handleRequest(new PostController($this->conn), $method, $path[3], 'category');
-                        } else {
-                            $this->handleRequest(new PostController($this->conn), $method, $id);
-                        }
+                    if ($action === 'images' && $id) {
+                        $this->handleRequest(new PostController($this->conn), $method, $id, 'images');
+                    } elseif ($action === 'update' && $id) {
+                        $this->handleRequest(new PostController($this->conn), $method, $id, 'update');
+                    } elseif ($action === 'category' && isset($path[3])) {
+                        $this->handleRequest(new PostController($this->conn), $method, $path[3], 'category');
+                    } elseif (isset($_GET['category']) && isset($_GET['user_id'])) {
+                        $this->handleRequest(new PostController($this->conn), $method, $id);
                     } else {
                         $this->handleRequest(new PostController($this->conn), $method, $id);
                     }

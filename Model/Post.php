@@ -70,17 +70,73 @@ class Post {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function deletePostImages($postId) {
+        // Get image URLs
+        $images = $this->getPostImages($postId);
+        foreach ($images as $image) {
+            $url = $image['image_url'];
+            // Extract key from URL (e.g., 'post-images/filename')
+            $key = parse_url($url, PHP_URL_PATH);
+            $key = ltrim($key, '/'); // Remove leading slash
+            try {
+                $this->s3->deleteObject([
+                    'Bucket' => $_ENV['AWS_S3_BUCKET'],
+                    'Key'    => $key
+                ]);
+            } catch (AwsException $e) {
+                error_log("Failed to delete image from S3: " . $e->getMessage());
+                // Continue even if S3 deletion fails to ensure DB cleanup
+            }
+        }
+        // Delete from database
+        $stmt = $this->pdo->prepare("DELETE FROM Post_Images WHERE post_id = :post_id");
+        return $stmt->execute([':post_id' => (int) $postId]);
+    }
+
+    public function deleteSpecificPostImages($postId, $imageIds) {
+        if (empty($imageIds)) {
+            return;
+        }
+        // Prepare placeholders for the IN clause
+        $placeholders = implode(',', array_fill(0, count($imageIds), '?'));
+        $sql = "DELETE FROM Post_Images WHERE post_id = ? AND id IN ($placeholders)";
+        $stmt = $this->pdo->prepare($sql);
+        // Bind parameters: first is post_id, then the image IDs
+        $params = array_merge([$postId], $imageIds);
+        $stmt->execute($params);
+    
+        // Delete corresponding images from S3
+        foreach ($imageIds as $imageId) {
+            $stmt = $this->pdo->prepare("SELECT image_url FROM Post_Images WHERE id = ? AND post_id = ?");
+            $stmt->execute([$imageId, $postId]);
+            $image = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($image) {
+                $url = $image['image_url'];
+                $key = parse_url($url, PHP_URL_PATH);
+                $key = ltrim($key, '/');
+                try {
+                    $this->s3->deleteObject([
+                        'Bucket' => $_ENV['AWS_S3_BUCKET'],
+                        'Key'    => $key
+                    ]);
+                } catch (AwsException $e) {
+                    error_log("Failed to delete image $key from S3: " . $e->getMessage());
+                }
+            }
+        }
+    }
+
     public function getAllPosts($limit = 10, $offset = 0) {
-        $query = "SELECT p.*, u.username, u.profile_picture 
+        $query = "SELECT p.*, u.username, u.profile_picture
                   FROM posts p
                   LEFT JOIN Users u ON p.user_id = u.id
                   LIMIT :limit OFFSET :offset";
-    
+
         $stmt = $this->pdo->prepare($query);
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-    
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -95,13 +151,13 @@ class Post {
             WHERE p.id = :id
             LIMIT 1
         ";
-    
+
         $stmt = $this->pdo->prepare($query);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
-    
+
         $post = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
         if ($post) {
             $imageQuery = "SELECT image_url FROM Post_Images WHERE post_id = :post_id";
             $imageStmt = $this->pdo->prepare($imageQuery);
@@ -109,16 +165,16 @@ class Post {
             $imageStmt->execute();
             $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
         }
-    
+
         error_log("Fetched post by ID $id: " . json_encode($post));
         return $post ? $post : null;
     }
 
     public function createPost($data) {
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} 
-            (user_id, title, content, like_count, comment_count, repost_count, category, type, privacy) 
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table}
+            (user_id, title, content, like_count, comment_count, repost_count, category, type, privacy)
             VALUES (:user_id, :title, :content, :like_count, :comment_count, :repost_count, :category, :type, :privacy)");
-        
+
         $success = $stmt->execute([
             ':user_id' => (int) $data['user_id'],
             ':title' => htmlspecialchars($data['title'] ?? null, ENT_QUOTES, 'UTF-8'),
@@ -130,11 +186,11 @@ class Post {
             ':type' => htmlspecialchars($data['type'] ?? 'text', ENT_QUOTES, 'UTF-8'),
             ':privacy' => htmlspecialchars($data['privacy'] ?? 'Public', ENT_QUOTES, 'UTF-8')
         ]);
-    
+
         if ($success) {
             return $this->pdo->lastInsertId();
         }
-    
+
         return false;
     }
 
@@ -174,6 +230,10 @@ class Post {
             $fields[] = "type = :type";
             $params[':type'] = htmlspecialchars($data['type'], ENT_QUOTES, 'UTF-8');
         }
+        if (!empty($data['privacy'])) {
+            $fields[] = "privacy = :privacy";
+            $params[':privacy'] = htmlspecialchars($data['privacy'], ENT_QUOTES, 'UTF-8');
+        }
 
         if (empty($fields)) {
             return false;
@@ -198,7 +258,7 @@ class Post {
             'FD'  => 'Formula Drift',
             'GT'  => 'GT Championship'
         ];
-    
+
         $fullCategories = [];
         foreach ($categories as $abbr) {
             $abbrUpper = strtoupper($abbr);
@@ -207,35 +267,35 @@ class Post {
             }
             $fullCategories[] = $categoryMap[$abbrUpper];
         }
-    
+
         $placeholders = implode(', ', array_map(
-            fn($key) => ":category$key", 
+            fn($key) => ":category$key",
             array_keys($fullCategories)
         ));
-    
+
         $query = "
-            SELECT 
+            SELECT
                 p.*,
-                u.username, 
+                u.username,
                 u.profile_picture
             FROM Posts p
             LEFT JOIN Users u ON p.user_id = u.id
-            WHERE 
+            WHERE
                 p.category IN ($placeholders)
-                AND p.status = 'Active' 
+                AND p.status = 'Active'
                 AND (
-                    p.privacy = 'Public' 
+                    p.privacy = 'Public'
                     OR (
-                        p.privacy = 'Friends Only' 
+                        p.privacy = 'Friends Only'
                         AND EXISTS (
-                            SELECT 1 
-                            FROM Friends 
-                            WHERE 
+                            SELECT 1
+                            FROM Friends
+                            WHERE
                                 (
-                                    (user_id = :user_id AND friend_id = p.user_id) 
-                                    OR 
+                                    (user_id = :user_id AND friend_id = p.user_id)
+                                    OR
                                     (user_id = p.user_id AND friend_id = :user_id)
-                                ) 
+                                )
                                 AND status = 'accepted'
                         )
                     )
@@ -243,33 +303,33 @@ class Post {
             ORDER BY p.created_at DESC
             LIMIT :limit OFFSET :offset
         ";
-    
+
         $stmt = $this->pdo->prepare($query);
-    
+
         foreach ($fullCategories as $key => $category) {
             $stmt->bindValue(":category$key", $category);
         }
-    
+
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-    
+
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
         foreach ($posts as &$post) {
             $imageStmt = $this->pdo->prepare("SELECT image_url FROM Post_Images WHERE post_id = :post_id");
             $imageStmt->bindValue(':post_id', $post['id'], PDO::PARAM_INT);
             $imageStmt->execute();
             $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
         }
-    
+
         return $posts;
     }
 
     public function getPostByUserId($userId, $limit = 10, $offset = 0) {
         $query = "
-            SELECT 
+            SELECT
                 p.*,
                 u.username,
                 u.profile_picture
@@ -279,16 +339,15 @@ class Post {
             ORDER BY p.created_at DESC
             LIMIT :limit OFFSET :offset
         ";
-    
+
         $stmt = $this->pdo->prepare($query);
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-    
+
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-        // Fetch images for each post
+
         foreach ($posts as &$post) {
             $postId = $post['id'];
             $imageQuery = "SELECT image_url FROM Post_Images WHERE post_id = :post_id";
@@ -297,10 +356,9 @@ class Post {
             $imageStmt->execute();
             $post['images'] = $imageStmt->fetchAll(PDO::FETCH_COLUMN);
         }
-    
-        // Log the result to verify the output
+
         error_log("Posts fetched for user $userId: " . json_encode($posts));
-    
+
         return $posts;
     }
 }

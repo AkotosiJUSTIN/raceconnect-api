@@ -1,5 +1,4 @@
 <?php
-
 namespace Controller;
 use Model\Post;
 use Exception;
@@ -17,12 +16,16 @@ class PostController {
     public function processRequest($method, $id = null, $action = null) {
         try {
             $data = json_decode(file_get_contents("php://input"), true) ?? [];
-    
+
             switch ($method) {
                 case 'POST':
-                    $this->handlePostRequest();
+                    if ($action === 'update' && $id) {
+                        $this->handleUpdateWithImages($id);
+                    } else {
+                        $this->handlePostRequest();
+                    }
                     break;
-    
+
                 case 'GET':
                     if ($action === 'images' && $id) {
                         $this->handleGetPostImagesRequest($id);
@@ -43,15 +46,15 @@ class PostController {
                         echo json_encode($posts);
                     }
                     break;
-    
+
                 case 'PUT':
                     $this->handlePutRequest($id, $data);
                     break;
-    
+
                 case 'DELETE':
                     $this->handleDeleteRequest($id);
                     break;
-    
+
                 default:
                     http_response_code(405);
                     echo json_encode(["error" => "Method not allowed"]);
@@ -76,15 +79,13 @@ class PostController {
             if (!$postId || $postId == 0) {
                 throw new Exception('Failed to create post.');
             }
-            error_log("Generated Post ID: " . $postId); // Debugging: Check if the ID is valid
+            error_log("Generated Post ID: " . $postId);
 
-            // Add a short delay to ensure database consistency (if needed)
             usleep(500000); // 500ms delay
 
             $imageUrls = $this->handleImageUpload($postId);
 
             if (!empty($_FILES['image']['name']) && empty($imageUrls)) {
-                // Rollback: Delete post if image upload fails
                 $this->post->deletePost($postId);
                 http_response_code(500);
                 echo json_encode(['message' => 'Post creation failed due to image upload error']);
@@ -100,6 +101,50 @@ class PostController {
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['message' => 'Failed to create post', 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function handleUpdateWithImages($id) {
+        try {
+            $data = $_POST;
+            if (empty($data['content'])) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Missing required field: content']);
+                return;
+            }
+    
+            $success = $this->post->updatePost($id, $data);
+            if (!$success) {
+                throw new Exception('Failed to update post.');
+            }
+    
+            // Handle specific image deletions
+            if (isset($data['delete_image_ids']) && !empty($data['delete_image_ids'])) {
+                $imageIdsToDelete = explode(',', $data['delete_image_ids']);
+                $this->post->deleteSpecificPostImages($id, $imageIdsToDelete);
+            }
+    
+            // Handle new image uploads
+            if (!empty($_FILES['image']['name'])) {
+                $imageUrls = $this->handleImageUpload($id);
+                if (empty($imageUrls) && !empty($_FILES['image']['name'])) {
+                    // Optionally handle error; proceed without rollback for now
+                }
+            }
+    
+            // Get current images
+            $images = $this->post->getPostImages($id);
+            $imageUrls = array_column($images, 'image_url');
+    
+            http_response_code(200);
+            echo json_encode([
+                'message' => 'Post updated successfully',
+                'post_id' => $id,
+                'image_urls' => $imageUrls ?? []
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to update post', 'error' => $e->getMessage()]);
         }
     }
 
@@ -121,7 +166,7 @@ class PostController {
             echo json_encode($posts);
         }
     }
-    
+
     private function handleGetPostsByUserIdRequest($userId) {
         $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 10;
         $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
