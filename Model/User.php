@@ -25,6 +25,12 @@ class User {
                 'key'    => $_ENV['AWS_ACCESS_KEY'],
                 'secret' => $_ENV['AWS_SECRET_KEY'],
             ],
+            'http' => [
+                'verify' => false,
+                'timeout' => 30
+            ],
+            'ssl_verify' => false,
+            'debug' => true
         ]);
     }
 
