@@ -198,14 +198,22 @@ class Post {
         $fields = [];
         $params = [':id' => (int) $id];
 
-        if (!empty($data['title'])) {
+        // Handle title: set to NULL if empty, otherwise sanitize and set
+        if (array_key_exists('title', $data)) {
             $fields[] = "title = :title";
-            $params[':title'] = htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8');
+            $params[':title'] = $data['title'] !== '' ? htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8') : NULL;
         }
+        // Handle content: only update if not empty (since it's NOT NULL in DB)
         if (!empty($data['content'])) {
             $fields[] = "content = :content";
             $params[':content'] = htmlspecialchars($data['content'], ENT_QUOTES, 'UTF-8');
         }
+        // Handle type: update if provided (e.g., 'text' or 'image')
+        if (!empty($data['type'])) {
+            $fields[] = "type = :type";
+            $params[':type'] = htmlspecialchars($data['type'], ENT_QUOTES, 'UTF-8');
+        }
+        // Other fields (unchanged)
         if (!empty($data['img_url'])) {
             $fields[] = "img_url = :img_url";
             $params[':img_url'] = filter_var($data['img_url'], FILTER_SANITIZE_URL);
@@ -225,10 +233,6 @@ class Post {
         if (!empty($data['category'])) {
             $fields[] = "category = :category";
             $params[':category'] = htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8');
-        }
-        if (!empty($data['type'])) {
-            $fields[] = "type = :type";
-            $params[':type'] = htmlspecialchars($data['type'], ENT_QUOTES, 'UTF-8');
         }
         if (!empty($data['privacy'])) {
             $fields[] = "privacy = :privacy";
