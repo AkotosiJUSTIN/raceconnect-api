@@ -88,7 +88,7 @@ class Post {
             try {
                 $this->s3->deleteObject([
                     'Bucket' => $_ENV['AWS_S3_BUCKET'],
-                    'Key'    => $key
+                    'Key'    => $_ENV['AWS_SECRET_KEY']
                 ]);
             } catch (AwsException $e) {
                 error_log("Failed to delete image from S3: " . $e->getMessage());
