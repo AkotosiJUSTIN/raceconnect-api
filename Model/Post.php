@@ -18,24 +18,17 @@ class Post {
 
     public function __construct($db) {
         $this->pdo = $db;
-    }
-
-    private function getS3Client() {
-        if (!$this->s3) {
-            $start = microtime(true);
-            $this->s3 = new S3Client([
-                'version' => 'latest',
-                'region'  => $_ENV['AWS_REGION'],
-                'credentials' => [
-                    'key'    => $_ENV['AWS_ACCESS_KEY'],
-                    'secret' => $_ENV['AWS_SECRET_KEY'],
-                ],
-                'http'    => [
-                    'verify' => false
-                ]
-            ]);
-        }
-        return $this->s3;
+        $this->s3 = new S3Client([
+            'version' => 'latest',
+            'region'  => $_ENV['AWS_REGION'],
+            'credentials' => [
+                'key'    => $_ENV['AWS_ACCESS_KEY'],
+                'secret' => $_ENV['AWS_SECRET_KEY'],
+            ],
+            'http'    => [
+                'verify' => false
+            ]
+        ]);
     }
 
     public function uploadPostImageToS3($imageData, $imageName) {
@@ -124,7 +117,7 @@ class Post {
                 try {
                     $this->s3->deleteObject([
                         'Bucket' => $_ENV['AWS_S3_BUCKET'],
-                        'Key'    => $key
+                        'Key'    => $_ENV['AWS_SECRET_KEY']
                     ]);
                 } catch (AwsException $e) {
                     error_log("Failed to delete image $key from S3: " . $e->getMessage());
