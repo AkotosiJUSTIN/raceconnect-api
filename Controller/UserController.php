@@ -61,6 +61,14 @@ class UserController {
 
     private function handleGetRequest($id) {
         try {
+
+            // Handle search query if present
+            if (isset($_GET['query']) && isset($_GET['user_id'])) {
+                $users = $this->user->searchUsers($_GET['query'], $_GET['user_id']);
+                $this->sendSuccessResponse(200, $users);
+                return;
+            }
+            
             if ($id) {
                 $user = $this->user->getUserById($id);
                 if ($user) {

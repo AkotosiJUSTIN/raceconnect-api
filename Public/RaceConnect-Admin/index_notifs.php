@@ -148,7 +148,7 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                         <thead>
                             <tr>
                                 <th><input type="checkbox" class="select-all" id="selectAll"></th>
-                                <th>Name</th>
+                                <th>Reported By</th>
                                 <th>Notification</th>
                                 <th>Date</th>
                                 <th>Actions</th>

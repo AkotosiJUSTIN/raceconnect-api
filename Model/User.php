@@ -279,5 +279,24 @@ class User {
             ':email' => filter_var($email, FILTER_SANITIZE_EMAIL)
         ]);
     }
+
+    // Search users
+    public function searchUsers($query, $userId, $columns = ['id', 'username', 'profile_picture', 'bio']) {
+        $searchQuery = "%{$query}%";
+        $columnsStr = implode(', ', $columns);
+        
+        $stmt = $this->pdo->prepare(
+            "SELECT {$columnsStr} 
+            FROM {$this->table} 
+            WHERE (username LIKE :query OR bio LIKE :query) 
+            AND id != :userId"
+        );
+        
+        $stmt->bindValue(':query', $searchQuery);
+        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>
