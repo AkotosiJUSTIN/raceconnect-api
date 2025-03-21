@@ -146,12 +146,25 @@
 
 .report-reason {
     font-weight: 500;
-    color: #991b1b;
+    color: #b91c1c;
 }
 
 .report-date {
     font-size: 0.8rem;
     color: #b91c1c;
+}
+
+
+.report-count {
+    font-weight: 500;
+    color: #b91c1c;
+    margin-right: 10px;
+}
+
+.reporter-name {
+    font-weight: bold;
+    color: #b91c1c;
+    margin-right: 10px;
 }
 
 /* Scrollable Content */

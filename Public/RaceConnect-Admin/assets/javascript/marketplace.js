@@ -81,8 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
     
                 <div class="report-info">
+                    <span class="reporter-name">Reported by: ${item.reporter_username || 'Unknown'}</span>
                     <span class="report-reason">Reason: ${item.report_reason || 'No reason provided'}</span>
-                    <span class="report-date">Reported by: ${item.reporter_username || 'Unknown'}</span>
+                    <span class="report-count">Reports: ${item.report_count || 0}</span> <!-- Add this -->
                     <span class="report-date">on ${item.reported_at ? new Date(item.reported_at).toLocaleString() : 'Unknown date'}</span>
                 </div>
     

@@ -574,25 +574,37 @@ function fetchAnnouncements($conn) {
 
 function fetchPosts($conn) {
     try {
-        // First, sync post report status with pending reports
+        // First ensure the reported_at column exists
+        $checkColumn = "SHOW COLUMNS FROM posts LIKE 'reported_at'";
+        $columnExists = $conn->query($checkColumn)->num_rows > 0;
+        
+        if (!$columnExists) {
+            // Add the column if it doesn't exist
+            $addColumn = "ALTER TABLE posts ADD COLUMN reported_at TIMESTAMP NULL DEFAULT NULL";
+            if (!$conn->query($addColumn)) {
+                throw new Exception("Failed to add reported_at column");
+            }
+        }
+
+        // Sync post report status with pending reports
         $syncQuery = "UPDATE posts p 
             LEFT JOIN (
-                SELECT post_id, COUNT(*) as pending_count 
+                SELECT post_id, MIN(created_at) as first_report
                 FROM reports 
                 WHERE status = 'pending'
                 GROUP BY post_id
             ) r ON p.id = r.post_id 
             SET p.report = CASE
-                WHEN r.pending_count > 0 THEN 'reported'
-                WHEN r.pending_count IS NULL OR r.pending_count = 0 THEN 'none'
-                ELSE p.report
-            END";
+                WHEN r.post_id IS NOT NULL THEN 'reported'
+                ELSE 'none'
+            END,
+            p.reported_at = COALESCE(p.reported_at, r.first_report)";
         
         if (!$conn->query($syncQuery)) {
             throw new Exception("Failed to sync report status: " . $conn->error);
         }
 
-        // Modified query to show both reported and hidden posts
+        // Modified query to count all reports correctly
         $query = "SELECT 
             p.id, 
             p.user_id, 
@@ -601,25 +613,35 @@ function fetchPosts($conn) {
             p.created_at,
             COALESCE(p.status, 'Active') as status,
             p.report,
-            r.reason as report_reason,
-            r.created_at as reported_at,
-            r.status as report_status,
+            p.reported_at,
+            r2.reason as report_reason,
+            r2.created_at as report_created_at,
+            r2.status as report_status,
             u.username as reporter_username,
-            GROUP_CONCAT(pi.image_url) as images
+            (SELECT COUNT(*) FROM reports WHERE post_id = p.id) as report_count,
+            GROUP_CONCAT(DISTINCT pi.image_url) as images
             FROM posts p
-            LEFT JOIN reports r ON p.id = r.post_id
-            LEFT JOIN users u ON r.reporter_id = u.id
+            LEFT JOIN (
+                SELECT post_id, reason, created_at, status, reporter_id
+                FROM reports 
+                WHERE created_at = (
+                    SELECT MIN(created_at) 
+                    FROM reports r3 
+                    WHERE r3.post_id = reports.post_id
+                )
+            ) r2 ON p.id = r2.post_id
+            LEFT JOIN users u ON r2.reporter_id = u.id
             LEFT JOIN post_images pi ON p.id = pi.post_id
             WHERE (p.report = 'reported' OR p.status = 'Hidden')
             AND p.status != 'Archived'
             GROUP BY p.id
             ORDER BY 
                 CASE 
-                    WHEN r.status = 'pending' THEN 1
+                    WHEN r2.status = 'pending' THEN 1
                     WHEN p.status = 'Hidden' THEN 2
                     ELSE 3
                 END,
-                r.created_at DESC";
+                COALESCE(p.reported_at, p.created_at) DESC";
         
         $result = $conn->query($query);
         
@@ -703,35 +725,36 @@ function fetchMarketplaceItems($conn) {
 
         // Modified query to show both reported and hidden items
         $queryItems = "SELECT 
-            mi.id, 
-            mi.seller_id, 
-            mi.title, 
-            mi.description, 
-            mi.price, 
-            mi.category,
-            mi.status,
-            mi.report,
-            mi.created_at,
-            mi.reported_at,
-            r.reason as report_reason,
-            r.created_at as report_created_at,
-            r.status as report_status,
-            u.username as reporter_username,
-            GROUP_CONCAT(mii.image_url) as image_urls
-            FROM marketplace_items mi
-            LEFT JOIN reports r ON mi.id = r.marketplace_item_id
-            LEFT JOIN users u ON r.reporter_id = u.id
-            LEFT JOIN marketplace_item_images mii ON mi.id = mii.marketplace_item_id
-            WHERE (mi.report = 'reported' OR mi.status = 'Hidden')
-            AND mi.status != 'Archived'
-            GROUP BY mi.id
-            ORDER BY 
-                CASE 
-                    WHEN r.status = 'pending' THEN 1
-                    WHEN mi.status = 'Hidden' THEN 2
-                    ELSE 3
-                END,
-                COALESCE(mi.reported_at, mi.created_at) DESC";
+        mi.id, 
+        mi.seller_id, 
+        mi.title, 
+        mi.description, 
+        mi.price, 
+        mi.category,
+        mi.status,
+        mi.report,
+        mi.created_at,
+        mi.reported_at,
+        COUNT(r.id) as report_count, -- Add this to count reports
+        r.reason as report_reason,
+        r.created_at as report_created_at,
+        r.status as report_status,
+        u.username as reporter_username,
+        GROUP_CONCAT(DISTINCT mii.image_url) as image_urls
+        FROM marketplace_items mi
+        LEFT JOIN reports r ON mi.id = r.marketplace_item_id
+        LEFT JOIN users u ON r.reporter_id = u.id
+        LEFT JOIN marketplace_item_images mii ON mi.id = mii.marketplace_item_id
+        WHERE (mi.report = 'reported' OR mi.status = 'Hidden')
+        AND mi.status != 'Archived'
+        GROUP BY mi.id
+        ORDER BY 
+            CASE 
+                WHEN r.status = 'pending' THEN 1
+                WHEN mi.status = 'Hidden' THEN 2
+                ELSE 3
+            END,
+            COALESCE(mi.reported_at, mi.created_at) DESC";
 
         $resultItems = $conn->query($queryItems);
 

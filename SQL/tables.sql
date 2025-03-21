@@ -73,6 +73,7 @@ CREATE TABLE Posts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     archived_at timestamp NULL DEFAULT NULL,
     report ENUM('none', 'reported') DEFAULT 'none',
+    reported_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
     INDEX idx_cleanup (status, archived_at)
 );

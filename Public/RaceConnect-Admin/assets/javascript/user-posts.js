@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? createCarousel(post.images, `post-${post.id}`)
                 : '';
 
-            postCard.innerHTML = `
+                postCard.innerHTML = `
                 <div class="post-header">
                     <div class="user-info">
                         <span class="user-name">${post.title || 'Untitled'}</span>
@@ -83,7 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 <div class="report-info">
-                    <span class="report-reason">Reported: ${post.report_reason || 'No reason provided'}</span>
+                    <span class="reporter-name">Reported by: ${post.reporter_username || 'Unknown'}</span>
+                    <span class="report-reason">Reason: ${post.report_reason || 'No reason provided'}</span>
+                    <span class="report-count">Reports: ${post.report_count || 0}</span>
                     <span class="report-date">on ${post.reported_at ? new Date(post.reported_at).toLocaleString() : 'Unknown date'}</span>
                 </div>
                 <div class="scrollable-content ${post.status === 'Hidden' ? 'blurred' : ''}">
