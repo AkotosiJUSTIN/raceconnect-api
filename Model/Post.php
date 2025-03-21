@@ -18,17 +18,24 @@ class Post {
 
     public function __construct($db) {
         $this->pdo = $db;
-        $this->s3 = new S3Client([
-            'version' => 'latest',
-            'region'  => $_ENV['AWS_REGION'],
-            'credentials' => [
-                'key'    => $_ENV['AWS_ACCESS_KEY'],
-                'secret' => $_ENV['AWS_SECRET_KEY'],
-            ],
-            'http'    => [
-                'verify' => false
-            ]
-        ]);
+    }
+
+    private function getS3Client() {
+        if (!$this->s3) {
+            $start = microtime(true);
+            $this->s3 = new S3Client([
+                'version' => 'latest',
+                'region'  => $_ENV['AWS_REGION'],
+                'credentials' => [
+                    'key'    => $_ENV['AWS_ACCESS_KEY'],
+                    'secret' => $_ENV['AWS_SECRET_KEY'],
+                ],
+                'http'    => [
+                    'verify' => false
+                ]
+            ]);
+        }
+        return $this->s3;
     }
 
     public function uploadPostImageToS3($imageData, $imageName) {
