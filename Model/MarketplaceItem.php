@@ -202,5 +202,53 @@ class MarketplaceItem {
         return $items;
     }
 
-    
+    public function deleteItemImages($itemId) {
+    // Get image URLs
+    $images = $this->getItemImages($itemId);
+    foreach ($images as $image) {
+        $url = $image['image_url'];
+        $key = parse_url($url, PHP_URL_PATH);
+        $key = ltrim($key, '/');
+        try {
+            $this->s3->deleteObject([
+                'Bucket' => $_ENV['AWS_S3_BUCKET'],
+                'Key'    => $key  // Fixed: Use actual key instead of secret key
+            ]);
+        } catch (AwsException $e) {
+            error_log("Failed to delete image from S3: " . $e->getMessage());
+        }
+    }
+    $stmt = $this->pdo->prepare("DELETE FROM Marketplace_Item_Images WHERE marketplace_item_id = :item_id");
+    return $stmt->execute([':item_id' => (int) $itemId]);
+}
+
+public function deleteSpecificItemImages($itemId, $imageIds) {
+if (empty($imageIds)) {
+    return;
+}
+$placeholders = implode(',', array_fill(0, count($imageIds), '?'));
+$sql = "DELETE FROM Marketplace_Item_Images WHERE marketplace_item_id = ? AND id IN ($placeholders)";
+$stmt = $this->pdo->prepare($sql);
+$params = array_merge([(int) $itemId], $imageIds);
+$stmt->execute($params);
+
+foreach ($imageIds as $imageId) {
+    $stmt = $this->pdo->prepare("SELECT image_url FROM Marketplace_Item_Images WHERE id = ? AND marketplace_item_id = ?");
+    $stmt->execute([$imageId, (int) $itemId]);
+    $image = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($image) {
+        $url = $image['image_url'];
+        $key = parse_url($url, PHP_URL_PATH);
+        $key = ltrim($key, '/');
+        try {
+            $this->s3->deleteObject([
+                'Bucket' => $_ENV['AWS_S3_BUCKET'],
+                'Key'    => $key
+            ]);
+        } catch (AwsException $e) {
+            error_log("Failed to delete image $key from S3: " . $e->getMessage());
+        }
+    }
+}
+}
 }

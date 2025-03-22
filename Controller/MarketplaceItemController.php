@@ -31,6 +31,8 @@ class MarketplaceItemController {
                 case 'POST':
                     if ($action === 'images' && $id) {
                         $this->handleUploadItemImagesRequest($id);
+                    } elseif ($action === 'update' && $id) {
+                        $this->handleUpdateWithImages($id);
                     } else {
                         $this->handlePostRequest();
                     }
@@ -185,12 +187,15 @@ class MarketplaceItemController {
                 return;
             }
             
+            // Delete associated images first
+            $this->item->deleteItemImages($id);
+            
             if (!$this->item->deleteItem($id)) {
                 $this->respond(404, ['message' => 'Item not found']);
                 return;
             }
             
-            $this->respond(200, ['message' => 'Item deleted successfully']);
+            $this->respond(200, ['message' => 'Item and associated images deleted successfully']);
         } catch (Exception $e) {
             throw new Exception("DELETE request failed: " . $e->getMessage());
         }
@@ -271,5 +276,43 @@ class MarketplaceItemController {
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
+    }
+
+    private function handleUpdateWithImages($id) {
+        try {
+            $data = $_POST;
+            if (empty($data)) {
+                $this->respond(400, ['message' => 'No update data provided']);
+                return;
+            }
+    
+            $success = $this->item->updateItem($id, $data);
+            if (!$success) {
+                throw new Exception('Failed to update item or no changes made');
+            }
+    
+            // Handle specific image deletions
+            if (isset($data['delete_image_ids']) && !empty($data['delete_image_ids'])) {
+                $imageIdsToDelete = explode(',', $data['delete_image_ids']);
+                $this->item->deleteSpecificItemImages($id, $imageIdsToDelete);
+            }
+    
+            // Handle new image uploads
+            $imageUrls = [];
+            if (!empty($_FILES['image']['name'])) {
+                $imageUrls = $this->handleImageUpload($id);
+            }
+    
+            $images = $this->item->getItemImages($id);
+            $currentImageUrls = array_column($images, 'image_url');
+    
+            $this->respond(200, [
+                'message' => 'Item updated successfully',
+                'item_id' => $id,
+                'image_urls' => $currentImageUrls
+            ]);
+        } catch (Exception $e) {
+            $this->respond(500, ['message' => 'Failed to update item', 'error' => $e->getMessage()]);
+        }
     }
 }
