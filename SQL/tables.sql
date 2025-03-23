@@ -218,6 +218,63 @@ CREATE TABLE Post_Comments (
     FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
+-- Comments Reply Table (for replies to comments)
+CREATE TABLE Comments_Reply (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    parent_comment_id INT NOT NULL,  -- The comment being replied to
+    user_id INT NOT NULL,            -- User who made the reply
+    post_id INT NOT NULL,            -- Post the comment belongs to
+    owner_id INT NOT NULL,           -- Owner of the original post
+    reply_text TEXT NOT NULL,        -- Content of the reply
+    likes INT DEFAULT 0,             -- Number of likes on the reply
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_comment_id) REFERENCES Post_Comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE,
+    INDEX idx_parent_comment (parent_comment_id),
+    INDEX idx_user_id (user_id)
+);
+
+-- Comments Likes Table (for likes on comments)
+CREATE TABLE Comments_Likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    comment_id INT NOT NULL,         -- The comment being liked
+    user_id INT NOT NULL,            -- User who liked the comment
+    owner_id INT NOT NULL,           -- Owner of the original post
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (comment_id) REFERENCES Post_Comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (owner_id) REFERENCES Users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_comment_like (user_id, comment_id),  -- Prevent multiple likes from same user
+    INDEX idx_comment_id (comment_id),
+    INDEX idx_user_id (user_id)
+);
+
+-- Add triggers to update likes count in Post_Comments
+DELIMITER $$
+
+CREATE TRIGGER after_comment_like_insert
+AFTER INSERT ON Comments_Likes
+FOR EACH ROW
+BEGIN
+    UPDATE Post_Comments
+    SET likes = likes + 1
+    WHERE id = NEW.comment_id;
+END$$
+
+CREATE TRIGGER after_comment_like_delete
+AFTER DELETE ON Comments_Likes
+FOR EACH ROW
+BEGIN
+    UPDATE Post_Comments
+    SET likes = likes - 1
+    WHERE id = OLD.comment_id;
+END$$
+
+DELIMITER ;
+
 -- Post Reposts Table (Updated)
 CREATE TABLE Post_Reposts (
     id INT AUTO_INCREMENT PRIMARY KEY,

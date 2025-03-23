@@ -15,6 +15,8 @@ use Controller\FriendsController;
 use Controller\AnnouncementController;
 use Controller\ReportController;
 use Controller\SendMessageController;
+use Controller\Comment\CommentsReplyController;
+use Controller\Comment\CommentsLikeController;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -133,32 +135,25 @@ class Api {
 
                 case 'marketplace-items':
                     if ($action === 'images' && $id) {
-                        // Existing route for getting item images
                         error_log("Routing to handleGetItemImagesRequest for item ID: $id");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'images');
                     } elseif ($action === 'update' && $id) {
-                        // New route: Added update functionality similar to posts
                         error_log("Routing to handleUpdateWithImages for item ID: $id");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id, 'update');
                     } elseif ($action === 'category' && isset($path[3])) {
-                        // New route: Added category filtering
                         error_log("Routing to handleGetItemsByCategory for category: {$path[3]}");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $path[3], 'category');
                     } elseif (isset($_GET['category']) && isset($_GET['user_id'])) {
-                        // New route: Added category and user_id filtering
                         error_log("Routing to handleGetItemsByCategoryAndUser for user ID: {$_GET['user_id']}");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
                     } elseif ($id === 'user' && isset($path[2]) && is_numeric($path[2])) {
-                        // Existing route for user items
                         $userId = $path[2];
                         error_log("Routing to handleGetItemsByUserRequest for user ID: $userId");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $userId, 'user');
                     } elseif ($id && isset($path[2]) && $path[2] === 'likes' && is_numeric($id)) {
-                        // Existing route for item likes
                         error_log("Routing to handleGetItemLikesRequest for item ID: $id");
                         $this->handleRequest(new MarketplaceItemLikeController($this->conn), $method, $id);
                     } else {
-                        // Default route
                         error_log("Routing to handleGetRequest for resource with ID: $id");
                         $this->handleRequest(new MarketplaceItemController($this->conn), $method, $id);
                     }
@@ -211,6 +206,14 @@ class Api {
 
                 case 'post-comments':
                     $this->handleRequest(new PostCommentController($this->conn), $method, $id);
+                    break;
+
+                case 'comments-replies':
+                    $this->handleRequest(new CommentsReplyController($this->conn), $method, $id);
+                    break;
+
+                case 'comments-likes':
+                    $this->handleRequest(new CommentsLikeController($this->conn), $method, $id);
                     break;
 
                 case 'post-reposts':
