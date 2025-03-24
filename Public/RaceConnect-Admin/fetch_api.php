@@ -792,18 +792,23 @@ function hideMarketplaceItem($conn) {
     $conn->begin_transaction();
 
     try {
-        // First get the current status
-        $getCurrentStatus = "SELECT status FROM marketplace_items WHERE id = ?";
+        // Get the current status, seller_id, and title of the item
+        $getCurrentStatus = "SELECT status, seller_id, title FROM marketplace_items WHERE id = ?";
         $statusStmt = $conn->prepare($getCurrentStatus);
         $statusStmt->bind_param("i", $itemId);
         $statusStmt->execute();
         $result = $statusStmt->get_result();
-        $currentStatus = $result->fetch_assoc()['status'];
+        $row = $result->fetch_assoc();
+        if (!$row) {
+            throw new Exception("Item not found");
+        }
+        $currentStatus = $row['status'];
+        $sellerId = $row['seller_id'];
+        $itemTitle = $row['title'];
 
-        // Update item status and store previous status
+        // Update item status to Hidden (no change to previous_status)
         $query = "UPDATE marketplace_items 
-                 SET status = 'Hidden', 
-                     previous_status = ? 
+                 SET status = 'Hidden'
                  WHERE id = ?";
         $stmt = $conn->prepare($query);
 
@@ -811,7 +816,7 @@ function hideMarketplaceItem($conn) {
             throw new Exception("Database error: " . $conn->error);
         }
 
-        $stmt->bind_param("si", $currentStatus, $itemId);
+        $stmt->bind_param("i", $itemId);
         if (!$stmt->execute()) {
             throw new Exception("Failed to update item");
         }
@@ -847,6 +852,17 @@ function hideMarketplaceItem($conn) {
             }
         }
 
+        // Add notification for the item seller
+        $notificationContent = "Your marketplace item: \"$itemTitle\" has been hidden by admin. If you have a concern, make an appeal.";
+        $insertNotification = $conn->prepare("
+            INSERT INTO Notifications (user_id, marketplace_item_id, type, content, trigger_user_id)
+            VALUES (?, ?, 'marketplace', ?, NULL)
+        ");
+        $insertNotification->bind_param("iis", $sellerId, $itemId, $notificationContent);
+        if (!$insertNotification->execute()) {
+            throw new Exception("Failed to create notification");
+        }
+
         $conn->commit();
         echo json_encode(["success" => true]);
 
@@ -867,18 +883,28 @@ function unhideMarketplaceItem($conn) {
     $conn->begin_transaction();
 
     try {
-        // Get the previous status or default to Available
-        $getStatusQuery = "SELECT previous_status FROM marketplace_items WHERE id = ?";
+        // Get the current status, seller_id, and title
+        $getStatusQuery = "SELECT status, seller_id, title FROM marketplace_items WHERE id = ?";
         $statusStmt = $conn->prepare($getStatusQuery);
         $statusStmt->bind_param("i", $itemId);
         $statusStmt->execute();
         $result = $statusStmt->get_result();
-        $previousStatus = $result->fetch_assoc()['previous_status'] ?? 'Available';
+        $row = $result->fetch_assoc();
+        if (!$row) {
+            throw new Exception("Item not found");
+        }
+        $currentStatus = $row['status'];
+        $sellerId = $row['seller_id'];
+        $itemTitle = $row['title'];
 
-        // Update item status but maintain the report information
+        // Check if item is already unhidden
+        if ($currentStatus !== 'Hidden') {
+            throw new Exception("Item is not hidden");
+        }
+
+        // Update item status to Active (since it's being unhidden)
         $query = "UPDATE marketplace_items 
-                 SET status = ?, 
-                     previous_status = NULL
+                 SET status = 'Active'
                  WHERE id = ?";
         $stmt = $conn->prepare($query);
 
@@ -886,12 +912,12 @@ function unhideMarketplaceItem($conn) {
             throw new Exception("Database error: " . $conn->error);
         }
 
-        $stmt->bind_param("si", $previousStatus, $itemId);
+        $stmt->bind_param("i", $itemId);
         if (!$stmt->execute()) {
             throw new Exception("Failed to update item");
         }
 
-        // Update report status to pending instead of changing it
+        // Update report status to pending
         $updateReport = $conn->prepare("
             UPDATE reports 
             SET status = 'pending'
@@ -901,6 +927,29 @@ function unhideMarketplaceItem($conn) {
         $updateReport->bind_param("i", $itemId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
+        }
+
+        // Delete existing "hidden" notification
+        $deleteNotification = $conn->prepare("
+            DELETE FROM Notifications 
+            WHERE marketplace_item_id = ? 
+            AND type = 'marketplace' 
+            AND content LIKE 'Your marketplace item:%has been hidden by admin.%'
+        ");
+        $deleteNotification->bind_param("i", $itemId);
+        if (!$deleteNotification->execute()) {
+            throw new Exception("Failed to delete existing notification");
+        }
+
+        // Add new notification for unhiding with item title
+        $notificationContent = "Your appeal has been approved. Your marketplace item: \"$itemTitle\" has been restored by admin and is now visible.";
+        $insertNotification = $conn->prepare("
+            INSERT INTO Notifications (user_id, marketplace_item_id, type, content, trigger_user_id)
+            VALUES (?, ?, 'marketplace', ?, NULL)
+        ");
+        $insertNotification->bind_param("iis", $sellerId, $itemId, $notificationContent);
+        if (!$insertNotification->execute()) {
+            throw new Exception("Failed to create notification");
         }
 
         $conn->commit();
@@ -997,6 +1046,26 @@ function archivePost($conn) {
         // Start transaction
         $conn->begin_transaction();
 
+        // Get the user_id, status, and title of the post
+        $getPostInfo = "SELECT user_id, status, title FROM posts WHERE id = ?";
+        $infoStmt = $conn->prepare($getPostInfo);
+        $infoStmt->bind_param("i", $postId);
+        $infoStmt->execute();
+        $result = $infoStmt->get_result();
+        $row = $result->fetch_assoc();
+        if (!$row) {
+            throw new Exception("Post not found");
+        }
+        $userId = $row['user_id'];
+        $currentStatus = $row['status'];
+        $postTitle = $row['title'] ?: 'Untitled'; // Fallback if title is NULL or empty
+
+        // Check if post is already archived
+        if ($currentStatus === 'Archived') {
+            throw new Exception("Post is already archived");
+        }
+
+        // Random cleanup (unchanged from original)
         if (rand(1, 10) === 1) {
             $cleanup = new CleanupService($conn);
             $cleanup->cleanupArchivedData();
@@ -1014,7 +1083,7 @@ function archivePost($conn) {
         $stmt->execute();
 
         if ($stmt->affected_rows === 0) {
-            throw new Exception("Post not found or already archived");
+            throw new Exception("Failed to archive post");
         }
 
         // Update reports to resolved status
@@ -1028,6 +1097,17 @@ function archivePost($conn) {
         $updateReports->bind_param("ii", $_SESSION['admin_id'], $postId);
         $updateReports->execute();
 
+        // Add notification for the post owner
+        $notificationContent = "Your post: \"$postTitle\" has been deleted by an administrator.";
+        $insertNotification = $conn->prepare("
+            INSERT INTO Notifications (user_id, post_id, type, content, trigger_user_id)
+            VALUES (?, ?, 'post', ?, ?)
+        ");
+        $insertNotification->bind_param("iisi", $userId, $postId, $notificationContent, $_SESSION['admin_id']);
+        if (!$insertNotification->execute()) {
+            throw new Exception("Failed to create notification");
+        }
+
         // Commit transaction
         $conn->commit();
         
@@ -1035,6 +1115,19 @@ function archivePost($conn) {
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    } finally {
+        if (isset($infoStmt)) {
+            $infoStmt->close();
+        }
+        if (isset($stmt)) {
+            $stmt->close();
+        }
+        if (isset($updateReports)) {
+            $updateReports->close();
+        }
+        if (isset($insertNotification)) {
+            $insertNotification->close();
+        }
     }
 }
 
@@ -1063,6 +1156,25 @@ function archiveMarketplaceItem($conn) {
         // Start transaction
         $conn->begin_transaction();
 
+        // Get the seller_id, status, and title of the item
+        $getItemQuery = "SELECT seller_id, status, title FROM marketplace_items WHERE id = ?";
+        $itemStmt = $conn->prepare($getItemQuery);
+        $itemStmt->bind_param("i", $itemId);
+        $itemStmt->execute();
+        $result = $itemStmt->get_result();
+        $row = $result->fetch_assoc();
+        if (!$row) {
+            throw new Exception("Item not found");
+        }
+        $sellerId = $row['seller_id'];
+        $currentStatus = $row['status'];
+        $itemTitle = $row['title'];
+
+        // Check if item is already archived
+        if ($currentStatus === 'Archived') {
+            throw new Exception("Item is already archived");
+        }
+
         // Archive the item
         $stmt = $conn->prepare("
             UPDATE marketplace_items 
@@ -1076,7 +1188,7 @@ function archiveMarketplaceItem($conn) {
         $stmt->execute();
 
         if ($stmt->affected_rows === 0) {
-            throw new Exception("Item not found or already archived");
+            throw new Exception("Failed to archive item");
         }
 
         // Update reports to resolved status
@@ -1089,6 +1201,17 @@ function archiveMarketplaceItem($conn) {
         ");
         $updateReports->bind_param("ii", $_SESSION['admin_id'], $itemId);
         $updateReports->execute();
+
+        // Add notification for the item seller
+        $notificationContent = "Your marketplace item: \"$itemTitle\" has been deleted by an administrator.";
+        $insertNotification = $conn->prepare("
+            INSERT INTO Notifications (user_id, marketplace_item_id, type, content, trigger_user_id)
+            VALUES (?, ?, 'marketplace', ?, ?)
+        ");
+        $insertNotification->bind_param("iisi", $sellerId, $itemId, $notificationContent, $_SESSION['admin_id']);
+        if (!$insertNotification->execute()) {
+            throw new Exception("Failed to create notification");
+        }
 
         // Commit the transaction
         $conn->commit();
@@ -1115,6 +1238,25 @@ function hidePost($conn) {
     $conn->begin_transaction();
 
     try {
+        // Get the current status, user_id, and title of the post
+        $getPostInfo = "SELECT status, user_id, title FROM posts WHERE id = ?";
+        $infoStmt = $conn->prepare($getPostInfo);
+        $infoStmt->bind_param("i", $postId);
+        $infoStmt->execute();
+        $result = $infoStmt->get_result();
+        $row = $result->fetch_assoc();
+        if (!$row) {
+            throw new Exception("Post not found");
+        }
+        $currentStatus = $row['status'];
+        $userId = $row['user_id'];
+        $postTitle = $row['title'] ?: 'Untitled'; // Fallback if title is NULL or empty
+
+        // Check if post is already hidden
+        if ($currentStatus === 'Hidden') {
+            throw new Exception("Post is already hidden");
+        }
+
         // Update post status
         $query = "UPDATE posts SET status = 'Hidden' WHERE id = ?";
         $stmt = $conn->prepare($query);
@@ -1129,7 +1271,7 @@ function hidePost($conn) {
         }
 
         // Update report status
-        $updateReport = $conn->prepare("UPDATE reports SET status = 'Hidden' WHERE post_id = ?");
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'Hidden' WHERE post_id = ? AND status = 'pending'");
         $updateReport->bind_param("i", $postId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
@@ -1151,6 +1293,17 @@ function hidePost($conn) {
             }
         }
 
+        // Add notification for the post owner
+        $notificationContent = "Your post: \"$postTitle\" has been hidden by an administrator. If you have a concern, make an appeal.";
+        $insertNotification = $conn->prepare("
+            INSERT INTO Notifications (user_id, post_id, type, content, trigger_user_id)
+            VALUES (?, ?, 'post', ?, NULL)
+        ");
+        $insertNotification->bind_param("iis", $userId, $postId, $notificationContent);
+        if (!$insertNotification->execute()) {
+            throw new Exception("Failed to create notification");
+        }
+
         $conn->commit();
         echo json_encode(["success" => true]);
 
@@ -1160,6 +1313,21 @@ function hidePost($conn) {
     } finally {
         if (isset($stmt)) {
             $stmt->close();
+        }
+        if (isset($infoStmt)) {
+            $infoStmt->close();
+        }
+        if (isset($updateReport)) {
+            $updateReport->close();
+        }
+        if (isset($checkReports)) {
+            $checkReports->close();
+        }
+        if (isset($updatePostReport)) {
+            $updatePostReport->close();
+        }
+        if (isset($insertNotification)) {
+            $insertNotification->close();
         }
     }
 }
@@ -1175,6 +1343,25 @@ function unhidePost($conn) {
     $conn->begin_transaction();
 
     try {
+        // Get the current status, user_id, and title of the post
+        $getPostInfo = "SELECT status, user_id, title FROM posts WHERE id = ?";
+        $infoStmt = $conn->prepare($getPostInfo);
+        $infoStmt->bind_param("i", $postId);
+        $infoStmt->execute();
+        $result = $infoStmt->get_result();
+        $row = $result->fetch_assoc();
+        if (!$row) {
+            throw new Exception("Post not found");
+        }
+        $currentStatus = $row['status'];
+        $userId = $row['user_id'];
+        $postTitle = $row['title'] ?: 'Untitled'; // Fallback if title is NULL or empty
+
+        // Check if post is already active
+        if ($currentStatus !== 'Hidden') {
+            throw new Exception("Post is not hidden");
+        }
+
         // Update post status
         $query = "UPDATE posts SET status = 'Active' WHERE id = ?";
         $stmt = $conn->prepare($query);
@@ -1188,8 +1375,8 @@ function unhidePost($conn) {
             throw new Exception("Failed to update post");
         }
 
-        // Update report status
-        $updateReport = $conn->prepare("UPDATE reports SET status = 'pending' WHERE post_id = ?");
+        // Update report status to pending
+        $updateReport = $conn->prepare("UPDATE reports SET status = 'pending' WHERE post_id = ? AND status = 'Hidden'");
         $updateReport->bind_param("i", $postId);
         if (!$updateReport->execute()) {
             throw new Exception("Failed to update report");
@@ -1211,8 +1398,31 @@ function unhidePost($conn) {
             }
         }
 
+        // Delete existing "hidden" notification
+        $deleteNotification = $conn->prepare("
+            DELETE FROM Notifications 
+            WHERE post_id = ? 
+            AND type = 'post' 
+            AND content LIKE 'Your post:%has been hidden by an administrator.%'
+        ");
+        $deleteNotification->bind_param("i", $postId);
+        if (!$deleteNotification->execute()) {
+            throw new Exception("Failed to delete existing notification");
+        }
+
+        // Add new notification for unhiding
+        $notificationContent = "Your appeal has been approved. Your post: \"$postTitle\" has been restored by admin and is now visible.";
+        $insertNotification = $conn->prepare("
+            INSERT INTO Notifications (user_id, post_id, type, content, trigger_user_id)
+            VALUES (?, ?, 'post', ?, NULL)
+        ");
+        $insertNotification->bind_param("iis", $userId, $postId, $notificationContent);
+        if (!$insertNotification->execute()) {
+            throw new Exception("Failed to create notification");
+        }
+
         $conn->commit();
-        echo json_encode(["success" => true]);
+        echo json_encode(["success" => true, "status" => "Active"]);
 
     } catch (Exception $e) {
         $conn->rollback();
@@ -1220,6 +1430,24 @@ function unhidePost($conn) {
     } finally {
         if (isset($stmt)) {
             $stmt->close();
+        }
+        if (isset($infoStmt)) {
+            $infoStmt->close();
+        }
+        if (isset($updateReport)) {
+            $updateReport->close();
+        }
+        if (isset($checkReports)) {
+            $checkReports->close();
+        }
+        if (isset($updatePostReport)) {
+            $updatePostReport->close();
+        }
+        if (isset($deleteNotification)) {
+            $deleteNotification->close();
+        }
+        if (isset($insertNotification)) {
+            $insertNotification->close();
         }
     }
 }
