@@ -234,6 +234,18 @@ class Post {
             $fields[] = "category = :category";
             $params[':category'] = htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8');
         }
+        // Add status handling
+        if (isset($data['status'])) {
+            $fields[] = "status = :status";
+            $params[':status'] = in_array($data['status'], ['Active', 'Hidden', 'Archived']) ? $data['status'] : 'Active';
+        }
+        // Optionally handle report if needed
+        if (isset($data['report'])) {
+            $fields[] = "report = :report";
+            $params[':report'] = in_array($data['report'], ['none', 'reported']) ? $data['report'] : 'none';
+        }
+
+        
         if (!empty($data['privacy'])) {
             $fields[] = "privacy = :privacy";
             $params[':privacy'] = htmlspecialchars($data['privacy'], ENT_QUOTES, 'UTF-8');
@@ -286,7 +298,7 @@ class Post {
             LEFT JOIN Users u ON p.user_id = u.id
             WHERE
                 p.category IN ($placeholders)
-                AND p.status = 'Active'
+                AND p.status IN ('Active', 'Hidden')  -- Include 'Active' and 'Hidden', exclude 'Archived'
                 AND (
                     p.privacy = 'Public'
                     OR (
