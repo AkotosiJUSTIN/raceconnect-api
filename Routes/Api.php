@@ -208,10 +208,6 @@ class Api {
                     $this->handleRequest(new PostCommentController($this->conn), $method, $id);
                     break;
 
-                case 'comments-replies':
-                    $this->handleRequest(new CommentsReplyController($this->conn), $method, $id);
-                    break;
-
                 case 'comments-likes':
                     $this->handleRequest(new CommentsLikeController($this->conn), $method, $id);
                     break;
