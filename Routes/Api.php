@@ -13,6 +13,7 @@ use Controller\Repost\PostRepostController;
 use Controller\AuthController;
 use Controller\FriendsController;
 use Controller\AnnouncementController;
+use Controller\AppealsController;
 use Controller\ReportController;
 use Controller\SendMessageController;
 use Controller\Comment\CommentsReplyController;
@@ -113,6 +114,18 @@ class Api {
                     $controller = new AuthController($this->conn);
                     $data = $this->getJsonInput();
                     $controller->resetPassword($data);
+                    break;
+
+                case 'appeals':
+                    if ($method === 'POST' && $id === 'submit') {
+                        $controller = new AppealsController($this->conn);
+                        $data = $this->getJsonInput();
+                        $response = $controller->submitAppeal($data);
+                        echo json_encode($response);
+                    } else {
+                        http_response_code(404);
+                        echo json_encode(['message' => 'Not Found: Invalid appeals action']);
+                    }
                     break;
 
                 case 'friends':

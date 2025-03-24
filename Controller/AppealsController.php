@@ -125,6 +125,62 @@ class AppealsController {
         }
     }
 
+    public function updateAppealStatus($appealId, $status) {
+        try {
+            $this->conn->beginTransaction();
+    
+            try {
+                // 1. Update appeal status
+                $appealQuery = "UPDATE appeals 
+                              SET status = :status 
+                              WHERE id = :appeal_id";
+                
+                $appealStmt = $this->conn->prepare($appealQuery);
+                $appealStmt->execute([
+                    ':status' => $status === 'archived' ? 'REJECTED' : strtoupper($status),
+                    ':appeal_id' => $appealId
+                ]);
+    
+                // 2. Update related notification
+                $notifQuery = "UPDATE admin_notifications 
+                             SET status = :status, 
+                                 action_taken = CASE 
+                                     WHEN :status = 'archived' THEN 'Denied'
+                                     ELSE NULL 
+                                 END,
+                                 archived_at = CASE 
+                                     WHEN :status = 'archived' THEN CURRENT_TIMESTAMP
+                                     ELSE NULL 
+                                 END
+                             WHERE appeal_id = :appeal_id";
+    
+                $notifStmt = $this->conn->prepare($notifQuery);
+                $notifStmt->execute([
+                    ':status' => $status,
+                    ':appeal_id' => $appealId
+                ]);
+    
+                $this->conn->commit();
+                
+                return [
+                    'success' => true,
+                    'message' => 'Appeal status updated successfully'
+                ];
+    
+            } catch (\Exception $e) {
+                $this->conn->rollBack();
+                throw $e;
+            }
+    
+        } catch (\Exception $e) {
+            error_log("Appeal status update error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Failed to update appeal status'
+            ];
+        }
+    }
+
     private function sendAppealConfirmation($email, $username, $appealId) {
         $mail = new PHPMailer(true);
 

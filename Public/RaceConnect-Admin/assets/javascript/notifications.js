@@ -228,29 +228,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
             row.classList.add(notification.is_read === 1 ? 'read' : 'unread');
             
+            // Determine actions based on notification type
+            const actions = notification.type === 'appeal_submission' 
+            ? `<button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
+                <box-icon type='solid' name='archive-in' color="white"></box-icon>
+            </button>`
+            : `<div class="actions">
+                <button class="view-btn" onclick="handleViewPost(${notification.post_id}, ${notification.marketplace_item_id}, '${notification.type}', ${notification.id})" title="View Item">
+                    <box-icon type='solid' name='show' color="white"></box-icon>
+                </button>
+                <button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
+                    <box-icon type='solid' name='archive-in' color="white"></box-icon>
+                </button>
+            </div>`;
+
             row.innerHTML = `
-                <td>
-                    <input type="checkbox" class="notification-check" data-id="${notification.id}">
-                </td>
-                <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
-                <td>
-                    <div class="notification-content ${notification.is_read === 1 ? 'read' : 'unread'}">
-                        <strong>${escapeHtml(notification.post_title || notification.title || 'Untitled')}</strong><br>
-                        <span class="report-reason">${escapeHtml(notification.report_reason || notification.content || 'No reason provided')}</span>
-                    </div>
-                </td>
-                <td>${new Date(notification.created_at).toLocaleString()}</td>
-                <td>
-                    <div class="actions">
-                        <button class="view-btn" onclick="handleViewPost(${notification.post_id}, ${notification.marketplace_item_id}, '${notification.type}', ${notification.id})" title="View Item">
-                            <box-icon type='solid' name='show' color="white"></box-icon>
-                        </button>
-                        <button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
-                            <box-icon type='solid' name='archive-in' color="white"></box-icon>
-                        </button>
-                    </div>
-                </td>
-            `;
+            <td>
+                <input type="checkbox" class="notification-check" data-id="${notification.id}">
+            </td>
+            <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
+            <td>
+                <div class="notification-content ${notification.is_read === 1 ? 'read' : 'unread'}">
+                    <strong>${notification.type === 'appeal_submission' ? 'New Appeal' : escapeHtml(notification.post_title || notification.title || 'Untitled')}</strong><br>
+                    <span class="report-reason">
+                        ${notification.type === 'appeal_submission' 
+                          ? `Appeal Type: ${notification.concern_type || 'Not specified'}`
+                          : escapeHtml(notification.report_reason || notification.content || 'No reason provided')}
+                    </span>
+                </div>
+            </td>
+            <td>${new Date(notification.created_at).toLocaleString()}</td>
+            <td>${actions}</td>
+        `;
     
             const checkbox = row.querySelector('.notification-check');
             if (checkbox) {
@@ -364,6 +373,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!password) {
                         Swal.showValidationMessage('Password is required');
                         return false;
+                    }
+
+                    // First, get the notification details
+                    const notifResponse = await fetch(`fetch_api.php?action=get_notification&id=${notificationId}`);
+                    const notifData = await notifResponse.json();
+
+                    // If this is an appeal notification, update both notification and appeal
+                    if (notifData.type === 'appeal_submission' && notifData.appeal_id) {
+                        await fetch('fetch_api.php?action=update_appeal_status', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                appeal_id: notifData.appeal_id,
+                                status: 'archived',
+                                password: password
+                            })
+                        });
                     }
                     
                     const response = await fetch('fetch_api.php?action=archive_notification', {
