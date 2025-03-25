@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="report-info">
                     <span class="reporter-name">Reported by: ${item.reporter_username || 'Unknown'}</span>
                     <span class="report-reason">Reason: ${item.report_reason || 'No reason provided'}</span>
-                    <span class="report-count">Reports: ${item.report_count || 0}</span> <!-- Add this -->
+                    <span class="report-count">Reports: ${item.pending_report_count || 0}</span>
                     <span class="report-date">on ${item.reported_at ? new Date(item.reported_at).toLocaleString() : 'Unknown date'}</span>
                 </div>
     
@@ -236,9 +236,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch('fetch_api.php?action=hide_marketplace_item', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
                     },
-                    body: `item_id=${itemId}`
+                    body: JSON.stringify({ item_id: itemId })
                 })
                 .then(response => response.json())
                 .then(result => {
@@ -295,9 +295,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch('fetch_api.php?action=unhide_marketplace_item', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
                     },
-                    body: `item_id=${itemId}`
+                    body: JSON.stringify({ item_id: itemId })
                 })
                 .then(response => response.json())
                 .then(result => {
@@ -310,26 +310,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         }).then(() => {
                             const productCard = document.querySelector(`[data-item-id="${itemId}"]`);
                             if (productCard) {
-                                const scrollableContent = productCard.querySelector('.scrollable-content');
-                                const carousel = productCard.querySelector('.carousel');
-                                
-                                if (scrollableContent) {
-                                    scrollableContent.classList.remove('blurred');
-                                }
-                                if (carousel) {
-                                    carousel.classList.remove('blurred');
-                                }
+                                productCard.remove();
                             }
                             fetchMarketplaceItems();
                         });
                     } else {
-                        throw new Error(result.error || 'Failed to unhide item');
+                        Swal.fire({
+                            title: 'Error!',
+                            text: result.error || 'Failed to unhide item',
+                            icon: 'error'
+                        });
                     }
                 })
                 .catch(error => {
+                    console.error('Error:', error);
                     Swal.fire({
                         title: 'Error!',
-                        text: error.message,
+                        text: 'Failed to unhide item',
                         icon: 'error'
                     });
                 });

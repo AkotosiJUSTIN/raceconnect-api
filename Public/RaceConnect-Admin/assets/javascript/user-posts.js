@@ -327,14 +327,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`fetch_api.php?action=${action}`, {
                     method: 'POST',
                     headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ post_id: postId })
                 })
                 .then(response => {
                     if (!response.ok) {
-                        return response.json().then(err => Promise.reject(err));
+                        throw new Error('Network response was not ok');
                     }
                     return response.json();
                 })
