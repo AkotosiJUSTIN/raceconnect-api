@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
                 <td>
                     <div class="notification-content ${notification.is_read === 1 ? 'read' : 'unread'}">
-                        <strong>${escapeHtml(notification.post_title || notification.title || 'Untitled')}</strong><br>
+                        <strong>${escapeHtml(notification.post_title || notification.title || 'Pending Appeal for Review')}</strong><br>
                         <span class="report-reason">${escapeHtml(notification.report_reason || notification.content || 'No reason provided')}</span>
                     </div>
                 </td>

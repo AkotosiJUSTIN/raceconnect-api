@@ -433,7 +433,7 @@ function fetchNotifications($conn) {
             an.resolved_at,
             r.reason as report_reason,
             u.username as reporter_username,
-            COALESCE(p.title, mi.title, 'Untitled') as title,
+            COALESCE(p.title, mi.title, 'Pending Appeal for Review') as title,
             p.title as post_title,
             mi.title as marketplace_title
             FROM admin_notifications an
@@ -546,7 +546,7 @@ function archiveNotification($conn) {
             // Handle appeal-related notification
             require_once __DIR__ . '/../../Controller/AppealsController.php';
             $appealsController = new Controller\AppealsController($conn);
-            $result = $appealsController->updateAppealStatus($appealId, 'archived');
+            $result = $appealsController->updateAppealStatus($appealId, 'REJECTED');
             if (!$result['success']) {
                 throw new Exception($result['message']);
             }
@@ -562,6 +562,10 @@ function archiveNotification($conn) {
             $stmt = $conn->prepare("
                 UPDATE admin_notifications 
                 SET status = 'archived',
+                    action_taken = CASE 
+                        WHEN appeal_id IS NOT NULL THEN 'Denied'
+                        ELSE action_taken 
+                    END,
                     archived_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             ");

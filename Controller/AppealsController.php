@@ -103,7 +103,7 @@ class AppealsController {
                              ORDER BY a.id ASC
                              LIMIT 1";
     
-                $content = "New appeal from {$data['username']}";
+                $content = "{$data['username']} has submitted a new appeal - {$data['concernType']}";
                 $notifStmt = $this->conn->prepare($notifQuery);
                 $notifStmt->execute([
                     ':reporter_id' => $user['id'],
@@ -158,7 +158,7 @@ class AppealsController {
 
             // Validate status matches AppealStatus enum
             $validStatuses = ['PENDING', 'APPROVED', 'REJECTED'];
-            if (!in_array(strtoupper($newStatus), $validStatuses)) {
+            if (!in_array(strtoupper($status), $validStatuses)) {
                 return [
                     'success' => false,
                     'message' => 'Invalid appeal status'
@@ -173,26 +173,30 @@ class AppealsController {
                 
                 $appealStmt = $this->conn->prepare($appealQuery);
                 $appealStmt->execute([
-                    ':status' => $status === 'archived' ? 'REJECTED' : strtoupper($status),
+                    ':status' => strtoupper($status),
                     ':appeal_id' => $appealId
                 ]);
     
                 // 2. Update related notification
                 $notifQuery = "UPDATE admin_notifications 
-                             SET status = :status, 
+                             SET status = CASE 
+                                     WHEN :status = 'REJECTED' THEN 'archived'
+                                     ELSE :status 
+                                 END, 
                                  action_taken = CASE 
-                                     WHEN :status = 'archived' THEN 'Denied'
+                                     WHEN :status = 'REJECTED' THEN 'Denied'
+                                     WHEN :status = 'APPROVED' THEN 'Approved'
                                      ELSE NULL 
                                  END,
                                  archived_at = CASE 
-                                     WHEN :status = 'archived' THEN CURRENT_TIMESTAMP
+                                     WHEN :status = 'REJECTED' THEN CURRENT_TIMESTAMP
                                      ELSE NULL 
                                  END
                              WHERE appeal_id = :appeal_id";
     
                 $notifStmt = $this->conn->prepare($notifQuery);
                 $notifStmt->execute([
-                    ':status' => $status,
+                    ':status' => strtoupper($status),
                     ':appeal_id' => $appealId
                 ]);
     
