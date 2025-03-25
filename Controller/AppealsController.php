@@ -152,11 +152,69 @@ class AppealsController {
         }
     }
 
+    public function updateAppealForUser($userId, $status) {
+        try {
+            $this->conn->beginTransaction();
+    
+            // Find any pending account appeals for this user
+            $appealQuery = "SELECT a.*, u.email, u.username 
+                        FROM appeals a 
+                        JOIN Users u ON a.user_id = u.id 
+                        WHERE a.user_id = :user_id 
+                        AND a.concern_type = 'ACCOUNT_PENALTY'
+                        AND a.status = 'PENDING'
+                        ORDER BY a.created_at DESC
+                        LIMIT 1";
+                        
+            $appealStmt = $this->conn->prepare($appealQuery);
+            $appealStmt->execute([':user_id' => $userId]);
+            $appeal = $appealStmt->fetch(\PDO::FETCH_ASSOC);
+    
+            if ($appeal) {
+                // Update appeal status
+                $updateQuery = "UPDATE appeals 
+                            SET status = :status 
+                            WHERE id = :appeal_id";
+                
+                $updateStmt = $this->conn->prepare($updateQuery);
+                $updateStmt->execute([
+                    ':status' => strtoupper($status),
+                    ':appeal_id' => $appeal['id']
+                ]);
+    
+                // Send email notification
+                $emailSent = $this->sendAppealStatusEmail(
+                    $appeal['email'],
+                    $appeal['username'],
+                    $status,
+                    'ACCOUNT_PENALTY'
+                );
+    
+                if (!$emailSent) {
+                    throw new \Exception('Failed to send email notification');
+                }
+    
+                $this->conn->commit();
+                return true;
+            }
+    
+            $this->conn->commit();
+            return false;
+    
+        } catch (\Exception $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            error_log("Update appeal for user error: " . $e->getMessage());
+            return false;
+        }
+    }
+
     public function updateAppealStatus($appealId, $status) {
         try {
             $this->conn->beginTransaction();
 
-            // Validate status matches AppealStatus enum
+            // Validate status
             $validStatuses = ['PENDING', 'APPROVED', 'REJECTED'];
             if (!in_array(strtoupper($status), $validStatuses)) {
                 return [
@@ -164,61 +222,141 @@ class AppealsController {
                     'message' => 'Invalid appeal status'
                 ];
             }
-    
-            try {
-                // 1. Update appeal status
-                $appealQuery = "UPDATE appeals 
-                              SET status = :status 
-                              WHERE id = :appeal_id";
+
+            // Get appeal details first
+            $appealQuery = "SELECT a.*, u.email, u.username 
+                           FROM appeals a 
+                           JOIN Users u ON a.user_id = u.id 
+                           WHERE a.id = :appeal_id";
+            $appealStmt = $this->conn->prepare($appealQuery);
+            $appealStmt->execute([':appeal_id' => $appealId]);
+            $appeal = $appealStmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$appeal) {
+                throw new \Exception('Appeal not found');
+            }
+
+            // Update appeal status
+            $updateQuery = "UPDATE appeals 
+                           SET status = :status 
+                           WHERE id = :appeal_id";
+            
+            $updateStmt = $this->conn->prepare($updateQuery);
+            $updateStmt->execute([
+                ':status' => strtoupper($status),
+                ':appeal_id' => $appealId
+            ]);
+
+            // Handle notifications based on appeal type and status
+            if ($appeal['concern_type'] === 'ACCOUNT_PENALTY') {
+                // Send email for account-related appeals
+                $this->sendAppealStatusEmail(
+                    $appeal['email'],
+                    $appeal['username'],
+                    $status,
+                    $appeal['concern_type']
+                );
+            } else {
+                // Create in-app notification for post/item appeals
+                $notifContent = $this->getNotificationContent(
+                    $status, 
+                    $appeal['concern_type']
+                );
+
+                $notifQuery = "INSERT INTO notifications 
+                              (user_id, type, content, post_id, marketplace_item_id) 
+                              VALUES (:user_id, 'system', :content, :post_id, :item_id)";
                 
-                $appealStmt = $this->conn->prepare($appealQuery);
-                $appealStmt->execute([
-                    ':status' => strtoupper($status),
-                    ':appeal_id' => $appealId
-                ]);
-    
-                // 2. Update related notification
-                $notifQuery = "UPDATE admin_notifications 
-                             SET status = CASE 
-                                     WHEN :status = 'REJECTED' THEN 'archived'
-                                     ELSE :status 
-                                 END, 
-                                 action_taken = CASE 
-                                     WHEN :status = 'REJECTED' THEN 'Denied'
-                                     WHEN :status = 'APPROVED' THEN 'Approved'
-                                     ELSE NULL 
-                                 END,
-                                 archived_at = CASE 
-                                     WHEN :status = 'REJECTED' THEN CURRENT_TIMESTAMP
-                                     ELSE NULL 
-                                 END
-                             WHERE appeal_id = :appeal_id";
-    
                 $notifStmt = $this->conn->prepare($notifQuery);
                 $notifStmt->execute([
-                    ':status' => strtoupper($status),
-                    ':appeal_id' => $appealId
+                    ':user_id' => $appeal['user_id'],
+                    ':content' => $notifContent,
+                    ':post_id' => $appeal['post_id'],
+                    ':item_id' => $appeal['item_id']
                 ]);
-    
-                $this->conn->commit();
-                
-                return [
-                    'success' => true,
-                    'message' => 'Appeal status updated successfully'
-                ];
-    
-            } catch (\Exception $e) {
-                $this->conn->rollBack();
-                throw $e;
             }
-    
+
+            $this->conn->commit();
+            
+            return [
+                'success' => true,
+                'message' => 'Appeal status updated successfully'
+            ];
+
         } catch (\Exception $e) {
+            $this->conn->rollBack();
             error_log("Appeal status update error: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Failed to update appeal status'
             ];
         }
+    }
+
+    public function handleAppealStatusUpdate($userEmail, $username, $status, $concernType) {
+        return $this->sendAppealStatusEmail($userEmail, $username, $status, $concernType);
+    }
+
+    private function sendAppealStatusEmail($email, $username, $status, $concernType) {
+        $mail = new PHPMailer(true);
+
+        try {
+            // Server settings
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = $_ENV['SMTP_USER'];
+            $mail->Password = $_ENV['SMTP_PASS'];
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
+
+            // Recipients
+            $mail->setFrom('RaceConnect@gmail.com', 'RaceConnect');
+            $mail->addAddress($email, $username);
+
+            // Content
+            $mail->isHTML(true);
+            $mail->Subject = 'Appeal Status Update';
+            $mail->Body = $this->getAppealEmailTemplate($username, $status, $concernType);
+
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            error_log("Mail Error: " . $mail->ErrorInfo);
+            return false;
+        }
+    }
+
+    private function getAppealEmailTemplate($username, $status, $concernType) {
+        $statusText = $status === 'APPROVED' ? 'approved' : 'rejected';
+        $actionText = $concernType === 'ACCOUNT_PENALTY' ? 
+            ($status === 'APPROVED' ? 'Your account has been unbanned.' : 'Your account will remain banned.') :
+            ($status === 'APPROVED' ? 'The reported content will be restored.' : 'The reported content will remain hidden.');
+
+        return "
+            <html>
+            <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                    <h2 style='color: #B91C1C;'>Appeal Status Update</h2>
+                    <p>Hello {$username},</p>
+                    <p>Your appeal has been {$statusText}.</p>
+                    <p>{$actionText}</p>
+                    <p>If you have any questions, please contact our support team.</p>
+                    <br>
+                    <p>Best regards,</p>
+                    <p>RaceConnect Team</p>
+                </div>
+            </body>
+            </html>
+        ";
+    }
+
+    private function getNotificationContent($status, $concernType) {
+        $statusText = $status === 'APPROVED' ? 'approved' : 'rejected';
+        $typeText = $concernType === 'POST_PENALTY' ? 'post' : 'marketplace item';
+        
+        return "Your appeal for the reported {$typeText} has been {$statusText}. " . 
+               ($status === 'APPROVED' ? 'The content will be restored.' : 'The content will remain hidden.');
     }
 
     private function sendAppealConfirmation($email, $username, $appealId) {

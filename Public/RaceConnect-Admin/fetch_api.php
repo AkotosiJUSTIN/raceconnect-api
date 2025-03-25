@@ -2,6 +2,13 @@
 require_once __DIR__ . '/../../db_connect.php';
 require_once __DIR__ . '/cleanupArchived.php';
 
+require_once __DIR__ . '/../../vendor/autoload.php';
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
+$dotenv->load();
+
 session_start();
 
 // Check authentication
@@ -86,7 +93,7 @@ switch ($action) {
         break;
     case 'bulk_archive_notifications':
         bulkArchiveNotifications($conn);
-    break;
+        break;
     case 'mark_notification_read':
         markNotificationAsRead($conn);
         return;
@@ -999,32 +1006,129 @@ function banUser($conn) {
     echo json_encode($response);
 }
 
+function sendAppealStatusEmail($email, $username, $status, $concernType) {
+    $mail = new PHPMailer(true);
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = $_ENV['SMTP_USER'];
+        $mail->Password = $_ENV['SMTP_PASS'];
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        // Recipients
+        $mail->setFrom('RaceConnect@gmail.com', 'RaceConnect');
+        $mail->addAddress($email, $username);
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Appeal Status Update';
+        $mail->Body = getAppealEmailTemplate($username, $status, $concernType);
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Mail Error: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
+// Email template function (moved from AppealsController)
+function getAppealEmailTemplate($username, $status, $concernType) {
+    $statusText = $status === 'APPROVED' ? 'approved' : 'rejected';
+    $actionText = $concernType === 'ACCOUNT_PENALTY' ?
+        ($status === 'APPROVED' ? 'Your account has been unbanned.' : 'Your account will remain banned.') :
+        ($status === 'APPROVED' ? 'The reported content will be restored.' : 'The reported content will remain hidden.');
+
+    return "
+        <html>
+        <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+            <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                <h2 style='color: #B91C1C;'>Appeal Status Update</h2>
+                <p>Hello {$username},</p>
+                <p>Your appeal has been {$statusText}.</p>
+                <p>{$actionText}</p>
+                <p>If you have any questions, please contact our support team.</p>
+                <br>
+                <p>Best regards,</p>
+                <p>RaceConnect Team</p>
+            </div>
+        </body>
+        </html>
+    ";
+}
+
 function unbanUser($conn) {
-    $username = $_POST['username'] ?? null;
+    try {
+        $conn->begin_transaction();
+        
+        $username = $_POST['username'] ?? null;
+        if (!$username) {
+            throw new Exception("Missing parameters");
+        }
 
-    if (!$username) {
-        echo json_encode(["success" => false, "error" => "Missing parameters"]);
-        return;
+        // Get user info using prepared statement
+        $query = "SELECT id, email FROM users WHERE username = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+        
+        if (!$user) {
+            throw new Exception("User not found");
+        }
+
+        // Update user status
+        $updateQuery = "UPDATE users SET status = 'Active', suspension_end_date = NULL WHERE id = ?";
+        $updateStmt = $conn->prepare($updateQuery);
+        $updateStmt->bind_param("i", $user['id']);
+        
+        if (!$updateStmt->execute()) {
+            throw new Exception("Failed to unban user");
+        }
+
+        // Check for pending appeals
+        $appealQuery = "SELECT id FROM appeals WHERE user_id = ? AND concern_type = 'ACCOUNT_PENALTY' AND status = 'PENDING' LIMIT 1";
+        $appealStmt = $conn->prepare($appealQuery);
+        $appealStmt->bind_param("i", $user['id']);
+        $appealStmt->execute();
+        $appealResult = $appealStmt->get_result();
+        
+        if ($appealResult->num_rows > 0) {
+            // Update appeal status
+            $updateAppealQuery = "UPDATE appeals SET status = 'APPROVED' WHERE user_id = ? AND concern_type = 'ACCOUNT_PENALTY' AND status = 'PENDING'";
+            $updateAppealStmt = $conn->prepare($updateAppealQuery);
+            $updateAppealStmt->bind_param("i", $user['id']);
+            $updateAppealStmt->execute();
+
+            // Send email notification using the local function
+            sendAppealStatusEmail($user['email'], $username, 'APPROVED', 'ACCOUNT_PENALTY');
+        }
+
+        $conn->commit();
+        echo json_encode([
+            "success" => true,
+            "message" => "User unbanned successfully"
+        ]);
+
+    } catch (Exception $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollback();
+        }
+        error_log("Unban error: " . $e->getMessage());
+        echo json_encode([
+            "success" => false,
+            "error" => $e->getMessage()
+        ]);
+    } finally {
+        if (isset($stmt)) $stmt->close();
+        if (isset($updateStmt)) $updateStmt->close();
+        if (isset($appealStmt)) $appealStmt->close();
+        if (isset($updateAppealStmt)) $updateAppealStmt->close();
     }
-
-    $query = "UPDATE users SET status = 'Active', suspension_end_date = NULL WHERE username = ?";
-    $stmt = $conn->prepare($query);
-
-    if (!$stmt) {
-        echo json_encode(["success" => false, "error" => "Database error: " . $conn->error]);
-        return;
-    }
-
-    $stmt->bind_param("s", $username);
-    $executeSuccess = $stmt->execute();
-
-    $response = ["success" => $executeSuccess];
-    if (!$executeSuccess) {
-        $response["error"] = $stmt->error;
-    }
-
-    $stmt->close();
-    echo json_encode($response);
 }
 
 function archivePost($conn) {
