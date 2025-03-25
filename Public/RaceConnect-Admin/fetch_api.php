@@ -759,27 +759,31 @@ function fetchMarketplaceItems($conn) {
             mi.report,
             mi.created_at,
             mi.reported_at,
-            r.id as report_id,
-            r.reason as report_reason,
-            r.created_at as report_created_at,
-            r.status as report_status,
-            u.username as reporter_username,
             GROUP_CONCAT(DISTINCT mii.image_url) as image_urls,
-            (SELECT COUNT(*) FROM reports WHERE marketplace_item_id = mi.id AND status IN ('pending', 'hidden')) as pending_report_count
+            (SELECT COUNT(*) FROM reports WHERE marketplace_item_id = mi.id AND status IN ('pending', 'hidden')) as pending_report_count,
+            (
+                SELECT GROUP_CONCAT(
+                    CONCAT(u2.username, ':', r2.reason)
+                    ORDER BY r2.created_at DESC
+                    SEPARATOR '||'
+                )
+                FROM reports r2 
+                JOIN users u2 ON r2.reporter_id = u2.id 
+                WHERE r2.marketplace_item_id = mi.id 
+                AND r2.status IN ('pending', 'hidden')
+            ) as report_details
         FROM marketplace_items mi
-        LEFT JOIN reports r ON mi.id = r.marketplace_item_id AND r.status IN ('pending', 'hidden')
-        LEFT JOIN users u ON r.reporter_id = u.id
         LEFT JOIN marketplace_item_images mii ON mi.id = mii.marketplace_item_id
         WHERE (mi.report = 'reported' OR mi.status = 'Hidden')
         AND mi.status != 'Archived'
         GROUP BY mi.id
         ORDER BY 
             CASE 
-                WHEN r.status = 'pending' THEN 1
                 WHEN mi.status = 'Hidden' THEN 2
+                WHEN mi.report = 'reported' THEN 1
                 ELSE 3
             END,
-            COALESCE(mi.reported_at, mi.created_at) DESC";
+            mi.reported_at DESC";
 
         $resultItems = $conn->query($queryItems);
 
@@ -791,15 +795,18 @@ function fetchMarketplaceItems($conn) {
         while ($row = $resultItems->fetch_assoc()) {
             $row['image_urls'] = $row['image_urls'] ? explode(',', $row['image_urls']) : [];
             
-            // Use the latest report details
-            $row['report_reason'] = $row['latest_report_reason'];
-            $row['reporter_username'] = $row['latest_reporter_username'];
-            $row['report_created_at'] = $row['latest_report_date'];
+            // Process report details
+            if ($row['report_details']) {
+                $reports = explode('||', $row['report_details']);
+                $latestReport = explode(':', $reports[0]); // Get the most recent report
+                $row['reporter_username'] = $latestReport[0];
+                $row['report_reason'] = $latestReport[1];
+            } else {
+                $row['reporter_username'] = 'Unknown';
+                $row['report_reason'] = 'No reason provided';
+            }
             
-            // Remove temporary fields
-            unset($row['latest_report_reason']);
-            unset($row['latest_reporter_username']);
-            unset($row['latest_report_date']);
+            unset($row['report_details']); // Remove the raw report details
             
             $items[] = $row;
         }

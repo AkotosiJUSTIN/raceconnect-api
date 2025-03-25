@@ -363,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     postCard.dataset.status = action === 'hide_post' ? 'Hidden' : 'Active';
                                 }
                             }
+                            fetchPosts();
                         });
                     } else {
                         throw new Error(result.error || `Failed to ${confirmTitle.toLowerCase()}`);
