@@ -137,6 +137,7 @@ CREATE TABLE Notifications (
 ALTER TABLE Notifications
 ADD COLUMN trigger_user_id INT DEFAULT NULL,
 ADD FOREIGN KEY (trigger_user_id) REFERENCES Users(id) ON DELETE SET NULL;
+ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
 
 -- Admins Table
 CREATE TABLE Admins (
@@ -386,6 +387,24 @@ CREATE TABLE conversations (
     FOREIGN KEY (product_id) REFERENCES marketplace_items(id) ON DELETE CASCADE
 );
 
+-- Appeals Table
+CREATE TABLE appeals (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    concern_type ENUM('ACCOUNT_PENALTY', 'POST_PENALTY', 'ITEM_POST_PENALTY') NOT NULL,
+    post_id INT NULL,
+    item_id INT NULL,
+    description TEXT NOT NULL,
+    status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(id),
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (item_id) REFERENCES marketplace_items(id)
+);
+
 -- Messages Table
 CREATE TABLE messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -437,10 +456,13 @@ CREATE TABLE admin_notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     admin_id INT NOT NULL,
     reporter_id INT NOT NULL,
+    reporter_username VARCHAR(255),
     post_id INT DEFAULT NULL,
     marketplace_item_id INT DEFAULT NULL,
-    type ENUM('post_report', 'marketplace_report', 'system_alert', 'user_report') NOT NULL,
+    appeal_id INT NULL,
+    type ENUM('post_report', 'marketplace_report', 'system_alert', 'user_report', 'appeal_submission') NOT NULL,
     content TEXT NOT NULL,
+    concern_type ENUM('ACCOUNT_PENALTY', 'POST_PENALTY', 'ITEM_POST_PENALTY') NULL,
     severity ENUM('low', 'medium', 'high') DEFAULT 'medium',
     is_read TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
