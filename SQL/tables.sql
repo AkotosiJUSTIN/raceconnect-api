@@ -388,22 +388,21 @@ CREATE TABLE conversations (
 );
 
 -- Appeals Table
-CREATE TABLE IF NOT EXISTS appeals (
+CREATE TABLE appeals (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     username VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     concern_type ENUM('ACCOUNT_PENALTY', 'POST_PENALTY', 'ITEM_POST_PENALTY') NOT NULL,
-    suspension_date DATETIME,
-    suspension_reason TEXT,
+    post_id INT NULL,
+    item_id INT NULL,
     description TEXT NOT NULL,
     status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_status (status),
-    INDEX idx_email (email),
     FOREIGN KEY (user_id) REFERENCES Users(id),
-    CONSTRAINT unique_active_appeal UNIQUE (user_id, status)
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (item_id) REFERENCES marketplace_items(id)
 );
 
 -- Messages Table

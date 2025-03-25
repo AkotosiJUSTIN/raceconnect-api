@@ -18,62 +18,80 @@ class AppealsController {
     public function submitAppeal($data) {
         try {
             // Validate required fields
-            if (empty($data['username']) || empty($data['email']) || empty($data['description'])) {
+            if (empty($data['username']) || empty($data['email']) || 
+                empty($data['concernType']) || empty($data['description'])) {
                 return [
                     'success' => false,
                     'message' => 'Missing required fields'
                 ];
             }
     
-            // Check if user is actually banned
-            $userQuery = "SELECT id, status FROM Users WHERE email = :email AND status = 'Banned'";
-            $userStmt = $this->conn->prepare($userQuery);
+            // Validate that concernType matches one of the allowed values
+            $validConcernTypes = ['ACCOUNT_PENALTY', 'POST_PENALTY', 'ITEM_POST_PENALTY'];
+            if (!in_array($data['concernType'], $validConcernTypes)) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid concern type'
+                ];
+            }
+    
+            // Check if user exists and get their info
+            $userStmt = $this->conn->prepare("SELECT id, status FROM Users WHERE email = :email");
             $userStmt->execute([':email' => $data['email']]);
             $user = $userStmt->fetch(\PDO::FETCH_ASSOC);
-    
+
             if (!$user) {
                 return [
                     'success' => false,
-                    'message' => 'Only banned accounts can submit appeals'
+                    'message' => 'User not found'
+                ];
+            }
+
+            // For account appeals, user must be banned
+            if ($data['concernType'] === 'ACCOUNT_PENALTY' && $user['status'] !== 'Banned') {
+                return [
+                    'success' => false,
+                    'message' => 'Only banned accounts can submit account appeals'
                 ];
             }
     
             $this->conn->beginTransaction();
     
             try {
-                // 1. Insert the appeal
+                // Insert the appeal
                 $query = "INSERT INTO appeals 
-                        (user_id, username, email, suspension_date, 
-                         suspension_reason, description)
-                        VALUES (:user_id, :username, :email, :suspensionDate, 
-                         :suspensionReason, :description)";
+                        (user_id, username, email, concern_type, post_id, item_id, description, status)
+                        VALUES (:user_id, :username, :email, :concern_type, :post_id, :item_id, 
+                                :description, 'PENDING')";
     
                 $stmt = $this->conn->prepare($query);
                 
-                $params = [
+                // Convert post_id and item_id based on concernType
+                $postId = ($data['concernType'] === 'POST_PENALTY' && isset($data['postId'])) ? 
+                    intval($data['postId']) : null;
+                $itemId = ($data['concernType'] === 'ITEM_POST_PENALTY' && isset($data['itemId'])) ? 
+                    intval($data['itemId']) : null;
+                
+                $stmt->execute([
                     ':user_id' => $user['id'],
-                    ':username' => htmlspecialchars(strip_tags($data['username'])),
-                    ':email' => htmlspecialchars(strip_tags($data['email'])),
-                    ':suspensionDate' => !empty($data['suspensionDate']) ? $data['suspensionDate'] : null,
-                    ':suspensionReason' => !empty($data['suspensionReason']) ? 
-                                         htmlspecialchars(strip_tags($data['suspensionReason'])) : null,
-                    ':description' => htmlspecialchars(strip_tags($data['description']))
-                ];
-    
-                if (!$stmt->execute($params)) {
-                    throw new \Exception("Failed to create appeal");
-                }
+                    ':username' => $data['username'],
+                    ':email' => $data['email'],
+                    ':concern_type' => $data['concernType'],
+                    ':post_id' => $postId,
+                    ':item_id' => $itemId,
+                    ':description' => $data['description']
+                ]);
     
                 $appealId = $this->conn->lastInsertId();
     
-                // 2. Create admin notification
+                // Create admin notification
                 $notifQuery = "INSERT INTO admin_notifications 
-                             (admin_id, reporter_id, type, content, reporter_username, appeal_id, 
-                              severity, status) 
+                             (admin_id, reporter_id, type, content, reporter_username, 
+                              appeal_id, severity, status) 
                              SELECT 
                                  a.id,
                                  :reporter_id,
-                                 'ban_appeal',
+                                 'appeal_submission',
                                  :content,
                                  :username,
                                  :appeal_id,
@@ -82,24 +100,22 @@ class AppealsController {
                              FROM admins a 
                              WHERE a.active = 1 
                              AND a.role = 'community_manager' 
+                             ORDER BY a.id ASC
                              LIMIT 1";
     
+                $content = "New appeal from {$data['username']}";
                 $notifStmt = $this->conn->prepare($notifQuery);
-                $notifParams = [
+                $notifStmt->execute([
                     ':reporter_id' => $user['id'],
-                    ':content' => "New ban appeal from {$params[':username']}",
-                    ':username' => $params[':username'],
+                    ':content' => $content,
+                    ':username' => $data['username'],
                     ':appeal_id' => $appealId
-                ];
+                ]);
     
-                if (!$notifStmt->execute($notifParams)) {
-                    throw new \Exception("Failed to create admin notification");
-                }
-    
-                // 3. Send confirmation emails
+                // Send confirmation emails
                 $this->sendAppealConfirmation(
-                    $params[':email'],
-                    $params[':username'],
+                    $data['email'],
+                    $data['username'],
                     $appealId
                 );
     
@@ -108,7 +124,18 @@ class AppealsController {
                 return [
                     'success' => true,
                     'message' => 'Appeal submitted successfully',
-                    'appeal_id' => $appealId
+                    'data' => [
+                        'id' => $appealId,
+                        'username' => $data['username'],
+                        'email' => $data['email'],
+                        'concernType' => $data['concernType'],
+                        'postId' => $postId,
+                        'itemId' => $itemId,
+                        'description' => $data['description'],
+                        'status' => 'PENDING',
+                        'createdAt' => date('Y-m-d H:i:s'),
+                        'updatedAt' => date('Y-m-d H:i:s')
+                    ]
                 ];
     
             } catch (\Exception $e) {
@@ -128,6 +155,15 @@ class AppealsController {
     public function updateAppealStatus($appealId, $status) {
         try {
             $this->conn->beginTransaction();
+
+            // Validate status matches AppealStatus enum
+            $validStatuses = ['PENDING', 'APPROVED', 'REJECTED'];
+            if (!in_array(strtoupper($newStatus), $validStatuses)) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid appeal status'
+                ];
+            }
     
             try {
                 // 1. Update appeal status
@@ -209,10 +245,11 @@ class AppealsController {
             $mail->clearAddresses();
             $mail->addAddress('raceconnect.team@gmail.com', 'RaceConnect Team');
             $mail->Subject = 'New Appeal Submission';
-            $mail->Body = $this->getAdminNotificationTemplate($username, $email, $appealId);
+            $mail->Body = $this->getAdminNotificationTemplate($username, $appealId, $email);
             $mail->send();
 
-            $this->createAdminNotification($username, $email, $appealId);
+            // removed because it creates redundant notifications
+            //$this->createAdminNotification($username, $email, $appealId);
             return true;
         } catch (Exception $e) {
             error_log("Mail Error: " . $mail->ErrorInfo);
@@ -221,18 +258,100 @@ class AppealsController {
     }
 
     private function getAdminNotificationTemplate($username, $appealId, $userEmail) {
+        // First, fetch all appeal data from database
+        $query = "SELECT a.*, u.status as user_status 
+                 FROM appeals a 
+                 LEFT JOIN Users u ON a.user_id = u.id 
+                 WHERE a.id = :appeal_id";
+                 
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':appeal_id' => $appealId]);
+        $appealData = $stmt->fetch(\PDO::FETCH_ASSOC);
+    
+        // Format dates for better readability
+        $createdAt = new \DateTime($appealData['created_at']);
+        $updatedAt = new \DateTime($appealData['updated_at']);
+        $suspensionDate = $appealData['suspension_date'] ? new \DateTime($appealData['suspension_date']) : null;
+    
         return "
             <html>
             <body style='font-family: Inter, sans-serif; line-height: 1.6; color: #333;'>
                 <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
                     <h2 style='color: #B91C1C;'>New Appeal Submission</h2>
+                    
                     <div style='margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;'>
-                        <p><strong>Appeal ID:</strong> $appealId</p>
-                        <p><strong>Username:</strong> $username</p>
-                        <p><strong>User Email:</strong> $userEmail</p>
+                        <h3 style='color: #1F2937; margin-bottom: 15px;'>Appeal Information</h3>
+                        <table style='width: 100%; border-collapse: collapse;'>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Appeal ID:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{$appealData['id']}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>User ID:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{$appealData['user_id']}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Username:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{$appealData['username']}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Email:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{$appealData['email']}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>User Status:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{$appealData['user_status']}</td>
+                            </tr>
+                        </table>
                     </div>
-                    <p>A new appeal has been submitted. Please review this in the admin dashboard.</p>
-                    <p>Best regards,<br>RaceConnect System</p>
+    
+                    <div style='margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;'>
+                        <h3 style='color: #1F2937; margin-bottom: 15px;'>Suspension Details</h3>
+                        <table style='width: 100%; border-collapse: collapse;'>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Suspension Date:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>" . 
+                                ($suspensionDate ? $suspensionDate->format('Y-m-d H:i:s') : 'Not specified') . 
+                                "</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Suspension Reason:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>" . 
+                                ($appealData['suspension_reason'] ?: 'Not specified') . 
+                                "</td>
+                            </tr>
+                        </table>
+                    </div>
+    
+                    <div style='margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;'>
+                        <h3 style='color: #1F2937; margin-bottom: 15px;'>Appeal Details</h3>
+                        <table style='width: 100%; border-collapse: collapse;'>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Description:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{$appealData['description']}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Status:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>{$appealData['status']}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Created At:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>" . 
+                                $createdAt->format('Y-m-d H:i:s') . 
+                                "</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Updated At:</strong></td>
+                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>" . 
+                                $updatedAt->format('Y-m-d H:i:s') . 
+                                "</td>
+                            </tr>
+                        </table>
+                    </div>
+    
+                    <p>Please review this appeal in the admin dashboard.</p>
+    
+                    <p style='margin-top: 20px;'>Best regards,<br>RaceConnect System</p>
                 </div>
             </body>
             </html>

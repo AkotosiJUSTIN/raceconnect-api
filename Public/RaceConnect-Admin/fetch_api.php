@@ -90,6 +90,9 @@ switch ($action) {
     case 'mark_notification_read':
         markNotificationAsRead($conn);
         return;
+    case 'update_appeal_status':
+        updateAppealStatus($conn);
+        return;
     case 'post_announcement':
         postAnnouncement($conn);
         break;
@@ -508,7 +511,6 @@ function verifyAdminPassword($conn, $email, $password) {
     }
 }
 
-// Modify the existing archive_notification function
 function archiveNotification($conn) {
     // Parse JSON input
     $data = json_decode(file_get_contents('php://input'), true);
@@ -527,35 +529,57 @@ function archiveNotification($conn) {
     }
 
     try {
-        // Start transaction
-        $conn->begin_transaction();
-
-        if (rand(1, 10) === 1) {
-            $cleanup = new CleanupService($conn);
-            $cleanup->cleanupArchivedData();
-        }
-
-        // Update notification status and set archived_at timestamp
-        $stmt = $conn->prepare("
-            UPDATE admin_notifications 
-            SET status = 'archived',
-                archived_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ");
+        // Get appeal_id from notification
+        $stmt = $conn->prepare("SELECT appeal_id FROM admin_notifications WHERE id = ?");
         $stmt->bind_param("i", $notificationId);
         $stmt->execute();
+        $result = $stmt->get_result();
+        $notification = $result->fetch_assoc();
 
-        if ($stmt->affected_rows === 0) {
-            throw new Exception("Notification not found or already archived");
+        if (!$notification) {
+            throw new Exception("Notification not found");
         }
 
-        // Commit transaction
-        $conn->commit();
-        
+        $appealId = $notification['appeal_id'];
+
+        if ($appealId) {
+            // Handle appeal-related notification
+            require_once __DIR__ . '/../../Controller/AppealsController.php';
+            $appealsController = new Controller\AppealsController($conn);
+            $result = $appealsController->updateAppealStatus($appealId, 'archived');
+            if (!$result['success']) {
+                throw new Exception($result['message']);
+            }
+        } else {
+            // Handle standalone notification
+            $conn->begin_transaction();
+
+            if (rand(1, 10) === 1) {
+                $cleanup = new CleanupService($conn);
+                $cleanup->cleanupArchivedData();
+            }
+
+            $stmt = $conn->prepare("
+                UPDATE admin_notifications 
+                SET status = 'archived',
+                    archived_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ");
+            $stmt->bind_param("i", $notificationId);
+            $stmt->execute();
+
+            if ($stmt->affected_rows === 0) {
+                throw new Exception("Notification not found or already archived");
+            }
+
+            $conn->commit();
+        }
+
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
-        // Rollback on error
-        $conn->rollback();
+        if ($conn->inTransaction()) {
+            $conn->rollback();
+        }
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }

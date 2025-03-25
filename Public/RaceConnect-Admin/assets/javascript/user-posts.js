@@ -326,10 +326,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.isConfirmed) {
                 fetch(`fetch_api.php?action=${action}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `post_id=${encodeURIComponent(postId)}`
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ post_id: postId })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => Promise.reject(err));
+                    }
+                    return response.json();
+                })
                 .then(result => {
                     if (result.success) {
                         Swal.fire({
@@ -353,7 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                     if (carousel) {
                                         carousel.classList.toggle('blurred');
                                     }
-                                    // Only update status without full refresh
                                     postCard.dataset.status = action === 'hide_post' ? 'Hidden' : 'Active';
                                 }
                             }
@@ -363,9 +370,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch(error => {
+                    console.error('Action failed:', error);
                     Swal.fire({
                         title: 'Error!',
-                        text: error.message,
+                        text: error.message || 'An unexpected error occurred',
                         icon: 'error'
                     });
                 });
