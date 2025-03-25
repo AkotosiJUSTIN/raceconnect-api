@@ -136,6 +136,14 @@ class User {
             if ($key === 'password') {
                 $value = password_hash($value, PASSWORD_BCRYPT);
             } elseif (in_array($key, ['favorite_categories', 'favorite_marketplace_items'])) {
+                // Filter out invalid entries from favorite_categories or favorite_marketplace_items
+                if (is_array($value)) {
+                    $value = array_filter($value, function ($item) {
+                        return !empty($item) && $item !== "[]";
+                    });
+                    // Reindex the array to ensure it's a proper JSON array
+                    $value = array_values($value);
+                }
                 $value = json_encode($value);
             }
             $fields[] = "$key = :$key";

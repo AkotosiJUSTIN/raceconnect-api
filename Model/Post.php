@@ -352,6 +352,7 @@ class Post {
             FROM {$this->table} p
             JOIN Users u ON p.user_id = u.id
             WHERE p.user_id = :user_id
+            AND p.status IN ('Active', 'Hidden')  -- Include 'Active' and 'Hidden', exclude 'Archived'
             ORDER BY p.created_at DESC
             LIMIT :limit OFFSET :offset
         ";
