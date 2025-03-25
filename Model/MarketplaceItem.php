@@ -71,14 +71,14 @@ class MarketplaceItem {
     }
 
     public function getAllItems($limit = 10, $offset = 0, $excludeSellerId = null) {
-        $query = "SELECT * FROM {$this->table}";
+        $query = "SELECT * FROM {$this->table} WHERE status IN ('Active', 'Hidden')";
         $params = [
             ':limit' => $limit,
             ':offset' => $offset
         ];
     
         if ($excludeSellerId !== null) {
-            $query .= " WHERE seller_id != :exclude_seller_id";
+            $query .= " AND seller_id != :exclude_seller_id";
             $params[':exclude_seller_id'] = $excludeSellerId;
         }
     
@@ -188,6 +188,7 @@ class MarketplaceItem {
             FROM {$this->table} mi
             LEFT JOIN Marketplace_Item_Images mii ON mi.id = mii.marketplace_item_id
             WHERE mi.seller_id = :seller_id 
+            AND mi.status IN ('Active', 'Hidden')
             GROUP BY mi.id
             LIMIT :limit OFFSET :offset
         ");
