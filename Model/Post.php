@@ -197,64 +197,63 @@ class Post {
     public function updatePost($id, $data) {
         $fields = [];
         $params = [':id' => (int) $id];
-
-        // Handle title: set to NULL if empty, otherwise sanitize and set
-        if (array_key_exists('title', $data)) {
-            $fields[] = "title = :title";
-            $params[':title'] = $data['title'] !== '' ? htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8') : NULL;
-        }
-        // Handle content: only update if not empty (since it's NOT NULL in DB)
-        if (!empty($data['content'])) {
+    
+        // Valid ENUM values
+        $validCategories = ['Formula 1', '24 Hours of Lemans', 'World Rally Championship', 'NASCAR', 'Formula Drift', 'GT Championship'];
+        $validPrivacies = ['Public', 'Only me', 'Friends Only'];
+        $validTypes = ['text', 'image', 'video'];
+    
+        // Handle content
+        if (isset($data['content']) && trim($data['content']) !== '') {
             $fields[] = "content = :content";
             $params[':content'] = htmlspecialchars($data['content'], ENT_QUOTES, 'UTF-8');
+        } elseif (isset($data['content'])) {
+            throw new Exception("Content cannot be empty");
         }
-        // Handle type: update if provided (e.g., 'text' or 'image')
-        if (!empty($data['type'])) {
-            $fields[] = "type = :type";
-            $params[':type'] = htmlspecialchars($data['type'], ENT_QUOTES, 'UTF-8');
+    
+        // Handle title
+        if (array_key_exists('title', $data)) {
+            $fields[] = "title = :title";
+            $params[':title'] = trim($data['title']) !== '' ? htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8') : NULL;
         }
-        // Other fields (unchanged)
-        if (!empty($data['img_url'])) {
-            $fields[] = "img_url = :img_url";
-            $params[':img_url'] = filter_var($data['img_url'], FILTER_SANITIZE_URL);
+    
+        // Handle category
+        if (!empty($data['category']) && trim($data['category']) !== '') {
+            $category = trim($data['category']);
+            if (in_array($category, $validCategories)) {
+                $fields[] = "category = :category";
+                $params[':category'] = $category;
+            } else {
+                throw new Exception("Invalid category value: $category");
+            }
         }
-        if (isset($data['like_count'])) {
-            $fields[] = "like_count = :like_count";
-            $params[':like_count'] = (int) $data['like_count'];
+    
+        // Handle privacy
+        if (!empty($data['privacy']) && trim($data['privacy']) !== '') {
+            $privacy = trim($data['privacy']);
+            if (in_array($privacy, $validPrivacies)) {
+                $fields[] = "privacy = :privacy";
+                $params[':privacy'] = $privacy;
+            } else {
+                throw new Exception("Invalid privacy value: $privacy");
+            }
         }
-        if (isset($data['comment_count'])) {
-            $fields[] = "comment_count = :comment_count";
-            $params[':comment_count'] = (int) $data['comment_count'];
+    
+        // Handle type
+        if (!empty($data['type']) && trim($data['type']) !== '') {
+            $type = trim($data['type']);
+            if (in_array($type, $validTypes)) {
+                $fields[] = "type = :type";
+                $params[':type'] = $type;
+            } else {
+                throw new Exception("Invalid type value: $type");
+            }
         }
-        if (isset($data['repost_count'])) {
-            $fields[] = "repost_count = :repost_count";
-            $params[':repost_count'] = (int) $data['repost_count'];
-        }
-        if (!empty($data['category'])) {
-            $fields[] = "category = :category";
-            $params[':category'] = htmlspecialchars($data['category'], ENT_QUOTES, 'UTF-8');
-        }
-        // Add status handling
-        if (isset($data['status'])) {
-            $fields[] = "status = :status";
-            $params[':status'] = in_array($data['status'], ['Active', 'Hidden', 'Archived']) ? $data['status'] : 'Active';
-        }
-        // Optionally handle report if needed
-        if (isset($data['report'])) {
-            $fields[] = "report = :report";
-            $params[':report'] = in_array($data['report'], ['none', 'reported']) ? $data['report'] : 'none';
-        }
-
-        
-        if (!empty($data['privacy'])) {
-            $fields[] = "privacy = :privacy";
-            $params[':privacy'] = htmlspecialchars($data['privacy'], ENT_QUOTES, 'UTF-8');
-        }
-
+    
         if (empty($fields)) {
             return false;
         }
-
+    
         $stmt = $this->pdo->prepare("UPDATE {$this->table} SET " . implode(", ", $fields) . " WHERE id = :id");
         return $stmt->execute($params);
     }

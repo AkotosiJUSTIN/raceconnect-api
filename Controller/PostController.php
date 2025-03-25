@@ -107,9 +107,11 @@ class PostController {
     private function handleUpdateWithImages($id) {
         try {
             $data = $_POST;
-            if (empty($data['content'])) {
+            error_log("Received update data for post $id: " . json_encode($data));
+    
+            if (!isset($data['content']) || trim($data['content']) === '') {
                 http_response_code(400);
-                echo json_encode(['message' => 'Missing required field: content']);
+                echo json_encode(['message' => 'Content is required and cannot be empty']);
                 return;
             }
     
@@ -128,7 +130,7 @@ class PostController {
             if (!empty($_FILES['image']['name'])) {
                 $imageUrls = $this->handleImageUpload($id);
                 if (empty($imageUrls) && !empty($_FILES['image']['name'])) {
-                    // Optionally handle error; proceed without rollback for now
+                    error_log("Image upload failed for post $id");
                 }
             }
     
