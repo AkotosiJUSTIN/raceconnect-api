@@ -226,7 +226,12 @@ class Api {
                     break;
 
                 case 'post-reposts':
-                    $this->handleRequest(new PostRepostController($this->conn), $method, $id);
+                    $controller = new PostRepostController($this->conn);
+                    if ($id === 'repost' && $action) { // Check if the second part is 'repost' and there's a third part
+                        $controller->handleRepostAction($action); // Pass the third part (repost ID) as the parameter
+                    } else {
+                        $this->handleRequest($controller, $method, $id);
+                    }
                     break;
 
                 case 'upload-profile-picture':

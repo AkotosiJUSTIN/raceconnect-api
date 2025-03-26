@@ -87,4 +87,26 @@ class PostRepostController {
             echo json_encode(['message' => 'An error occurred', 'error' => $e->getMessage()]);
         }
     }
+
+    public function handleRepostAction($repost_id = null) {
+        try {
+            if (!$repost_id) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Repost ID is required']);
+                return;
+            }
+    
+            $repost = $this->postRepost->getRepostByRepostId($repost_id);
+    
+            if ($repost) {
+                echo json_encode($repost);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'Repost not found']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'An error occurred', 'error' => $e->getMessage()]);
+        }
+    }
 }

@@ -27,6 +27,19 @@ class PostRepost {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getRepostByRepostId($repost_id) {
+        $stmt = $this->pdo->prepare("
+            SELECT r.id, r.user_id, r.post_id, r.owner_id, r.quote, r.created_at, 
+                   u.profile_picture, u.username 
+            FROM {$this->table} r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.id = :repost_id
+        ");
+        $stmt->bindParam(':repost_id', $repost_id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function createRepost($data) {
         if (!isset($data['user_id']) || !isset($data['post_id'])) {
             return ['message' => 'Missing required fields (user_id, post_id)'];
