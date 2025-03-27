@@ -129,10 +129,10 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
 
                     <div class="form-group">
                         <label for="announcementContent">Content</label>
-                        <textarea id="announcementContent" name="announcementContent" required maxlength="5000"></textarea>
+                        <textarea id="announcementContent" name="announcementContent" required maxlength="500"></textarea>
                         <div class="char-counter">
                             <span id="charCount">0</span>
-                            <span>/5000 characters</span>
+                            <span>/500 characters</span>
                         </div>
                     </div>
 

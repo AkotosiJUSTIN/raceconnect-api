@@ -17,10 +17,18 @@ class Notification {
     public function getAllNotifications($userId) {
         $query = "SELECT 
             n.*,
-            u.username AS trigger_username,
-            u.profile_picture AS trigger_profile_picture
+            CASE 
+                WHEN a.id IS NOT NULL THEN a.admin_name
+                ELSE u.username 
+            END AS trigger_username,
+            u.profile_picture AS trigger_profile_picture,
+            CASE 
+                WHEN a.id IS NOT NULL THEN 1
+                ELSE 0
+            END as is_admin
         FROM {$this->table} n
         LEFT JOIN Users u ON n.trigger_user_id = u.id
+        LEFT JOIN admins a ON a.user_id = n.trigger_user_id
         WHERE n.user_id = :user_id 
         ORDER BY n.created_at DESC";
         
@@ -34,16 +42,19 @@ class Notification {
     public function getNotificationById($id) {
         $query = "SELECT 
             n.*,
-            u.username AS trigger_username,
-            u.profile_picture AS trigger_profile_picture
+            CASE 
+                WHEN a.id IS NOT NULL THEN a.admin_name
+                ELSE u.username 
+            END AS trigger_username,
+            u.profile_picture AS trigger_profile_picture,
+            CASE 
+                WHEN a.id IS NOT NULL THEN 1
+                ELSE 0
+            END as is_admin
         FROM {$this->table} n
         LEFT JOIN Users u ON n.trigger_user_id = u.id
+        LEFT JOIN admins a ON a.user_id = n.trigger_user_id
         WHERE n.id = :id";
-        
-        $stmt = $this->pdo->prepare($query);
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->execute();
-        $notification = $stmt->fetch(PDO::FETCH_ASSOC);
     
         if ($notification && $notification['trigger_user_id'] === null) {
             error_log("Notification ID $id has null trigger_user_id");

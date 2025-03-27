@@ -448,24 +448,6 @@ class AppealsController {
                     </div>
     
                     <div style='margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;'>
-                        <h3 style='color: #1F2937; margin-bottom: 15px;'>Suspension Details</h3>
-                        <table style='width: 100%; border-collapse: collapse;'>
-                            <tr>
-                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Suspension Date:</strong></td>
-                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>" . 
-                                ($suspensionDate ? $suspensionDate->format('Y-m-d H:i:s') : 'Not specified') . 
-                                "</td>
-                            </tr>
-                            <tr>
-                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'><strong>Suspension Reason:</strong></td>
-                                <td style='padding: 8px; border-bottom: 1px solid #ddd;'>" . 
-                                ($appealData['suspension_reason'] ?: 'Not specified') . 
-                                "</td>
-                            </tr>
-                        </table>
-                    </div>
-    
-                    <div style='margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;'>
                         <h3 style='color: #1F2937; margin-bottom: 15px;'>Appeal Details</h3>
                         <table style='width: 100%; border-collapse: collapse;'>
                             <tr>

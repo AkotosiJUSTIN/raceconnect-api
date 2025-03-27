@@ -895,7 +895,8 @@ function unhideMarketplaceItem($conn) {
         // Update marketplace item status back to Active
         $updateItem = $conn->prepare("
             UPDATE marketplace_items 
-            SET status = 'Active'
+            SET status = 'Active',
+                report = 'none'
             WHERE id = ?
         ");
         $updateItem->bind_param("i", $itemId);
@@ -916,11 +917,55 @@ function unhideMarketplaceItem($conn) {
             throw new Exception("Failed to update reports");
         }
 
+        // Get pending appeals for this item
+        $appealStmt = $conn->prepare("
+            SELECT a.id, a.user_id, u.email, u.username
+            FROM appeals a
+            JOIN users u ON a.user_id = u.id
+            WHERE a.item_id = ? 
+            AND a.status = 'PENDING'
+            AND a.concern_type = 'ITEM_POST_PENALTY'
+        ");
+        $appealStmt->bind_param("i", $itemId);
+        $appealStmt->execute();
+        $appeals = $appealStmt->get_result();
+
+        while ($appeal = $appeals->fetch_assoc()) {
+            // Update appeal status
+            $updateAppeal = $conn->prepare("
+                UPDATE appeals 
+                SET status = 'APPROVED',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ");
+            $updateAppeal->bind_param("i", $appeal['id']);
+            if (!$updateAppeal->execute()) {
+                throw new Exception("Failed to update appeal status");
+            }
+
+            // Create notification for user
+            $notifQuery = $conn->prepare("
+                INSERT INTO notifications 
+                (user_id, type, content, marketplace_item_id, trigger_user_id) 
+                VALUES (?, 'system', ?, ?, 
+                    (SELECT user_id FROM admins WHERE email = ?))
+            ");
+            $content = "Your appeal for the reported marketplace item has been approved. The content will be restored.";
+            $notifQuery->bind_param("isis", 
+                $appeal['user_id'], 
+                $content, 
+                $itemId,
+                $_SESSION['email']
+            );
+            $notifQuery->execute();
+        }
+
         $conn->commit();
         echo json_encode(["success" => true]);
 
     } catch (Exception $e) {
         $conn->rollback();
+        error_log("Error in unhideMarketplaceItem: " . $e->getMessage());
         echo json_encode(["success" => false, "error" => $e->getMessage()]);
     }
 }
@@ -940,7 +985,8 @@ function unhidePost($conn) {
         // Update post status back to Active
         $updatePost = $conn->prepare("
             UPDATE posts 
-            SET status = 'Active'
+            SET status = 'Active',
+                report = 'none'
             WHERE id = ?
         ");
         $updatePost->bind_param("i", $postId);
@@ -961,11 +1007,55 @@ function unhidePost($conn) {
             throw new Exception("Failed to update reports");
         }
 
+        // Get pending appeals for this post
+        $appealStmt = $conn->prepare("
+            SELECT a.id, a.user_id, u.email, u.username
+            FROM appeals a
+            JOIN users u ON a.user_id = u.id
+            WHERE a.post_id = ? 
+            AND a.status = 'PENDING'
+            AND a.concern_type = 'POST_PENALTY'
+        ");
+        $appealStmt->bind_param("i", $postId);
+        $appealStmt->execute();
+        $appeals = $appealStmt->get_result();
+
+        while ($appeal = $appeals->fetch_assoc()) {
+            // Update appeal status
+            $updateAppeal = $conn->prepare("
+                UPDATE appeals 
+                SET status = 'APPROVED',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ");
+            $updateAppeal->bind_param("i", $appeal['id']);
+            if (!$updateAppeal->execute()) {
+                throw new Exception("Failed to update appeal status");
+            }
+
+            // Create notification for user
+            $notifQuery = $conn->prepare("
+                INSERT INTO notifications 
+                (user_id, type, content, post_id, trigger_user_id) 
+                VALUES (?, 'system', ?, ?, 
+                    (SELECT user_id FROM admins WHERE email = ?))
+            ");
+            $content = "Your appeal for the reported post has been approved. The content will be restored.";
+            $notifQuery->bind_param("isis", 
+                $appeal['user_id'], 
+                $content, 
+                $postId,
+                $_SESSION['email']
+            );
+            $notifQuery->execute();
+        }
+
         $conn->commit();
         echo json_encode(["success" => true]);
 
     } catch (Exception $e) {
         $conn->rollback();
+        error_log("Error in unhidePost: " . $e->getMessage());
         echo json_encode(["success" => false, "error" => $e->getMessage()]);
     }
 }
