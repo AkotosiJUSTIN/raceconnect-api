@@ -825,9 +825,9 @@ function hideMarketplaceItem($conn) {
     try {
 
         $infoStmt = $conn->prepare("
-            SELECT m.id, m.user_id, u.email, u.username
+            SELECT m.id, m.seller_id, u.email, u.username
             FROM marketplace_items m
-            JOIN users u ON m.user_id = u.id
+            JOIN users u ON m.seller_id = u.id
             WHERE m.id = ?
         ");
         $infoStmt->bind_param("i", $itemId);
@@ -838,7 +838,7 @@ function hideMarketplaceItem($conn) {
         $reportStmt = $conn->prepare("
             SELECT reason 
             FROM reports 
-            WHERE post_id = ? AND status = 'pending'
+            WHERE marketplace_item_id = ? AND status = 'pending'
         ");
         $reportStmt->bind_param("i", $itemId);
         $reportStmt->execute();
@@ -876,8 +876,8 @@ function hideMarketplaceItem($conn) {
             $info['email'],
             $info['username'],
             'hidden',
-            'post',
-            $postId,
+            'marketplace item',
+            $itemId,
             $reasons
         );
 
@@ -1439,9 +1439,9 @@ function archiveMarketplaceItem($conn) {
 
         // Get user info first
         $infoStmt = $conn->prepare("
-            SELECT m.id, m.user_id, u.email, u.username
+            SELECT m.id, m.seller_id, u.email, u.username
             FROM marketplace_items m
-            JOIN users u ON m.user_id = u.id
+            JOIN users u ON m.seller_id = u.id
             WHERE m.id = ?
         ");
         $infoStmt->bind_param("i", $itemId);
