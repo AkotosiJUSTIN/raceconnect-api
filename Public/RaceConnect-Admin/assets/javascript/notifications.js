@@ -229,27 +229,36 @@ document.addEventListener('DOMContentLoaded', () => {
             row.classList.add(notification.is_read === 1 ? 'read' : 'unread');
             
             row.innerHTML = `
-                <td>
-                    <input type="checkbox" class="notification-check" data-id="${notification.id}">
-                </td>
-                <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
-                <td>
-                    <div class="notification-content ${notification.is_read === 1 ? 'read' : 'unread'}">
-                        <strong>${escapeHtml(notification.post_title || notification.title || 'Pending Appeal for Review')}</strong><br>
-                        <span class="report-reason">${escapeHtml(notification.report_reason || notification.content || 'No reason provided')}</span>
-                    </div>
-                </td>
-                <td>${new Date(notification.created_at).toLocaleString()}</td>
-                <td>
-                    <div class="actions">
-                        <button class="view-btn" onclick="handleViewPost(${notification.post_id}, ${notification.marketplace_item_id}, '${notification.type}', ${notification.id})" title="View Item">
-                            <box-icon type='solid' name='show' color="white"></box-icon>
-                        </button>
-                        <button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
-                            <box-icon type='solid' name='archive-in' color="white"></box-icon>
-                        </button>
-                    </div>
-                </td>
+            <td>
+                <input type="checkbox" class="notification-check" data-id="${notification.id}">
+            </td>
+            <td>${escapeHtml(notification.reporter_username || 'Unknown')}</td>
+            <td>
+                <div class="notification-content ${notification.is_read === 1 ? 'read' : 'unread'}">
+                    <strong>${escapeHtml(notification.post_title || notification.title || 'Pending Appeal for Review')}</strong><br>
+                    <span class="report-reason">${escapeHtml(notification.report_reason || notification.content || 'No reason provided')}</span>
+                </div>
+            </td>
+            <td>${new Date(notification.created_at).toLocaleString()}</td>
+            <td>
+                <div class="actions">
+                    <button class="view-btn" 
+                        onclick="handleViewPost(
+                            ${notification.post_id || 'null'}, 
+                            ${notification.marketplace_item_id || 'null'}, 
+                            '${notification.type}', 
+                            ${notification.id}
+                        )" 
+                        data-type="${notification.type}"
+                        data-appeal-id="${notification.appeal_id || ''}"
+                        title="View Item">
+                        <box-icon type='solid' name='show' color="white"></box-icon>
+                    </button>
+                    <button class="archive-btn" onclick="handleArchiveNotification(${notification.id})" title="Archive Notification">
+                        <box-icon type='solid' name='archive-in' color="white"></box-icon>
+                    </button>
+                </div>
+            </td>
             `;
     
             const checkbox = row.querySelector('.notification-check');
@@ -286,11 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, "&#039;");
     }
 
-    // Updated handleViewPost function
     window.handleViewPost = async function(postId, marketplaceItemId, type, notificationId) {
         try {
-            console.log("Attempting to mark notification as read:", notificationId);
+            console.log("Handling notification:", { type, postId, marketplaceItemId, notificationId });
     
+            // Mark notification as read
             const response = await fetch('fetch_api.php?action=mark_notification_read', {
                 method: 'POST',
                 headers: {
@@ -301,43 +310,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
     
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server response was not JSON');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
     
             const result = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(result.error || `Server error: ${response.status}`);
-            }
-    
             if (!result.success) {
                 throw new Error(result.error || 'Failed to update notification');
             }
     
-            // Update local data
+            // Get notification data
             const notification = notificationsData.find(n => n.id === notificationId);
+            
+            // Handle redirect based on notification type and data
+            let redirectUrl;
+            if (type === 'appeal_submission') {
+                if (postId && postId !== 'null') {
+                    redirectUrl = `index_posts.php?post_id=${postId}&highlight=true&appeal=true`;
+                } else if (marketplaceItemId && marketplaceItemId !== 'null') {
+                    redirectUrl = `index_marketplace.php?item_id=${marketplaceItemId}&highlight=true&appeal=true`;
+                } else if (notification && notification.reporter_username) {
+                    redirectUrl = `index_users.php?username=${notification.reporter_username}&appeal=true`;
+                }
+            } else if (type === 'marketplace_report' && marketplaceItemId && marketplaceItemId !== 'null') {
+                redirectUrl = `index_marketplace.php?item_id=${marketplaceItemId}&highlight=true`;
+            } else if (type === 'post_report' && postId && postId !== 'null') {
+                redirectUrl = `index_posts.php?post_id=${postId}&highlight=true`;
+            }
+    
+            // Update local data after determining redirect
             if (notification) {
                 notification.is_read = 1;
                 filterAndPopulateTable();
             }
     
-            // Handle redirect
-            let redirectUrl;
-            if (type === 'marketplace_report') {
-                redirectUrl = `index_marketplace.php?item_id=${marketplaceItemId}&highlight=true`;
-            } else if (type === 'post_report') {
-                redirectUrl = `index_posts.php?post_id=${postId}&highlight=true`;
-            }
-    
             if (redirectUrl) {
+                console.log("Redirecting to:", redirectUrl);
                 window.location.href = redirectUrl;
+            } else {
+                console.warn('No valid redirect URL could be determined', { 
+                    notification, 
+                    type, 
+                    postId, 
+                    marketplaceItemId,
+                    notificationData: notificationsData 
+                });
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Could not determine where to redirect for this notification',
+                    icon: 'warning'
+                });
             }
     
         } catch (error) {
             console.error("Error details:", error);
-            alert(`Failed to update notification: ${error.message}`);
+            Swal.fire({
+                title: 'Error',
+                text: `Failed to update notification: ${error.message}`,
+                icon: 'error'
+            });
         }
     };
 

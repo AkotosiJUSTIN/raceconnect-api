@@ -34,7 +34,27 @@ class AppealsController {
                     'message' => 'Invalid concern type'
                 ];
             }
+
+            // Validate postId for POST_PENALTY
+            if ($data['concernType'] === 'POST_PENALTY') {
+                if (!isset($data['postId']) || !is_numeric($data['postId'])) {
+                    return [
+                        'success' => false,
+                        'message' => 'Post ID is required for post penalty appeals'
+                    ];
+                }
+            }
     
+            // Validate itemId for ITEM_POST_PENALTY
+            if ($data['concernType'] === 'ITEM_POST_PENALTY') {
+                if (!isset($data['itemId']) || !is_numeric($data['itemId'])) {
+                    return [
+                        'success' => false,
+                        'message' => 'Item ID is required for item post penalty appeals'
+                    ];
+                }
+            }
+
             // Check if user exists and get their info
             $userStmt = $this->conn->prepare("SELECT id, status FROM Users WHERE email = :email");
             $userStmt->execute([':email' => $data['email']]);
@@ -83,11 +103,34 @@ class AppealsController {
                 ]);
     
                 $appealId = $this->conn->lastInsertId();
+
+                // Fetch title based on concern type
+                $title = null;
+                if ($data['concernType'] === 'POST_PENALTY') {
+                    $postStmt = $this->conn->prepare("SELECT title FROM posts WHERE id = :postId");
+                    $postStmt->execute([':postId' => $postId]);
+                    $post = $postStmt->fetch(\PDO::FETCH_ASSOC);
+                    $title = $post ? $post['title'] : 'Unknown Post';
+                } elseif ($data['concernType'] === 'ITEM_POST_PENALTY') {
+                    $itemStmt = $this->conn->prepare("SELECT title FROM marketplace_items WHERE id = :itemId");
+                    $itemStmt->execute([':itemId' => $itemId]);
+                    $item = $itemStmt->fetch(\PDO::FETCH_ASSOC);
+                    $title = $item ? $item['title'] : 'Unknown Item';
+                }
+
+                // Set notification content based on appeal type
+                if ($data['concernType'] === 'ACCOUNT_PENALTY') {
+                    $content = "{$data['username']} has submitted an account appeal.";
+                } elseif ($data['concernType'] === 'POST_PENALTY') {
+                    $content = "{$data['username']} has submitted an appeal for their post: {$title}";
+                } elseif ($data['concernType'] === 'ITEM_POST_PENALTY') {
+                    $content = "{$data['username']} has submitted an appeal for their item: {$title}";
+                }
     
                 // Create admin notification
                 $notifQuery = "INSERT INTO admin_notifications 
                              (admin_id, reporter_id, type, content, reporter_username, 
-                              appeal_id, severity, status) 
+                              appeal_id, severity, post_id, marketplace_item_id, status) 
                              SELECT 
                                  a.id,
                                  :reporter_id,
@@ -96,20 +139,23 @@ class AppealsController {
                                  :username,
                                  :appeal_id,
                                  'high',
-                                 'pending'
+                                 'pending',
+                                 'post_id',
+                                 'marketplace_item_id'
                              FROM admins a 
                              WHERE a.active = 1 
                              AND a.role = 'community_manager' 
                              ORDER BY a.id ASC
                              LIMIT 1";
     
-                $content = "{$data['username']} has submitted a new appeal - {$data['concernType']}";
                 $notifStmt = $this->conn->prepare($notifQuery);
                 $notifStmt->execute([
                     ':reporter_id' => $user['id'],
                     ':content' => $content,
                     ':username' => $data['username'],
-                    ':appeal_id' => $appealId
+                    ':appeal_id' => $appealId,
+                    ':post_id' => $postId,
+                    ':marketplace_item_id' => $itemId
                 ]);
     
                 // Send confirmation emails

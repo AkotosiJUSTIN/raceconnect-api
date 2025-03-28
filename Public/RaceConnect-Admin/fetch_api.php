@@ -847,6 +847,31 @@ function hideMarketplaceItem($conn) {
     $conn->begin_transaction();
 
     try {
+
+        $infoStmt = $conn->prepare("
+            SELECT m.id, m.user_id, u.email, u.username
+            FROM marketplace_items m
+            JOIN users u ON m.user_id = u.id
+            WHERE m.id = ?
+        ");
+        $infoStmt->bind_param("i", $postId);
+        $infoStmt->execute();
+        $info = $infoStmt->get_result()->fetch_assoc();
+
+        // Get report reasons
+        $reportStmt = $conn->prepare("
+            SELECT reason 
+            FROM reports 
+            WHERE post_id = ? AND status = 'pending'
+        ");
+        $reportStmt->bind_param("i", $postId);
+        $reportStmt->execute();
+        $result = $reportStmt->get_result();
+        
+        $reasons = [];
+        while ($row = $result->fetch_assoc()) {
+            $reasons[] = $row['reason'];
+        }
         // Update marketplace item status
         $updateItem = $conn->prepare("
             UPDATE marketplace_items 
@@ -870,6 +895,15 @@ function hideMarketplaceItem($conn) {
         if (!$updateReports->execute()) {
             throw new Exception("Failed to update reports");
         }
+        
+        sendActionEmail(
+            $info['email'],
+            $info['username'],
+            'hidden',
+            'post',
+            $postId,
+            $reasons
+        );
 
         $conn->commit();
         echo json_encode(["success" => true]);
@@ -1096,6 +1130,69 @@ function banUser($conn) {
     echo json_encode($response);
 }
 
+function getActionEmailTemplate($username, $action, $contentType, $contentId, $reasons = []) {
+    $reasonsList = '';
+    if (!empty($reasons)) {
+        $reasonsList = "<ul style='margin-top: 10px;'>";
+        foreach ($reasons as $reason) {
+            $reasonsList .= "<li>{$reason}</li>";
+        }
+        $reasonsList .= "</ul>";
+    }
+
+    $appealText = '';
+    if ($action === 'hidden') {
+        $appealText = "<p>Feel free to submit an appeal if you have questions or concerns about your {$contentType}.</p>";
+    }
+
+    $contentIdText = $contentType === 'post' ? "Post ID: {$contentId}" : "Item ID: {$contentId}";
+
+    return "
+        <html>
+        <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+            <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                <h2 style='color: #B91C1C;'>Content {$action}</h2>
+                <p>Hello {$username},</p>
+                <p>Your {$contentType} has been {$action} for the following reason(s):</p>
+                {$reasonsList}
+                <p>{$contentIdText}</p>
+                {$appealText}
+                <p>If you have any questions, please contact our support team.</p>
+                <br>
+                <p>Best regards,</p>
+                <p>RaceConnect Team</p>
+            </div>
+        </body>
+        </html>
+    ";
+}
+
+function sendActionEmail($email, $username, $action, $contentType, $contentId, $reasons = []) {
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = $_ENV['SMTP_USER'];
+        $mail->Password = $_ENV['SMTP_PASS'];
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        $mail->setFrom('RaceConnect@gmail.com', 'RaceConnect');
+        $mail->addAddress($email, $username);
+
+        $mail->isHTML(true);
+        $mail->Subject = "Content {$action} Notification";
+        $mail->Body = getActionEmailTemplate($username, $action, $contentType, $contentId, $reasons);
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Mail Error: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
 function sendAppealStatusEmail($email, $username, $status, $concernType) {
     $mail = new PHPMailer(true);
     try {
@@ -1317,7 +1414,6 @@ function archiveMarketplaceItem($conn) {
         if (!$updateReports->execute()) {
             throw new Exception("Failed to update reports");
         }
-
         $conn->commit();
         echo json_encode(["success" => true]);
 
@@ -1339,6 +1435,32 @@ function hidePost($conn) {
     $conn->begin_transaction();
 
     try {
+
+        $infoStmt = $conn->prepare("
+            SELECT p.id, p.user_id, u.email, u.username
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.id = ?
+        ");
+        $infoStmt->bind_param("i", $postId);
+        $infoStmt->execute();
+        $info = $infoStmt->get_result()->fetch_assoc();
+
+        // Get report reasons
+        $reportStmt = $conn->prepare("
+            SELECT reason 
+            FROM reports 
+            WHERE post_id = ? AND status = 'pending'
+        ");
+        $reportStmt->bind_param("i", $postId);
+        $reportStmt->execute();
+        $result = $reportStmt->get_result();
+        
+        $reasons = [];
+        while ($row = $result->fetch_assoc()) {
+            $reasons[] = $row['reason'];
+        }
+
         // Update post status
         $updatePost = $conn->prepare("
             UPDATE posts 
@@ -1362,6 +1484,15 @@ function hidePost($conn) {
         if (!$updateReports->execute()) {
             throw new Exception("Failed to update reports");
         }
+
+        sendActionEmail(
+            $info['email'],
+            $info['username'],
+            'hidden',
+            'post',
+            $postId,
+            $reasons
+        );
 
         $conn->commit();
         echo json_encode(["success" => true]);
