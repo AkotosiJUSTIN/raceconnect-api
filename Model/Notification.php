@@ -18,12 +18,13 @@ class Notification {
         $query = "SELECT 
             n.*,
             CASE 
-                WHEN a.id IS NOT NULL THEN a.admin_name
-                ELSE u.username 
+                WHEN n.type = 'appeal_submission' OR n.type = 'report' THEN a.admin_name
+                WHEN n.trigger_user_id IS NOT NULL THEN u.username
+                ELSE 'Unknown User'
             END AS trigger_username,
             u.profile_picture AS trigger_profile_picture,
             CASE 
-                WHEN a.id IS NOT NULL THEN 1
+                WHEN n.type = 'appeal_submission' OR n.type = 'report' THEN 1
                 ELSE 0
             END as is_admin
         FROM {$this->table} n
