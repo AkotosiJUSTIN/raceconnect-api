@@ -129,25 +129,25 @@ class AppealsController {
     
                 // Create admin notification
                 $notifQuery = "INSERT INTO admin_notifications 
-                             (admin_id, reporter_id, type, content, reporter_username, 
-                              appeal_id, severity, post_id, marketplace_item_id, status) 
-                             SELECT 
-                                 a.id,
-                                 :reporter_id,
-                                 'appeal_submission',
-                                 :content,
-                                 :username,
-                                 :appeal_id,
-                                 'high',
-                                 'pending',
-                                 'post_id',
-                                 'marketplace_item_id'
-                             FROM admins a 
-                             WHERE a.active = 1 
-                             AND a.role = 'community_manager' 
-                             ORDER BY a.id ASC
-                             LIMIT 1";
-    
+                            (admin_id, reporter_id, type, content, reporter_username, 
+                                appeal_id, severity, status, post_id, marketplace_item_id) 
+                            SELECT 
+                                a.id,
+                                :reporter_id,
+                                'appeal_submission',
+                                :content,
+                                :username,
+                                :appeal_id,
+                                'high',
+                                'pending',
+                                :post_id,
+                                :item_id
+                            FROM admins a 
+                            WHERE a.active = 1 
+                            AND a.role = 'community_manager' 
+                            ORDER BY a.id ASC
+                            LIMIT 1";
+
                 $notifStmt = $this->conn->prepare($notifQuery);
                 $notifStmt->execute([
                     ':reporter_id' => $user['id'],
@@ -155,7 +155,7 @@ class AppealsController {
                     ':username' => $data['username'],
                     ':appeal_id' => $appealId,
                     ':post_id' => $postId,
-                    ':marketplace_item_id' => $itemId
+                    ':item_id' => $itemId
                 ]);
     
                 // Send confirmation emails

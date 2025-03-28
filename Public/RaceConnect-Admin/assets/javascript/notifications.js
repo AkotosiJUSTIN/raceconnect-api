@@ -3,7 +3,8 @@ let notificationsData = [];
 document.addEventListener('DOMContentLoaded', () => {
     // Get DOM elements
     const searchInput = document.getElementById('searchInput');
-    const filterDropdown = document.getElementById('filterDropdown');
+    const readStatusFilter = document.getElementById('readStatusFilter');
+    const notificationTypeFilter = document.getElementById('notificationTypeFilter');
     const notificationsList = document.getElementById('notificationTableBody');
     const selectAll = document.querySelector('.select-all');
     const bulkArchive = document.getElementById('bulkArchive');
@@ -145,9 +146,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Add event listeners
-    if (searchInput && filterDropdown) {
+    if (searchInput && readStatusFilter && notificationTypeFilter) {
         searchInput.addEventListener('input', filterAndPopulateTable);
-        filterDropdown.addEventListener('change', filterAndPopulateTable);
+        readStatusFilter.addEventListener('change', filterAndPopulateTable);
+        notificationTypeFilter.addEventListener('change', filterAndPopulateTable);
     }
 
     function fetchNotifications() {
@@ -183,26 +185,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function filterAndPopulateTable() {
-        if (!searchInput || !filterDropdown) return;
+        if (!searchInput || !readStatusFilter || !notificationTypeFilter) return;
 
         const searchTerm = searchInput.value.toLowerCase();
-        const filterValue = filterDropdown.value;
+        const readStatus = readStatusFilter.value;
+        const notificationType = notificationTypeFilter.value;
 
         const filteredNotifications = notificationsData.filter(notification => {
             // Check if the notification matches the search term
-        const matchesSearch = 
-        (notification.reporter_username || '').toLowerCase().includes(searchTerm) ||
-        (notification.post_title || '').toLowerCase().includes(searchTerm) ||
-        (notification.report_reason || '').toLowerCase().includes(searchTerm);
-    
-        // Check if the notification matches the filter
-        const isRead = notification.is_read === 1 || notification.is_read === true;
-        const matchesFilter = filterValue === 'all' || 
-                            (filterValue === 'unread' && !isRead) ||
-                            (filterValue === 'read' && isRead);
+            const matchesSearch = 
+                (notification.reporter_username || '').toLowerCase().includes(searchTerm) ||
+                (notification.post_title || '').toLowerCase().includes(searchTerm) ||
+                (notification.report_reason || '').toLowerCase().includes(searchTerm);
+        
+            // Check if the notification matches the read status filter
+            const isRead = notification.is_read === 1 || notification.is_read === true;
+            const matchesReadStatus = readStatus === 'all' || 
+                                    (readStatus === 'unread' && !isRead) ||
+                                    (readStatus === 'read' && isRead);
 
-        return matchesSearch && matchesFilter;
-    });
+            // Check if the notification matches the type filter
+            const isAppeal = notification.type === 'appeal_submission';
+            const matchesType = notificationType === 'all' || 
+                              (notificationType === 'appeal' && isAppeal) ||
+                              (notificationType === 'report' && !isAppeal);
+
+            return matchesSearch && matchesReadStatus && matchesType;
+        });
 
         populateNotifications(filteredNotifications);
     }

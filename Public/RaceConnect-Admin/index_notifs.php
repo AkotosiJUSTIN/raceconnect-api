@@ -129,10 +129,15 @@ $admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Guest'
                     <div class="group">
                         <box-icon name='search' ></box-icon>
                         <input type="text" placeholder="Search notifications..." class="search-input" id="searchInput">                    
-                        <select class="filter-dropdown" id="filterDropdown">
-                            <option value="all">All</option>
+                        <select class="filter-dropdown" id="readStatusFilter">
+                            <option value="all">All Status</option>
                             <option value="unread">Unread</option>
                             <option value="read">Read</option>
+                        </select>
+                        <select class="filter-dropdown" id="notificationTypeFilter">
+                            <option value="all">All Types</option>
+                            <option value="report">Reports</option>
+                            <option value="appeal">Appeals</option>
                         </select>
                         <div class="bulk-actions">
                             <button id="bulkArchive" class="bulk-action-btn" disabled>

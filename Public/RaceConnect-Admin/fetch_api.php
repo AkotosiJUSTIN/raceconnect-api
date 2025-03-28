@@ -524,6 +524,7 @@ function archiveNotification($conn) {
     $notificationId = $data['notification_id'] ?? null;
     $password = $data['password'] ?? null;
 
+    // Validate input
     if (!$notificationId || !$password) {
         echo json_encode(['success' => false, 'error' => 'Invalid input']);
         return;
@@ -536,61 +537,36 @@ function archiveNotification($conn) {
     }
 
     try {
-        // Get appeal_id from notification
-        $stmt = $conn->prepare("SELECT appeal_id FROM admin_notifications WHERE id = ?");
+        // Start a transaction
+        $conn->begin_transaction();
+
+        // Optional cleanup (unchanged from original)
+        if (rand(1, 10) === 1) {
+            $cleanup = new CleanupService($conn);
+            $cleanup->cleanupArchivedData();
+        }
+
+        // Archive the notification without updating appeals or action_taken
+        $stmt = $conn->prepare("
+            UPDATE admin_notifications 
+            SET status = 'archived',
+                archived_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
         $stmt->bind_param("i", $notificationId);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $notification = $result->fetch_assoc();
 
-        if (!$notification) {
-            throw new Exception("Notification not found");
+        // Check if the update was successful
+        if ($stmt->affected_rows === 0) {
+            throw new Exception("Notification not found or already archived");
         }
 
-        $appealId = $notification['appeal_id'];
-
-        if ($appealId) {
-            // Handle appeal-related notification
-            require_once __DIR__ . '/../../Controller/AppealsController.php';
-            $appealsController = new Controller\AppealsController($conn);
-            $result = $appealsController->updateAppealStatus($appealId, 'REJECTED');
-            if (!$result['success']) {
-                throw new Exception($result['message']);
-            }
-        } else {
-            // Handle standalone notification
-            $conn->begin_transaction();
-
-            if (rand(1, 10) === 1) {
-                $cleanup = new CleanupService($conn);
-                $cleanup->cleanupArchivedData();
-            }
-
-            $stmt = $conn->prepare("
-                UPDATE admin_notifications 
-                SET status = 'archived',
-                    action_taken = CASE 
-                        WHEN appeal_id IS NOT NULL THEN 'Denied'
-                        ELSE action_taken 
-                    END,
-                    archived_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ");
-            $stmt->bind_param("i", $notificationId);
-            $stmt->execute();
-
-            if ($stmt->affected_rows === 0) {
-                throw new Exception("Notification not found or already archived");
-            }
-
-            $conn->commit();
-        }
-
+        // Commit the transaction
+        $conn->commit();
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollback();
-        }
+        // Roll back on error
+        $conn->rollback();
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
