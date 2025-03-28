@@ -1157,6 +1157,25 @@ function getActionEmailTemplate($username, $action, $contentType, $contentId, $r
     ";
 }
 
+function getArchiveEmailTemplate($username, $contentType, $contentId) {
+    return "
+        <html>
+        <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+            <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                <h2 style='color: #B91C1C;'>Content Archived</h2>
+                <p>Hello {$username},</p>
+                <p>Your {$contentType} (ID: {$contentId}) has been archived by our moderation team.</p>
+                <p>Archived content cannot be restored and this action cannot be appealed.</p>
+                <p>If you have any questions, please contact our support team.</p>
+                <br>
+                <p>Best regards,</p>
+                <p>RaceConnect Team</p>
+            </div>
+        </body>
+        </html>
+    ";
+}
+
 function sendActionEmail($email, $username, $action, $contentType, $contentId, $reasons = []) {
     $mail = new PHPMailer(true);
     try {
@@ -1326,6 +1345,21 @@ function archivePost($conn) {
             throw new Exception("Invalid password");
         }
 
+        // Get user info first
+        $infoStmt = $conn->prepare("
+            SELECT p.id, p.user_id, u.email, u.username
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.id = ?
+        ");
+        $infoStmt->bind_param("i", $postId);
+        $infoStmt->execute();
+        $info = $infoStmt->get_result()->fetch_assoc();
+
+        if (!$info) {
+            throw new Exception("Post not found");
+        }
+
         // Update post status
         $updatePost = $conn->prepare("
             UPDATE posts 
@@ -1350,6 +1384,30 @@ function archivePost($conn) {
         $updateReports->bind_param("si", $_SESSION['email'], $postId);
         if (!$updateReports->execute()) {
             throw new Exception("Failed to update reports");
+        }
+
+        // Send email notification
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = $_ENV['SMTP_USER'];
+            $mail->Password = $_ENV['SMTP_PASS'];
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
+
+            $mail->setFrom('RaceConnect@gmail.com', 'RaceConnect');
+            $mail->addAddress($info['email'], $info['username']);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Content Archived Notification';
+            $mail->Body = getArchiveEmailTemplate($info['username'], 'post', $postId);
+
+            $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Error: " . $mail->ErrorInfo);
+            // Don't throw exception here as email failure shouldn't stop the archive process
         }
 
         $conn->commit();
@@ -1379,6 +1437,21 @@ function archiveMarketplaceItem($conn) {
             throw new Exception("Invalid password");
         }
 
+        // Get user info first
+        $infoStmt = $conn->prepare("
+            SELECT m.id, m.user_id, u.email, u.username
+            FROM marketplace_items m
+            JOIN users u ON m.user_id = u.id
+            WHERE m.id = ?
+        ");
+        $infoStmt->bind_param("i", $itemId);
+        $infoStmt->execute();
+        $info = $infoStmt->get_result()->fetch_assoc();
+
+        if (!$info) {
+            throw new Exception("Item not found");
+        }
+
         // Update marketplace item status
         $updateItem = $conn->prepare("
             UPDATE marketplace_items 
@@ -1404,6 +1477,31 @@ function archiveMarketplaceItem($conn) {
         if (!$updateReports->execute()) {
             throw new Exception("Failed to update reports");
         }
+
+        // Send email notification
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = $_ENV['SMTP_USER'];
+            $mail->Password = $_ENV['SMTP_PASS'];
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
+
+            $mail->setFrom('RaceConnect@gmail.com', 'RaceConnect');
+            $mail->addAddress($info['email'], $info['username']);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Content Archived Notification';
+            $mail->Body = getArchiveEmailTemplate($info['username'], 'marketplace item', $itemId);
+
+            $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Error: " . $mail->ErrorInfo);
+            // Don't throw exception here as email failure shouldn't stop the archive process
+        }
+        
         $conn->commit();
         echo json_encode(["success" => true]);
 
