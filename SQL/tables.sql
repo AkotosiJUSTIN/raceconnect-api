@@ -137,7 +137,7 @@ CREATE TABLE Notifications (
 ALTER TABLE Notifications
 ADD COLUMN trigger_user_id INT DEFAULT NULL,
 ADD COLUMN trigger_admin_name VARCHAR(50) DEFAULT NULL,
-ADD FOREIGN KEY (trigger_user_id) REFERENCES Users(id) ON DELETE SET NULL;
+ADD FOREIGN KEY (trigger_user_id) REFERENCES Users(id) ON DELETE SET NULL,
 ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
 
 -- Admins Table
