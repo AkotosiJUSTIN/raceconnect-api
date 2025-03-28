@@ -830,7 +830,7 @@ function hideMarketplaceItem($conn) {
             JOIN users u ON m.user_id = u.id
             WHERE m.id = ?
         ");
-        $infoStmt->bind_param("i", $postId);
+        $infoStmt->bind_param("i", $itemId);
         $infoStmt->execute();
         $info = $infoStmt->get_result()->fetch_assoc();
 
@@ -840,7 +840,7 @@ function hideMarketplaceItem($conn) {
             FROM reports 
             WHERE post_id = ? AND status = 'pending'
         ");
-        $reportStmt->bind_param("i", $postId);
+        $reportStmt->bind_param("i", $itemId);
         $reportStmt->execute();
         $result = $reportStmt->get_result();
         
@@ -956,9 +956,9 @@ function unhideMarketplaceItem($conn) {
             // Create notification for user
             $notifQuery = $conn->prepare("
                 INSERT INTO notifications 
-                (user_id, type, content, marketplace_item_id, trigger_user_id) 
+                (user_id, type, content, marketplace_item_id, trigger_admin_name) 
                 VALUES (?, 'system', ?, ?, 
-                    (SELECT user_id FROM admins WHERE email = ?))
+                    (SELECT admin_name FROM admins WHERE email = ?))
             ");
             $content = "Your appeal for the reported marketplace item has been approved. The content will be restored.";
             $notifQuery->bind_param("isis", 
@@ -969,6 +969,13 @@ function unhideMarketplaceItem($conn) {
             );
             $notifQuery->execute();
         }
+    
+        // Send email notification
+        sendAppealStatusEmail(
+            $appeal['email'],
+            $appeal['username'],
+            'APPROVED', 'ITEM_POST_PENALTY'
+        );
 
         $conn->commit();
         echo json_encode(["success" => true]);
@@ -1046,9 +1053,9 @@ function unhidePost($conn) {
             // Create notification for user
             $notifQuery = $conn->prepare("
                 INSERT INTO notifications 
-                (user_id, type, content, post_id, trigger_user_id) 
+                (user_id, type, content, post_id, trigger_admin_name) 
                 VALUES (?, 'system', ?, ?, 
-                    (SELECT user_id FROM admins WHERE email = ?))
+                    (SELECT admin_name FROM admins WHERE email = ?))
             ");
             $content = "Your appeal for the reported post has been approved. The content will be restored.";
             $notifQuery->bind_param("isis", 
@@ -1059,6 +1066,13 @@ function unhidePost($conn) {
             );
             $notifQuery->execute();
         }
+    
+        // Send email notification
+        sendAppealStatusEmail(
+            $appeal['email'],
+            $appeal['username'],
+            'APPROVED', 'POST_PENALTY'
+        );
 
         $conn->commit();
         echo json_encode(["success" => true]);

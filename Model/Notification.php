@@ -18,18 +18,20 @@ class Notification {
         $query = "SELECT 
             n.*,
             CASE 
-                WHEN n.type = 'appeal_submission' OR n.type = 'report' THEN a.admin_name
-                WHEN n.trigger_user_id IS NOT NULL THEN u.username
-                ELSE 'Unknown User'
+                WHEN n.trigger_admin_name IS NOT NULL THEN n.trigger_admin_name
+                WHEN u.username IS NOT NULL THEN u.username
+                ELSE COALESCE(a.admin_name, 'System')
             END AS trigger_username,
             u.profile_picture AS trigger_profile_picture,
             CASE 
-                WHEN n.type = 'appeal_submission' OR n.type = 'report' THEN 1
+                WHEN n.trigger_admin_name IS NOT NULL OR n.trigger_user_id IS NULL THEN 1
                 ELSE 0
             END as is_admin
         FROM {$this->table} n
         LEFT JOIN Users u ON n.trigger_user_id = u.id
-        LEFT JOIN admins a ON a.user_id = n.trigger_user_id
+        LEFT JOIN admins a ON a.email = (
+            SELECT email FROM admins WHERE id = n.trigger_user_id
+        )
         WHERE n.user_id = :user_id 
         ORDER BY n.created_at DESC";
         
@@ -43,19 +45,16 @@ class Notification {
     public function getNotificationById($id) {
         $query = "SELECT 
             n.*,
-            CASE 
-                WHEN a.id IS NOT NULL THEN a.admin_name
-                ELSE u.username 
-            END AS trigger_username,
-            u.profile_picture AS trigger_profile_picture,
-            CASE 
-                WHEN a.id IS NOT NULL THEN 1
-                ELSE 0
-            END as is_admin
+            u.username AS trigger_username,
+            u.profile_picture AS trigger_profile_picture
         FROM {$this->table} n
         LEFT JOIN Users u ON n.trigger_user_id = u.id
-        LEFT JOIN admins a ON a.user_id = n.trigger_user_id
         WHERE n.id = :id";
+        
+        $stmt = $this->pdo->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+        $notification = $stmt->fetch(PDO::FETCH_ASSOC);
     
         if ($notification && $notification['trigger_user_id'] === null) {
             error_log("Notification ID $id has null trigger_user_id");
