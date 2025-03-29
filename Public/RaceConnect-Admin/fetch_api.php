@@ -20,6 +20,10 @@ if (!isset($_SESSION['email'])) {
     exit;
 }
 
+//Auto Cleanup every 15 days
+$cleanup = new CleanupService($conn);
+$cleanup->checkAndCleanup();
+
 header('Content-Type: application/json');
 error_reporting(E_ALL);
 ini_set('display_errors', 0);

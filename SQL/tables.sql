@@ -401,9 +401,9 @@ CREATE TABLE appeals (
     status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(id),
-    FOREIGN KEY (post_id) REFERENCES posts(id),
-    FOREIGN KEY (item_id) REFERENCES marketplace_items(id)
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE SET NULL,
+    FOREIGN KEY (item_id) REFERENCES marketplace_items(id) ON DELETE SET NULL
 );
 
 -- Messages Table
@@ -485,6 +485,16 @@ CREATE TABLE admin_notifications (
     INDEX idx_created_at (created_at),
     INDEX idx_severity (severity)
 );
+
+-- Auto Cleanup Table
+CREATE TABLE cleanup_timestamp (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    last_cleanup TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    next_cleanup TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO cleanup_timestamp (last_cleanup, next_cleanup)
+VALUES (CURRENT_TIMESTAMP, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 1 DAY));
 
 DELIMITER $$
 
